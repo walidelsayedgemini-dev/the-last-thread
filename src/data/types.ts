@@ -26,6 +26,11 @@ export type Place = {
   pos: Vec2
   /** Short label for the minimap. */
   short: string
+  /** Real-world position (WGS84). Abis spots are fictional but placed inside the real Abis district. */
+  mapPos: { lat: number; lng: number }
+  /** true = a real landmark/station, false = fictional place inside a real neighbourhood. */
+  realSite: boolean
+
   description: string
   /** Real landmark coordinates when the player can photograph it in the real city. */
   geo?: GeoPoint

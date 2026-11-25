@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 1,
+  "version": 2,
   "_comment": "Seed schedule for the real-events database. Entries with provisional=true are PLACEHOLDERS and must be replaced by the official fixture list: serve an updated copy of this file (or any URL set in EVENTS_SOURCE_URL) with a higher `version`/`updatedAt` and the game merges it without a new release. All times are Cairo local time.",
   "events": [
     {
@@ -8,7 +8,11 @@
       "kind": "friday_prayer",
       "title": "صلاة الجمعة – جامع العزبة",
       "at": "2026-01-02T11:30",
-      "recurring": { "weekday": 5, "from": "11:30", "to": "13:30" },
+      "recurring": {
+        "weekday": 5,
+        "from": "11:30",
+        "to": "13:30"
+      },
       "venue": "جامع العزبة – أبيس",
       "note": "الشارع بيفضى وبتتقفل المحلات.",
       "source": "seed",
@@ -19,7 +23,11 @@
       "kind": "market_day",
       "title": "سوق الخميس – أبيس",
       "at": "2026-01-01T07:00",
-      "recurring": { "weekday": 4, "from": "07:00", "to": "14:00" },
+      "recurring": {
+        "weekday": 4,
+        "from": "07:00",
+        "to": "14:00"
+      },
       "venue": "ساحة السوق – أبيس",
       "note": "الأهالي كلهم في السوق والقهوة هادية.",
       "source": "seed",
@@ -57,6 +65,16 @@
       "provisional": true,
       "source": "seed",
       "updatedAt": 1
+    },
+    {
+      "id": "match-ittihad-2026-12-03",
+      "kind": "match_ittihad",
+      "title": "طلائع الجيش – الاتحاد السكندري (الدوري الممتاز)",
+      "at": "2026-12-03T20:00",
+      "venue": "استاد جهاز الرياضة العسكري",
+      "note": "موعد منشور على موقع في الجول وقت كتابة اللعبة (٢٥ نوفمبر ٢٠٢٦)؛ قد يتعدّل بقرار المسابقة.",
+      "source": "filgoal.com",
+      "updatedAt": 2
     }
   ]
 }

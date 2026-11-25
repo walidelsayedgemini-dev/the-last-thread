@@ -36,7 +36,7 @@ export class Hud {
   private readonly modeBadge = h('span', { class: 'mode' })
   private readonly count = h('span', { class: 'ev-count' })
   private readonly promptBtn: HTMLButtonElement
-  private readonly toasts = h('div', { class: 'toasts', 'aria-live': 'polite' })
+  private readonly toasts = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite', 'aria-relevant': 'additions' })
   private readonly narration = h('p', { class: 'narration', hidden: true })
   private readonly hintBubble = h('p', { class: 'hint-bubble', hidden: true })
   private readonly fadeEl = h('div', { class: 'fade' })

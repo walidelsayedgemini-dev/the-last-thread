@@ -4,6 +4,8 @@
  */
 import { arabicDigits, formatDateTime } from '../core/clock'
 import { CASE_01 } from '../data/case01'
+import { EPILOGUE } from '../data/story'
+import { PATHS, dominantPath, lifeEpilogue } from '../data/life'
 import { CHARACTERS, PLAYER_MODELS } from '../data/characters'
 import type { GameMode } from '../data/types'
 import type { Audio } from '../engine/audio'
@@ -12,10 +14,12 @@ import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
 import { HOMES, MAX_PROFILES, type Avatar, type ProfileService } from '../services/profiles'
 import { h, setChildren, svg } from './dom'
+import { CHARACTER_ART } from './visualAssets'
 
 export type ScreenId = 'boot' | 'title' | 'profiles' | 'create' | 'mode' | 'intro' | 'pause' | 'settings' | 'ending' | 'none'
 
 export type ShellActions = {
+  help: () => void
   /** Start playing an existing profile. */
   play(profileId: string): void
   /** Create a profile and start its intro. */
@@ -203,7 +207,8 @@ export class Shell {
       h('h2', null, 'اختار شخصيتك'),
       h('div', { class: 'cards' },
         h('button', { class: `card${!custom ? ' on' : ''}`, onclick: () => { a.kind = 'yassin'; a.name = 'ياسين'; a.gender = 'male'; this.go('create', this.back) } },
-          h('div', { class: 'portrait', style: { '--body': yassin.figure.body, '--accent': yassin.figure.accent } }, h('span', null, 'ي')),
+          h('div', { class: 'portrait', style: { '--body': yassin.figure.body, '--accent': yassin.figure.accent } },
+            h('img', { class: 'character-portrait-image', src: CHARACTER_ART.yassin.src, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' })),
           h('b', null, 'ياسين'), h('small', null, `${yassin.role} • ${yassin.home}`), h('p', null, yassin.appearance), h('blockquote', null, yassin.quote)),
         h('button', { class: `card${custom ? ' on' : ''}`, onclick: () => { a.kind = 'custom'; a.name = ''; this.go('create', this.back) } },
           h('div', { class: 'portrait', style: { '--body': '#222', '--accent': a.accent ?? ACCENTS[0] } }, h('span', null, '؟')),
@@ -277,9 +282,14 @@ export class Shell {
     setChildren(this.el, h('section', { class: 'page ending' },
       h('div', { class: 'stamp solved' }, 'القضية اتقفلت'),
       h('h2', null, CASE_01.title),
-      CASE_01.finale.ending.map(l => h('p', { class: 'end-line' }, session.fill(l))),
+      CASE_01.finale.ending.map((l, i) => h('p', { class: 'end-line', style: `--d: ${i * 0.6}s` }, session.fill(l))),
+      endingBlocks(session).map((block, i, list) =>
+        h('section', { class: `epilogue${i === list.length - 1 ? ' hook' : ''}`, style: `--d: ${2.6 + i * 1.1}s` },
+          h('h3', null, block.title),
+          block.lines.map(l => h('p', null, session.fill(l))))),
       h('div', { class: 'report' },
         h('div', null, h('small', null, 'التقدير'), h('b', { class: `grade g${grade}` }, grade)),
+        h('div', null, h('small', null, 'طريقك'), h('b', { class: 'path-name' }, dominantPath(session.state.flags) ? PATHS[dominantPath(session.state.flags)!].short : 'لسه')),
         h('div', null, h('small', null, 'الأدلة'), h('b', null, `${arabicDigits(found)}/${arabicDigits(CASE_01.evidence.length)}`)),
         h('div', null, h('small', null, 'صور'), h('b', null, arabicDigits(st.photos))),
         h('div', null, h('small', null, 'تلميحات'), h('b', null, arabicDigits(st.hints))),
@@ -296,6 +306,7 @@ export class Shell {
       h('div', { class: 'menu' },
         h('button', { class: 'btn primary', onclick: () => this.act.resume() }, 'كمّل'),
         h('button', { class: 'btn', onclick: () => this.act.casefile() }, 'ملف القضية'),
+        h('button', { class: 'btn', onclick: () => this.act.help() }, 'إزاي ألعب؟'),
         h('button', { class: 'btn', onclick: () => this.go('settings', 'pause') }, 'الإعدادات'),
         h('button', { class: 'btn ghost', onclick: () => this.act.quit() }, 'حفظ والخروج')),
       h('p', { class: 'controls' }, 'اختار نقطة تحقيق أو شخصية من المشهد. من الخريطة انتقل بين مواقع المنطقة؛ الميكروباص يربط أبيس بالإسكندرية. ملف القضية: Tab • الخريطة: M • تلميح: H • إيقاف: Esc'))
@@ -305,7 +316,13 @@ export class Shell {
     const d = this.s.settings.data
     const slider = (label: string, key: 'musicVolume' | 'sfxVolume', min: number, max: number, step: number) =>
       h('label', { class: 'set' }, label, h('input', { type: 'range', min, max, step, value: d[key], oninput: (e: Event) => this.act.settings({ [key]: Number((e.target as HTMLInputElement).value) }) }))
-    const check = (label: string, key: 'muted' | 'reducedMotion') =>
+    const sizes: [Settings['textSize'], string][] = [['normal', 'عادي'], ['large', 'كبير'], ['xlarge', 'كبير جدًا']]
+    const textSize = h('div', { class: 'set size-set', role: 'radiogroup', 'aria-label': 'حجم الخط' },
+      h('span', null, 'حجم الخط'),
+      h('div', { class: 'size-options' }, sizes.map(([id, label]) =>
+        h('button', { class: `size-opt${d.textSize === id ? ' on' : ''}`, role: 'radio', 'aria-checked': String(d.textSize === id), 'data-size': id,
+          onclick: () => { this.act.settings({ textSize: id }); this.go('settings', this.back) } }, h('b', null, 'أ'), label))))
+    const check = (label: string, key: 'muted' | 'reducedMotion' | 'clearFont' | 'simpleMode' | 'highContrast') =>
       h('label', { class: 'set row' }, h('input', { type: 'checkbox', checked: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).checked }) }), label)
     const url = (label: string, key: 'hintEndpoint' | 'eventsUrl', ph: string) =>
       h('label', { class: 'set' }, label, h('input', { type: 'url', dir: 'ltr', placeholder: ph, value: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).value }) }))
@@ -313,11 +330,18 @@ export class Shell {
       h('h2', null, 'الإعدادات'),
       h('div', { class: 'grid' },
         slider('صوت الأجواء', 'musicVolume', 0, 1, 0.05), slider('صوت المؤثرات', 'sfxVolume', 0, 1, 0.05),
-        check('كتم الصوت', 'muted'), check('تقليل الحركة', 'reducedMotion')),
+        check('كتم الصوت', 'muted'), check('تقليل الحركة', 'reducedMotion'), check('خط واضح للعناوين (أسهل في القراءة)', 'clearFont'), check('وضع مبسّط لكل الأعمار (تبويبات أقل وأزرار أكبر)', 'simpleMode'), check('تباين عالي (حدود ونصوص أوضح)', 'highContrast'), textSize),
       h('details', null, h('summary', null, 'الخدمات المتقدمة (اختياري)'),
         h('p', { class: 'note' }, 'روابط اختيارية. من غيرها تفضل القصة والتلميحات المحلية شغّالة أوفلاين.'),
         url('رابط التلميحات الذكية (ChatGPT)', 'hintEndpoint', 'https://your-proxy.example/hint'),
         url('رابط قاعدة الأحداث الواقعية', 'eventsUrl', 'https://your-host.example/events.json')),
       h('button', { class: 'btn ghost back', onclick: () => this.go(this.back ?? 'title') }, 'رجوع'))
   }
+}
+
+/** Ending scenes: the case epilogue, the player's life scenes, and the hook for the next case last. */
+function endingBlocks(session: Session) {
+  const blocks = EPILOGUE.filter(block => session.engine.matches(block.when))
+  const hook = blocks.pop()
+  return [...blocks, ...lifeEpilogue(session.state.flags), ...(hook ? [hook] : [])]
 }

@@ -6,6 +6,7 @@ import type { StorageAdapter } from '../services/storage'
 
 export type Quality = 'low' | 'medium' | 'high'
 
+export type TextSize = 'normal' | 'large' | 'xlarge'
 export type Settings = {
   version: 1
   musicVolume: number
@@ -15,6 +16,15 @@ export type Settings = {
   invertY: boolean
   quality: Quality
   reducedMotion: boolean
+  /** Reading comfort: UI text size and a plainer, more legible heading font. */
+  textSize: TextSize
+  clearFont: boolean
+  /** Simple mode: fewer tabs, bigger buttons and plainer screens (on by default). */
+  simpleMode: boolean
+  /** Stronger borders and text contrast for low vision. */
+  highContrast: boolean
+  /** The first-run help card was shown. */
+  helpSeen: boolean
   /** Optional URL of your hint proxy that talks to ChatGPT (see services/hints.ts). Empty = offline hints. */
   hintEndpoint: string
   /** Optional URL of the AI photo-analysis endpoint (see services/ar). Empty = GPS verification. */
@@ -28,7 +38,7 @@ export const SETTINGS_KEY = 'ltt.settings.v1'
 export function defaultSettings(): Settings {
   return {
     version: 1, musicVolume: 0.7, sfxVolume: 0.8, muted: false, sensitivity: 1, invertY: false,
-    quality: 'medium', reducedMotion: false, hintEndpoint: '', visionEndpoint: '', eventsUrl: '',
+    quality: 'medium', reducedMotion: false, textSize: 'normal', clearFont: true, simpleMode: true, highContrast: false, helpSeen: false, hintEndpoint: '', visionEndpoint: '', eventsUrl: '',
   }
 }
 
@@ -57,6 +67,11 @@ export function parseSettings(raw: string | null): Settings {
     invertY: d.invertY === true,
     quality: d.quality === 'low' || d.quality === 'medium' || d.quality === 'high' ? d.quality : base.quality,
     reducedMotion: d.reducedMotion === true,
+    textSize: d.textSize === 'large' || d.textSize === 'xlarge' ? d.textSize : 'normal',
+    clearFont: d.clearFont !== false,
+    simpleMode: d.simpleMode !== false,
+    highContrast: d.highContrast === true,
+    helpSeen: d.helpSeen === true,
     hintEndpoint: url(d.hintEndpoint),
     visionEndpoint: url(d.visionEndpoint),
     eventsUrl: url(d.eventsUrl),
