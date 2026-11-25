@@ -4,7 +4,7 @@ import { PLACES, PLACE_LIST } from '../data/places'
 import type { CharacterId, CharacterProfile, Evidence, Hotspot, Place, PlaceId } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Session } from '../game/session'
-import { PIN_POS, isDaytime, portraitUrl, sceneUrl } from './art'
+import { PIN_POS, isDaytime, portraitUrl, sceneNeighbors, sceneSrcSet, sceneUrl } from './art'
 import { h, setChildren, svg } from './dom'
 
 export type InvestigationTab = 'scene' | 'map'
@@ -284,8 +284,16 @@ export class InvestigationView {
   private scene(s: Session, place: Place): (HTMLElement | false)[] {
     const active = s.engine.activeHotspots().filter(hotspot => hotspot.place === place.id)
     const people = CHARACTER_LIST.filter(c => c.id !== 'yassin' && c.place === place.id && s.present(c))
+    const hour = s.clock.hour
     return [
-      h('img', { class: 'inv-photo', src: sceneUrl(place.id, s.clock.hour), alt: place.name, draggable: 'false' }),
+      ...sceneNeighbors(place.id).map(id => h('link', {
+        rel: 'preload', as: 'image', href: sceneUrl(id, hour), imagesrcset: sceneSrcSet(id, hour),
+        imagesizes: '100vw', fetchpriority: 'low',
+      })),
+      h('img', {
+        class: 'inv-photo', src: sceneUrl(place.id, hour), srcset: sceneSrcSet(place.id, hour), sizes: '100vw',
+        alt: place.name, draggable: 'false', loading: 'eager', fetchpriority: 'high', decoding: 'async',
+      }),
       h('div', { class: 'inv-photo-shade', 'aria-hidden': true }),
       this.guide(s, place, active.length + people.length),
       h('div', { class: 'inv-pins' }, active.map((hotspot, i) => this.pin(hotspot, i, active.length))),
@@ -350,7 +358,7 @@ export class InvestigationView {
     const met = s.state.flags.has(`met_${c.id}`)
     return h('button', { class: 'inv-person', role: 'listitem', onclick: () => this.d.onTalk(c.id), 'aria-label': `كلّم ${c.nickname ?? c.name}` },
       h('span', { class: 'inv-person-art', style: { '--accent': c.figure.accent, '--body': c.figure.body } },
-        src ? h('img', { src, alt: '', draggable: 'false' }) : h('span', { class: 'inv-person-initial' }, initial(c.name))),
+        src ? h('img', { src, alt: '', draggable: 'false', loading: 'lazy', decoding: 'async' }) : h('span', { class: 'inv-person-initial' }, initial(c.name))),
       h('span', { class: 'inv-person-copy' },
         h('b', null, c.nickname ?? c.name),
         h('small', null, c.role),
@@ -374,7 +382,7 @@ export class InvestigationView {
           'aria-current': here ? 'location' : undefined,
           onclick: () => this.selectPlace(p.id),
         },
-        h('img', { src: sceneUrl(p.id, s.clock.hour), alt: '', loading: 'lazy' }),
+        h('img', { src: sceneUrl(p.id, s.clock.hour), srcset: sceneSrcSet(p.id, s.clock.hour), sizes: '220px', alt: '', loading: 'lazy', decoding: 'async' }),
         h('span', null, h('b', null, p.name), h('small', null, here ? 'انت هنا' : isGoal ? 'الخطوة الجاية هنا' : p.short)))
       })))
   }

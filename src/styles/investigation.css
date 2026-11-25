@@ -57,7 +57,7 @@
   position: absolute; top: 14px; inset-inline-start: 14px; z-index: 2; max-width: min(560px, calc(100% - 28px));
   display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px;
   background: #06090cde; border: 1px solid #ffffff1f; border-inline-start: 4px solid var(--gold); border-radius: 10px;
-  backdrop-filter: blur(6px); box-shadow: 0 10px 30px #0008;
+  box-shadow: 0 8px 22px #0008;
 }
 .inv-guide.done { border-inline-start-color: var(--ok); }
 .inv-guide-mark { font-size: 1.5rem; color: var(--gold); }
@@ -155,7 +155,7 @@
 .inv-map-pin .pin-hit { fill: transparent; stroke: none; }
 .inv-map-pin .pin-halo { fill: #ef707822; stroke: var(--red-hot); stroke-width: 1.5; }
 .inv-map-pin .pin-dot { fill: var(--red-hot); }
-.inv-map-pin .pin-label { fill: var(--bone); font: 700 15px var(--font); paint-order: stroke; stroke: #070d12; stroke-width: 4px; }
+.inv-map-pin .pin-label { fill: var(--bone); font: 700 17px var(--font); paint-order: stroke; stroke: #070d12; stroke-width: 4px; }
 .inv-map-pin.current .pin-halo { fill: #c9aa7833; stroke: var(--gold); stroke-width: 2.5; }
 .inv-map-pin.current .pin-dot { fill: var(--gold); }
 .inv-map-pin.current .pin-label { fill: var(--gold); }
@@ -265,7 +265,8 @@
   .inv-guide-go { padding: 7px 10px; font-size: 0.88rem; }
   .inv-pin-dot { width: 40px; height: 40px; font-size: 1.1rem; }
   .inv-pin-label { max-width: 150px; padding: 4px 9px; }
-  .inv-pin-label b { font-size: 0.86rem; }
+  .inv-pin-label b { font-size: 0.9rem; }
+  .inv-map-pin .pin-label { font-size: 20px; stroke-width: 5px; }
   .inv-people { inset-inline: 10px; justify-content: center; gap: 8px; }
   .inv-person { width: 104px; }
   .inv-person-art { width: 96px; height: 118px; }
@@ -343,9 +344,19 @@
   .hud .toasts { top: auto; bottom: calc(64px + var(--safe-b)); }
 }
 @media (max-width: 760px) {
-  .hud .toasts { bottom: calc(112px + var(--safe-b)); }
+  .hud .toasts { bottom: calc(150px + var(--safe-b)); width: min(92vw, 360px); }
   .hud .narration { bottom: calc(118px + var(--safe-b)); padding: 12px 14px 8px; }
   .hud .hint-bubble { top: auto; bottom: calc(118px + var(--safe-b)); inset-inline: 4vw; width: auto; }
+}
+@media (max-width: 420px) {
+  /* The SVG viewBox scales labels too far down at phone width; cards are the readable fallback. */
+  .inv-map-svg { display: none; }
+  .inv-map-list { grid-template-columns: 1fr; gap: 8px; }
+  .inv-map-card { grid-template-columns: 82px minmax(0, 1fr); grid-template-rows: 82px; }
+  .inv-map-card img { width: 82px; height: 82px; }
+  .inv-map-card > span { align-content: center; padding: 8px 12px; }
+  .inv-map-card > span b { font-size: 1rem; }
+  .inv-map-card small { font-size: 0.82rem; }
 }
 /* The case file is a modal over the stage; a flying evidence card must not bleed through it. */
 body:has(.casefile:not([hidden])) .inv-fly-card { display: none; }

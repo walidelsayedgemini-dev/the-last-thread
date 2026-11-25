@@ -322,7 +322,7 @@ export class Shell {
     const d = this.s.settings.data
     const slider = (label: string, key: 'musicVolume' | 'sfxVolume', min: number, max: number, step: number) =>
       h('label', { class: 'set' }, label, h('input', { type: 'range', min, max, step, value: d[key], oninput: (e: Event) => this.act.settings({ [key]: Number((e.target as HTMLInputElement).value) }) }))
-    const check = (label: string, key: 'muted' | 'reducedMotion' | 'highContrast') =>
+    const check = (label: string, key: 'muted' | 'reducedMotion' | 'highContrast' | 'crashReportsEnabled') =>
       h('label', { class: 'set row' }, h('input', { type: 'checkbox', checked: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).checked }) }), label)
     const url = (label: string, key: 'hintEndpoint' | 'eventsUrl', ph: string) =>
       h('label', { class: 'set' }, label, h('input', { type: 'url', dir: 'ltr', placeholder: ph, value: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).value }) }))
@@ -334,7 +334,8 @@ export class Shell {
         h('div', { class: 'set' }, 'حجم الخط',
           h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'حجم الخط' }, ([[0.9, 'صغير'], [1, 'عادي'], [1.15, 'كبير'], [1.3, 'كبير جداً']] as const).map(([v, label]) =>
             h('button', { class: `chip${Math.abs(d.textScale - v) < 0.01 ? ' on' : ''}`, role: 'radio', 'aria-checked': String(Math.abs(d.textScale - v) < 0.01), onclick: () => { this.act.settings({ textScale: v }); this.go('settings', this.back) } }, label)))),
-        check('تباين عالي (أوضح في الشمس)', 'highContrast')),
+        check('تباين عالي (أوضح في الشمس)', 'highContrast'),
+        check('مشاركة تقارير الأعطال (اختياري)', 'crashReportsEnabled')),
       h('details', null, h('summary', null, 'الخدمات المتقدمة (اختياري)'),
         h('p', { class: 'note' }, 'روابط اختيارية. من غيرها تفضل القصة والتلميحات المحلية شغّالة أوفلاين.'),
         url('رابط التلميحات الذكية (ChatGPT)', 'hintEndpoint', 'https://your-proxy.example/hint'),

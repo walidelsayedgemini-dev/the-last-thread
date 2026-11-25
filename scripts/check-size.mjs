@@ -20,8 +20,10 @@ const sum = pred => files.filter(pred).reduce((n, f) => n + f.wire, 0)
 const js = sum(f => f.path.endsWith('.js'))
 const fonts = sum(f => /\.(ttf|woff2)$/.test(f.path))
 const transfer = sum(f => !f.path.endsWith('.txt'))
+const images = sum(f => /\.(avif|webp|png|jpe?g)$/.test(f.path))
+const audio = sum(f => /\.(mp3|ogg|wav)$/.test(f.path))
 const mb = n => `${(n / MB).toFixed(2)} MB`
-console.log(`bundle (gzip): js ${mb(js)} / fonts ${mb(fonts)} / transfer ${mb(transfer)}`)
+console.log(`bundle (gzip): js ${mb(js)} / fonts ${mb(fonts)} / transfer ${mb(transfer)} / images ${mb(images)} / audio ${mb(audio)}`)
 const over = Object.entries({ js, fonts }).filter(([k, v]) => v > BUDGET[k])
 if (over.length) {
   for (const [k, v] of over) console.error(`over budget: ${k} ${mb(v)} > ${mb(BUDGET[k])}`)

@@ -19,6 +19,8 @@ export type Settings = {
   textScale: number
   /** Stronger borders/brighter text for low-vision players and bright sunlight. */
   highContrast: boolean
+  /** Opt-in local crash capture and transmission when a build endpoint is configured. */
+  crashReportsEnabled: boolean
 }
 
 const SETTINGS_KEY = 'ltt.settings.v1'
@@ -27,7 +29,7 @@ function defaultSettings(): Settings {
   return {
     version: 1, musicVolume: 0.7, sfxVolume: 0.8, muted: false,
     reducedMotion: false, hintEndpoint: '', eventsUrl: '',
-    textScale: 1, highContrast: false,
+    textScale: 1, highContrast: false, crashReportsEnabled: false,
   }
 }
 
@@ -57,6 +59,7 @@ export function parseSettings(raw: string | null): Settings {
     eventsUrl: url(d.eventsUrl),
     textScale: num(d.textScale, base.textScale, 0.85, 1.4),
     highContrast: d.highContrast === true,
+    crashReportsEnabled: d.crashReportsEnabled === true,
   }
 }
 
