@@ -272,12 +272,15 @@ async function boot(): Promise<void> {
       shell.go('none')
       loopRef?.resetAccumulator()
     }
+    letters.hideNotice()
     caseFile.show(session)
   }
 
   function pause(): void {
     if (!active || paused) return
     paused = true
+    letters.hideNotice()
+    story.hide()
     shell.go('pause')
     audio.play('ui')
   }

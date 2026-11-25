@@ -87,6 +87,10 @@ export class LetterView {
     this.reader.hidden = true
     this.onChange()
   }
+  hideNotice(): void {
+    window.clearTimeout(this.timer)
+    this.notice.hidden = true
+  }
   hide(): void {
     window.clearTimeout(this.timer)
     this.notice.hidden = true

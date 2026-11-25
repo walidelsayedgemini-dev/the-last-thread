@@ -14,7 +14,7 @@ import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
 import { HOMES, MAX_PROFILES, type Avatar, type ProfileService } from '../services/profiles'
 import { h, setChildren, svg } from './dom'
-import { CHARACTER_ART } from './visualAssets'
+import { CHARACTER_ART, SCENE_ART } from './visualAssets'
 
 export type ScreenId = 'boot' | 'title' | 'profiles' | 'create' | 'mode' | 'intro' | 'pause' | 'settings' | 'ending' | 'none'
 
@@ -129,7 +129,10 @@ export class Shell {
         h('span', { class: 'title-action-number', 'aria-hidden': true }, number),
         h('span', { class: 'title-action-copy' }, h('b', null, label), h('small', null, hint)),
         h('span', { class: 'title-action-arrow', 'aria-hidden': true }, '←'))
+    const slides = (['qaitbay', 'bibliotheca', 'corniche', 'canal_bridge'] as const).map((id, i) =>
+      h('img', { class: 'title-slide', style: { animationDelay: `${i * 7}s` }, src: SCENE_ART[id].mobileSrc ?? SCENE_ART[id].src, alt: '', decoding: 'async', draggable: 'false' }))
     return h('section', { class: 'page title' },
+      h('div', { class: 'title-backdrop', 'aria-hidden': true }, slides, h('i', { class: 'title-thread' })),
       h('div', { class: 'title-atmosphere', 'aria-hidden': true },
         h('div', { class: 'title-glow' }),
         h('div', { class: 'title-horizon' }),
@@ -309,7 +312,7 @@ export class Shell {
         h('button', { class: 'btn', onclick: () => this.act.help() }, 'إزاي ألعب؟'),
         h('button', { class: 'btn', onclick: () => this.go('settings', 'pause') }, 'الإعدادات'),
         h('button', { class: 'btn ghost', onclick: () => this.act.quit() }, 'حفظ والخروج')),
-      h('p', { class: 'controls' }, 'اختار نقطة تحقيق أو شخصية من المشهد. من الخريطة انتقل بين مواقع المنطقة؛ الميكروباص يربط أبيس بالإسكندرية. ملف القضية: Tab • الخريطة: M • تلميح: H • إيقاف: Esc'))
+      h('p', { class: 'controls kbd-hint' }, 'اختار نقطة تحقيق أو شخصية من المشهد. من الخريطة انتقل بين مواقع المنطقة؛ الميكروباص يربط أبيس بالإسكندرية. ملف القضية: Tab • الخريطة: M • تلميح: H • إيقاف: Esc'))
   }
 
   private settingsPage(): HTMLElement {
