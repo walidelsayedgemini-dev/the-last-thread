@@ -27,7 +27,7 @@ export interface HintProvider {
   hint(ctx: HintContext): Promise<string>
 }
 
-export class LocalHintProvider implements HintProvider {
+class LocalHintProvider implements HintProvider {
   readonly name = 'local'
   async hint(ctx: HintContext): Promise<string> {
     const set = LOCAL_HINTS[ctx.objectiveId] ?? FALLBACK_HINT

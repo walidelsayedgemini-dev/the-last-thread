@@ -8,12 +8,11 @@ import { CHARACTERS } from '../data/characters'
 import { DIALOGUES, DIALOGUES_BY_CASE } from '../data/dialogues'
 import { PLACES } from '../data/places'
 import type { CharacterId, CharacterProfile, EvidenceId, Hotspot, PlaceId } from '../data/types'
-import type { ArCapture, ArEngine, ArVerdict } from '../services/ar'
 import type { EventsDb } from '../services/eventsDb'
 import type { Hint, HintService } from '../services/hints'
 import type { Profile, ProfileService, Progress } from '../services/profiles'
 
-export type SessionDeps = { events: EventsDb; profiles: ProfileService; hints: HintService; ar: ArEngine; now: () => number }
+export type SessionDeps = { events: EventsDb; profiles: ProfileService; hints: HintService; now: () => number }
 type Listener = (events: CaseEvent[]) => void
 
 export class Session {
@@ -75,8 +74,12 @@ export class Session {
 
   nextCaseId(): string | undefined { return registryNextCaseId(this.caseId) }
 
+  /** True when the character has a part (dialogue) in the active case. */
+  inCase(c: CharacterProfile): boolean {
+    return Boolean(DIALOGUES_BY_CASE[this.caseId]?.[c.id])
+  }
   present(c: CharacterProfile): boolean {
-    if (c.id === 'yassin') return false
+    if (c.id === 'yassin' || !this.inCase(c)) return false
     return !c.appearsWhen || this.state.flags.has(c.appearsWhen)
   }
 
@@ -90,14 +93,6 @@ export class Session {
     return { available: false, place: c.place, text: `${c.name} مش موجود دلوقتي… جرّب في وقت تاني.` }
   }
 
-  positionOf(c: CharacterProfile): { x: number; z: number } {
-    const where = this.whereIs(c.id)
-    const slot = c.schedule?.find(item => item.place === where.place && hourInWindow(this.clock.hour, item.hours.from, item.hours.to))
-    const offset = slot?.offset ?? c.offset
-    const p = PLACES[where.place].pos
-    return { x: p.x + offset.x, z: p.z + offset.z }
-  }
-  hotspotPosition(h: Hotspot): { x: number; z: number } { const p = PLACES[h.place].pos; return { x: p.x + h.offset.x, z: p.z + h.offset.z } }
 
   private offended(id: CharacterId): boolean {
     const item = this.state.offended.get(id)
@@ -125,13 +120,6 @@ export class Session {
   flushDialogue(s: DialogueSession): void { this.emit(s.drainEvents()) }
   useHotspot(h: Hotspot): CaseEvent[] { const events = this.engine.useHotspot(h); this.emit(events); return events }
 
-  async photograph(h: Hotspot, capture: ArCapture): Promise<{ verdict: ArVerdict; events: CaseEvent[] }> {
-    const place = PLACES[h.landmark ?? h.place]
-    const verdict = await this.deps.ar.verify({ id: place.id, label: place.name, x: place.pos.x, z: place.pos.z, geo: place.geo }, capture)
-    this.progress.stats.photos++
-    if (!verdict.ok) return { verdict, events: [] }
-    return { verdict, events: this.useHotspot(h) }
-  }
   tie(a: EvidenceId, b: EvidenceId): TieResult { const { result, events } = this.engine.tie(a, b); this.emit(events); return result }
 
   accuse(culprit: string, motive: string): ReturnType<CaseEngine['accuse']> {
@@ -179,6 +167,8 @@ export class Session {
     this.deps.profiles.save(this.progress)
   }
   knownCharacters(): CharacterProfile[] {
-    return Object.values(CHARACTERS).filter(c => c.id === 'mahmoud' || c.id === 'zeinab' || this.state.flags.has(`met_${c.id}`))
+    const opening = this.caseId === 'case01' ? ['mahmoud', 'zeinab'] : []
+    return Object.values(CHARACTERS).filter(c => this.inCase(c) || opening.includes(c.id))
+      .filter(c => opening.includes(c.id) || this.state.flags.has(`met_${c.id}`))
   }
 }

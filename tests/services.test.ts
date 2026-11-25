@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { HintService, type HintProvider } from '../src/services/hints'
-import { ArEngine, GeoFenceProvider, WorldCameraProvider, checkPhotoQuality, createArEngine, haversineM, type ArTarget } from '../src/services/ar'
 import { MAX_PROFILES, PROGRESS_VERSION, ProfileService, migrate, newProgress } from '../src/services/profiles'
 import { MemoryStorage } from '../src/services/storage'
 import { parseSettings, SettingsStore } from '../src/engine/save'
-import { PLACES } from '../src/data/places'
 
 describe('ProfileService', () => {
   it('creates, saves, lists and reloads profiles', () => {
@@ -49,45 +47,6 @@ describe('ProfileService', () => {
   })
 })
 
-describe('AR engine', () => {
-  const lib = PLACES.bibliotheca
-  const target: ArTarget = { id: 'bibliotheca', label: lib.name, x: lib.pos.x, z: lib.pos.z, geo: lib.geo }
-  const world = (x: number, z: number, dirX: number, dirZ: number) => ({ kind: 'world' as const, x, z, dirX, dirZ, fovDeg: 62 })
-
-  it('haversine matches known real distance (Bibliotheca ↔ Qaitbay ≈ 2.3 km)', () => {
-    const d = haversineM(PLACES.bibliotheca.geo!, PLACES.qaitbay.geo!)
-    expect(d).toBeGreaterThan(2000)
-    expect(d).toBeLessThan(2600)
-  })
-  it('world camera: looking at the landmark from range succeeds, wrong direction or distance fails', async () => {
-    const engine = createArEngine()
-    expect((await engine.verify(target, world(lib.pos.x, lib.pos.z + 50, 0, -1))).ok).toBe(true)
-    expect((await engine.verify(target, world(lib.pos.x, lib.pos.z + 50, 0, 1))).ok).toBe(false)
-    expect((await engine.verify(target, world(lib.pos.x, lib.pos.z + 500, 0, -1))).message).toContain('بعيد')
-    expect((await engine.verify(target, world(lib.pos.x, lib.pos.z + 2, 0, -1))).message).toContain('قريب')
-  })
-  it('real photo: accepted inside the GPS fence, rejected far away or without GPS', async () => {
-    const engine = new ArEngine([new GeoFenceProvider()])
-    const near = await engine.verify(target, { kind: 'photo', gps: { ...lib.geo!, accuracyM: 20 } })
-    expect(near).toMatchObject({ ok: true, needsServer: true })
-    const far = await engine.verify(target, { kind: 'photo', gps: { lat: 30.0, lng: 31.2 } })
-    expect(far.ok).toBe(false)
-    expect((await engine.verify(target, { kind: 'photo' })).message).toContain('GPS')
-  })
-  it('rejects dark or flat images before verification', () => {
-    const dark = { width: 16, height: 16, luma: new Uint8ClampedArray(256).fill(5) }
-    expect(checkPhotoQuality(dark)).toContain('معتمة')
-    const flat = { width: 16, height: 16, luma: new Uint8ClampedArray(256).fill(120) }
-    expect(checkPhotoQuality(flat)).toContain('مش واضحة')
-    const noisy = { width: 16, height: 16, luma: Uint8ClampedArray.from({ length: 256 }, (_, i) => (i % 2 ? 60 : 180)) }
-    expect(checkPhotoQuality(noisy)).toBeUndefined()
-  })
-  it('world provider limits are configurable', async () => {
-    const p = new WorldCameraProvider(5, 30)
-    expect((await p.verify(target, world(target.x, target.z + 40, 0, -1))).ok).toBe(false)
-  })
-})
-
 describe('HintService', () => {
   let now = 0
   const ctx = { objectiveId: 'o_zeinab', objectiveTitle: 't', objectiveDetail: 'd', evidenceTitles: [] }
@@ -115,20 +74,17 @@ describe('HintService', () => {
 
 describe('settings', () => {
   it('sanitises stored data', () => {
-    const s = parseSettings(JSON.stringify({ musicVolume: 9, quality: 'ultra', hintEndpoint: 'javascript:alert(1)', visionEndpoint: 'https://x.test/v', sensitivity: 'a' }))
+    const s = parseSettings(JSON.stringify({ musicVolume: 9, hintEndpoint: 'javascript:alert(1)', eventsUrl: 'https://x.test/e', textScale: 7 }))
     expect(s.musicVolume).toBe(1)
-    expect(s.quality).toBe('medium')
     expect(s.hintEndpoint).toBe('')
-    expect(s.visionEndpoint).toBe('https://x.test/v')
-    expect(s.sensitivity).toBe(1)
+    expect(s.eventsUrl).toBe('https://x.test/e')
+    expect(s.textScale).toBe(1.4)
     expect(parseSettings('{{')).toEqual(parseSettings(null))
   })
-  it('stores updates and reports first run', () => {
+  it('stores updates', () => {
     const st = new MemoryStorage()
     const store = new SettingsStore(st)
-    expect(store.firstRun).toBe(true)
     store.update({ muted: true })
     expect(new SettingsStore(st).data.muted).toBe(true)
-    expect(store.firstRun).toBe(false)
   })
 })

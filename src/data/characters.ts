@@ -3,7 +3,7 @@ import type { CharacterId, CharacterProfile } from './types'
 /**
  * Character dossiers. `past` entries unlock through story flags as the player earns the character's
  * trust; `secret` only after the matching flag. The same record drives the dossier tab, dialogue
- * portraits and the world model (see `model` / `heightM`).
+ * portraits and the scene standees.
  */
 export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
   yassin: {
@@ -16,9 +16,8 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     ],
     relationToCase: 'ابن أخت المفقود، وأقرب واحد ليه.',
     voice: 'هادي وساخر، بيهزّر لما يتوتر.', quote: '«الدنيا خيوط يا ستّي... وأنا هلاقي أول خيط.»',
-    model: 'characters/yassin', heightM: 1.76,
     figure: { body: '#2b4a7a', accent: '#b3121f', skin: '#c9996b', headwear: 'none' },
-    place: 'zeinab_home', offset: { x: 0, z: 0 },
+    place: 'zeinab_home',
   },
   zeinab: {
     id: 'zeinab', name: 'الحاجة زينب', nickname: 'ستّك زينب', age: 65, role: 'خيّاطة متقاعدة – جدة ياسين', home: 'عزبة ١٥ – أبيس',
@@ -31,9 +30,8 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     secret: { text: 'عارفة إن محمود كان بيقابل حد في إسكندرية كل خميس، ومخبّية الاسم خوفاً على ياسين.', unlock: 'zeinab_trust' },
     relationToCase: 'آخر واحدة كلّمت محمود قبل ما يختفي، ومعاها المفتاح الاحتياطي.',
     voice: 'دافي وبطيء، بتنادي الكل «يا ضنايا».', quote: '«الخيط اللي يتقطع يتربط... بس العقدة بتفضل باينة.»',
-    model: 'characters/zeinab', heightM: 1.55,
     figure: { body: '#151515', accent: '#5a5a5a', skin: '#b98a63', headwear: 'scarf' },
-    place: 'zeinab_home', offset: { x: 5, z: -8 },
+    place: 'zeinab_home',
   },
   hassan: {
     id: 'hassan', name: 'عم حسن', nickname: 'الشيخ حسن', age: 70, role: 'فلاح عجوز – شاهد على أبيس القديمة', home: 'عزبة ١٥ – أبيس',
@@ -45,9 +43,8 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     ],
     relationToCase: 'شاف عربية سودا عند كوبري الترعة ليلة الاختفاء.',
     voice: 'خشن ومتعرّج، بيبدأ كل حكاية بـ«زمان...».', quote: '«الأرض ما بتكدبش... الناس هي اللي بتكدب عليها.»',
-    model: 'characters/hassan', heightM: 1.68,
     figure: { body: '#8d8d8d', accent: '#e9e2d0', skin: '#8b6240', headwear: 'turban' },
-    place: 'abis_mosque', offset: { x: 8, z: -11 },
+    place: 'abis_mosque',
   },
   ragab: {
     id: 'ragab', name: 'المعلم رجب', age: 45, role: 'صاحب قهوة العزبة', home: 'عزبة ١٥ – أبيس',
@@ -57,9 +54,8 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     secret: { text: 'سلّف شوقي مبلغ كبير من سنين ومش قادر يطالبه به.', unlock: 'ragab_trust' },
     relationToCase: 'سيّد سواق شوقي قعد عنده ليلة الاختفاء.',
     voice: 'مرح وسريع، بيبدأ بـ«أهلاً يا باشا!».', quote: '«القهوة بتسمع أكتر ما الحيطان بتسمع.»',
-    model: 'characters/ragab', heightM: 1.72,
     figure: { body: '#1f3b2d', accent: '#e9e2d0', skin: '#a77a52', headwear: 'none' },
-    place: 'cafe_ragab', offset: { x: 0, z: 5.5 },
+    place: 'cafe_ragab',
   },
   mahmoud: {
     id: 'mahmoud', name: 'محمود', nickname: 'خالك محمود', age: 48, role: 'مهندس مساحة – المفقود', home: 'عزبة ١٥ – أبيس',
@@ -72,9 +68,8 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     secret: { text: 'عمل نسخة من شهادة المساحة الأصلية وخبّاها في خزنة أمانات مكتبة الإسكندرية، وسابلك لغز حروف الجدار علشان تلاقيها.', unlock: 'found_mahmoud' },
     relationToCase: 'المفقود. اكتشف إن حدود القطعة ١٥ اتزحزحت علشان تعويضات الطريق.',
     voice: 'متأنّي وهادي، بيشرح بالأمثلة.', quote: '«الخط المستقيم بين نقطتين... مفيش حد يقدر يلوّيه.»',
-    model: 'characters/mahmoud', heightM: 1.74,
     figure: { body: '#a58f6a', accent: '#b3121f', skin: '#b58a62', headwear: 'none' },
-    place: 'qaitbay', offset: { x: 17, z: 21 }, appearsWhen: 'found_mahmoud',
+    place: 'qaitbay', appearsWhen: 'found_mahmoud',
   },
   shawky: {
     id: 'shawky', name: 'المعلم شوقي', nickname: 'شوقي بيه', age: 50, role: 'سمسار أراضي ومستثمر عقاري', home: 'المنشية – الإسكندرية',
@@ -87,9 +82,8 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     secret: { text: 'مديون لبنك بمبلغ ضخم، وتعويضات الطريق الجديد هي فرصته الوحيدة.', unlock: 'shawky_pressed' },
     relationToCase: 'الجاني المحتمل: بيستفيد من تزحزح الحدود.',
     voice: 'ناعم ومتأنّي، بيسمّي الكل «يا بشمهندس».', quote: '«كل حاجة ليها سعر... وانت لسه ماقلتش سعرك.»',
-    model: 'characters/shawky', heightM: 1.7,
     figure: { body: '#3d2a1c', accent: '#d4af37', skin: '#b58a62', headwear: 'none' },
-    place: 'mansheya', offset: { x: 12, z: 16 },
+    place: 'mansheya',
   },
   bahr: {
     id: 'bahr', name: 'عم بحر', age: 55, role: 'صياد من ميناء القلعة', home: 'الميناء الشرقي – الإسكندرية',
@@ -98,9 +92,8 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     past: [{ text: 'اشتغل على مراكب الصيد من وهو عنده عشر سنين. علّم محمود عقدة البحّارة من عشرين سنة لما كان بيرسم خريطة الميناء.' }],
     relationToCase: 'خبّى محمود في عشة المراكب القديمة تحت القلعة.',
     voice: 'مقتضب وبحري، بيقول «يا ريّس» لكل حد.', quote: '«الموج بيرجّع كل حاجة... بس في ميعاده.»',
-    model: 'characters/bahr', heightM: 1.7,
     figure: { body: '#2c3e5a', accent: '#e9e2d0', skin: '#8d6544', headwear: 'cap' },
-    place: 'qaitbay', offset: { x: 10, z: 28 },
+    place: 'qaitbay',
   },
   fathy: {
     id: 'fathy', name: 'عم فتحي', age: 72, role: 'حارس موقع عمود السواري', home: 'كوم الشقافة – الإسكندرية',
@@ -109,39 +102,33 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     past: [{ text: 'بيحرس العمود من تلاتين سنة. بيقول إن الجرانيت الأحمر «بيحفظ أسرار اللي بيعدّوا من تحته».' }],
     relationToCase: 'لقى ورقة ممزقة رماها شوقي في صندوق الموقع.',
     voice: 'رزين ومتهدّج، بيشرح كأنه دليل سياحي.', quote: '«الحجر يفتكر... احنا اللي بننسى.»',
-    model: 'characters/fathy', heightM: 1.66,
     figure: { body: '#8b7d4f', accent: '#e9e2d0', skin: '#c9a07a', headwear: 'cap' },
-    place: 'pompey', offset: { x: -6, z: 14 },
+    place: 'pompey',
   },
   salma: {
     id: 'salma', name: 'سلمى', age: 35, role: 'موظفة أرشيف في مكتبة الإسكندرية', home: 'محرم بك – الإسكندرية',
     appearance: 'ست شابة في منتصف الثلاثينات، بشرة قمحية فاتحة، شعر أسود طويل مربوط ذيل حصان ووشاح كحلي رفيع. لابسة قميص أبيض مكوي تحت كارديجان رمادي، بنطلون أسود واسع وحذاء قماشي أزرق. ماسكة قلم رصاص ودفتر فهرسة بني، ونظارتها مستطيلة بإطار نحاس.',
     personality: ['دقيقة وبتكره الورق الناقص', 'هادية لكن بتسأل أسئلة محرجة', 'بتحمي الأرشيف كأنه بيتها'],
     past: [{ text: 'اشتغلت في ترميم السجلات القديمة من أول يوم في المكتبة، وعارفة كل درج مخفي.', }, { text: 'اكتشفت تبديل ملفات قبل كده وسكتت خوفاً على شغلها.', unlock: 'case02_archive_tied' }],
-    secret: { text: 'احتفظت بصورة من سجل الطريق قبل ما يتبدل.', unlock: 'case02_archive_tied' }, relationToCase: 'مفتاحها في السجل يثبت إن الملف اتلعب فيه.', voice: 'هادية وحاسمة، بتتكلم بأرقام وتواريخ.', quote: '«الورقة القديمة بتفتكر إيد اللي لمسها.»', model: 'characters/salma', heightM: 1.64,
-    figure: { body: '#657083', accent: '#b3121f', skin: '#c89570', headwear: 'none' }, place: 'bibliotheca', offset: { x: -8, z: 36 }, schedule: [{ hours: { from: 9, to: 17 }, place: 'bibliotheca', offset: { x: -8, z: 36 } }],
+    secret: { text: 'احتفظت بصورة من سجل الطريق قبل ما يتبدل.', unlock: 'case02_archive_tied' }, relationToCase: 'مفتاحها في السجل يثبت إن الملف اتلعب فيه.', voice: 'هادية وحاسمة، بتتكلم بأرقام وتواريخ.', quote: '«الورقة القديمة بتفتكر إيد اللي لمسها.»',
+    figure: { body: '#657083', accent: '#b3121f', skin: '#c89570', headwear: 'none' }, place: 'bibliotheca', schedule: [{ hours: { from: 9, to: 17 }, place: 'bibliotheca' }],
   },
   nabil: {
     id: 'nabil', name: 'نبيل', age: 39, role: 'سواق ميكروباص بين أبيس ومحطة الرمل', home: 'العصافرة – الإسكندرية',
     appearance: 'راجل رفيع سريع الحركة، دقن خفيفة وشارب رفيع، شعره أسود تحت كاب أحمر باهت. لابس قميص سماوي مفتوح فوق فانلة بيضا، بنطلون جينز فاتح وحذاء رياضي مترب. مفاتيح الميكروباص مربوطة في حلقة معدن كبيرة وموبايل قديم في جراب أسود.',
     personality: ['بيتكلم أسرع من العربية', 'حريص على رزقه ومش بيحب المشاكل', 'بيحفظ وشوش الركاب'], past: [{ text: 'ساق خط أبيس عشر سنين، وكل ركاب الفجر معروفين له.' }, { text: 'اتعرض لضغط من راكب غامض عشان يغير طريقه ليلة التسليم.', unlock: 'case02_route_tied' }],
-    relationToCase: 'سجّل صوت الراكب اللي طلب توصيل الحقيبة.', voice: 'سريع ومتوتر، بيقول «بص يا باشا» كتير.', quote: '«أنا بس بوصل الناس… بس وداني بتوصلني للحقيقة.»', model: 'characters/nabil', heightM: 1.73,
-    figure: { body: '#4b6c86', accent: '#d94b35', skin: '#a97550', headwear: 'cap' }, place: 'raml_stop', offset: { x: 8, z: 3 }, schedule: [{ hours: { from: 5, to: 23 }, place: 'raml_stop', offset: { x: 8, z: 3 } }],
+    relationToCase: 'سجّل صوت الراكب اللي طلب توصيل الحقيبة.', voice: 'سريع ومتوتر، بيقول «بص يا باشا» كتير.', quote: '«أنا بس بوصل الناس… بس وداني بتوصلني للحقيقة.»',
+    figure: { body: '#4b6c86', accent: '#d94b35', skin: '#a97550', headwear: 'cap' }, place: 'raml_stop', schedule: [{ hours: { from: 5, to: 23 }, place: 'raml_stop' }],
   },
   adham: {
     id: 'adham', name: 'أدهم', age: 47, role: 'حارس سور الكورنيش ومخزن البلدية', home: 'الورديان – الإسكندرية',
     appearance: 'راجل طويل عريض الكتفين، وجهه أسمر حاد وندبة رفيعة فوق الحاجب اليمين، شعره محلوق من الجانبين. لابس بدلة حراسة كحلي بلمعة قديمة، قميص رمادي، حزام جلد عريض وجزمة سوداء ثقيلة. ماسك كشاف معدني، وعلى كتفه شال صوف أسود حتى في الحر.',
     personality: ['قليل الكلام وبيحسب كل كلمة', 'بيمثل إنه مش شايف', 'مهووس بالمواعيد والأرقام'], past: [{ text: 'اشتغل حارساً في مخازن الميناء قبل الكورنيش.' }, { text: 'كان حلقة وصل بين سماسرة أراضي وموظفين فاسدين.', unlock: 'case02_adham_tied' }],
-    secret: { text: 'بيستلم ظرفاً آخر كل خميس عند فانوس رقم ٧.', unlock: 'case02_solved' }, relationToCase: 'الحارس الذي ظهر في الصورة وورد اسمه في التسجيل.', voice: 'منخفض ومقتضب، كأنه بيرد على استجواب.', quote: '«السور بيحمي البحر… وأنا بحمي اللي يتقال لي.»', model: 'characters/adham', heightM: 1.82,
-    figure: { body: '#1d2831', accent: '#d4af37', skin: '#8a5c3d', headwear: 'none' }, place: 'corniche', offset: { x: -10, z: 15 }, schedule: [{ hours: { from: 0, to: 24 }, place: 'corniche', offset: { x: -10, z: 15 } }],
+    secret: { text: 'بيستلم ظرفاً آخر كل خميس عند فانوس رقم ٧.', unlock: 'case02_solved' }, relationToCase: 'الحارس الذي ظهر في الصورة وورد اسمه في التسجيل.', voice: 'منخفض ومقتضب، كأنه بيرد على استجواب.', quote: '«السور بيحمي البحر… وأنا بحمي اللي يتقال لي.»',
+    figure: { body: '#1d2831', accent: '#d4af37', skin: '#8a5c3d', headwear: 'none' }, place: 'corniche', schedule: [{ hours: { from: 0, to: 24 }, place: 'corniche' }],
   },
 }
 
 
 export const CHARACTER_LIST = Object.values(CHARACTERS)
 
-/** Player body models for the two playable archetypes. */
-export const PLAYER_MODELS = {
-  male: { model: 'characters/yassin', heightM: 1.76 },
-  female: { model: 'characters/player_f', heightM: 1.64 },
-} as const

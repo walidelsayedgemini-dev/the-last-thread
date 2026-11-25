@@ -21,7 +21,7 @@ function capacitor(): NativeCapacitor | undefined {
 }
 
 /** True when the game is running inside a Capacitor native WebView. */
-export function isNative(): boolean {
+function isNative(): boolean {
   try {
     return capacitor()?.isNativePlatform?.() === true
   } catch {

@@ -2,8 +2,8 @@ import type { CaseFile } from './types'
 import { CASE_01 } from './case01'
 import { CASE_02 } from './case02'
 
-export const CASES: CaseFile[] = [CASE_01, CASE_02]
-export const CASE_BY_ID: Readonly<Record<string, CaseFile>> = Object.fromEntries(CASES.map(file => [file.id, file]))
+const CASES: CaseFile[] = [CASE_01, CASE_02]
+const CASE_BY_ID: Readonly<Record<string, CaseFile>> = Object.fromEntries(CASES.map(file => [file.id, file]))
 export function getCase(id: string): CaseFile {
   return CASE_BY_ID[id] ?? CASE_01
 }

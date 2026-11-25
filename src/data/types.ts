@@ -12,7 +12,6 @@ export type GameMode = 'realistic' | 'story'
 export type Vec2 = { x: number; z: number }
 
 /** Real-world anchor used by field photography (GPS verification). */
-export type GeoPoint = { lat: number; lng: number; radiusM: number }
 
 export type PlaceId =
   | 'zeinab_home' | 'mahmoud_house' | 'cafe_ragab' | 'abis_mosque' | 'canal_bridge' | 'plot15'
@@ -27,8 +26,6 @@ export type Place = {
   /** Short label for the minimap. */
   short: string
   description: string
-  /** Real landmark coordinates when the player can photograph it in the real city. */
-  geo?: GeoPoint
   /** Landmarks that can be photographed (in-world camera or real photo). */
   photographable?: boolean
 }
@@ -95,15 +92,11 @@ export type CharacterProfile = {
   relationToCase: string
   voice: string
   quote: string
-  /** Registered model id (see MODEL_URL) and the real-world height the model is scaled to. */
-  model: string
-  heightM: number
   /** Palette used for dossier portraits and the minimap marker. */
   figure: { body: string; accent: string; skin: string; headwear?: 'turban' | 'scarf' | 'cap' | 'none' }
   /** Where they stand; realistic mode may use the schedule instead. */
   place: PlaceId
-  offset: Vec2
-  schedule?: { hours: HourWindow; place: PlaceId; offset: Vec2 }[]
+  schedule?: { hours: HourWindow; place: PlaceId }[]
   /** Present only once this flag is set (e.g. Mahmoud appears after he is found). */
   appearsWhen?: string
 }
@@ -210,8 +203,6 @@ export type Hotspot = {
   effects?: Effect[]
   /** Narration shown while inspecting. */
   text?: string
-  /** For photo hotspots: which landmark must be framed. */
-  landmark?: PlaceId
   /** For travel: destination stop. */
   to?: PlaceId
   /** Hide after the effects are collected. */

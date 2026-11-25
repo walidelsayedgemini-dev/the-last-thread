@@ -10,7 +10,7 @@ import type { GameMode } from '../data/types'
 
 export const MS_HOUR = 3_600_000
 export const MS_DAY = 86_400_000
-export const CAIRO_TZ = 'Africa/Cairo'
+const CAIRO_TZ = 'Africa/Cairo'
 
 export type CairoParts = {
   year: number

@@ -44,17 +44,14 @@ export const PLACES: Record<PlaceId, Place> = {
   },
   qaitbay: {
     id: 'qaitbay', name: 'قلعة قايتباي', short: 'القلعة', district: 'city', pos: { x: -330, z: -325 }, photographable: true,
-    geo: { lat: 31.21403, lng: 29.88564, radiusM: 450 },
     description: 'قلعة السلطان قايتباي مبنية على أنقاض فنار إسكندرية القديم. مراكب الصيادين الزرقا راسية عند سور الميناء الشرقي.',
   },
   bibliotheca: {
     id: 'bibliotheca', name: 'مكتبة الإسكندرية', short: 'المكتبة', district: 'city', pos: { x: 130, z: -250 }, photographable: true,
-    geo: { lat: 31.20888, lng: 29.90916, radiusM: 450 },
     description: 'قرص مايل ناحية البحر، وجدار جرانيت محفور عليه حروف من كل لغات الدنيا. خالك كان بيقول إن الحروف دي "بتحفظ السر أحسن من الخزنة".',
   },
   pompey: {
     id: 'pompey', name: 'عمود السواري', short: 'العمود', district: 'city', pos: { x: -210, z: -120 }, photographable: true,
-    geo: { lat: 31.18251, lng: 29.89633, radiusM: 450 },
     description: 'عمود جرانيت أحمر طوله ٢٧ متر فوق تل كرموز، وحواليه أبو الهول صغير وأطلال. عم فتحي بيحرسه بقاله تلاتين سنة.',
   },
   corniche: {

@@ -11,7 +11,6 @@ import { Audio } from './engine/audio'
 import { GameLoop } from './engine/loop'
 import { SettingsStore, type Settings } from './engine/save'
 import { Session } from './game/session'
-import { createArEngine, type ArEngine } from './services/ar'
 import { haptic, onBackButton } from './services/native'
 import { EventsDb, JsonUrlProvider, type EventsDocument } from './services/eventsDb'
 import { HintService, RemoteChatProvider } from './services/hints'
@@ -55,7 +54,6 @@ async function boot(): Promise<void> {
   // ---- Services -------------------------------------------------------------------------------------------------
   const events = new EventsDb(storage, settings.data.eventsUrl ? [new JsonUrlProvider('custom', settings.data.eventsUrl)] : [])
   const hints = new HintService(undefined, settings.data.hintEndpoint ? new RemoteChatProvider(settings.data.hintEndpoint) : undefined)
-  let ar: ArEngine = createArEngine(settings.data.visionEndpoint || undefined)
 
   let session: Session | undefined
   let loopRef: GameLoop | undefined
@@ -82,19 +80,9 @@ async function boot(): Promise<void> {
 
   // ---- 2D investigation UI -------------------------------------------------------------------------------------
   const dialogue = new DialogueView(audio, text => session?.fill(text) ?? text)
-  const hud = new Hud({
-    casefile: () => openCaseFile(),
-    hint: () => void askHint(),
-    camera: () => hud.toast('التوثيق هنا من خلال مشاهد القضية ثنائية الأبعاد.', 'info'),
-    pause: () => pause(),
-    interact: () => hud.toast('اختار نقطة فحص أو شخصية من المشهد.', 'info'),
-  })
+  const hud = new Hud()
   const caseFile = new CaseFileView({
     audio, events,
-    where: () => {
-      const pos = session?.progress.position ?? { zone: 'abis' as const, x: 30, z: 232, yaw: 0 }
-      return { zone: pos.zone, x: pos.x, z: pos.z }
-    },
     onClose: () => undefined,
     onAccused: result => {
       if (result === 'ok') { haptic('success'); caseFile.close(); scheduleEnding(); return }
@@ -126,12 +114,11 @@ async function boot(): Promise<void> {
       settings.update(patch)
       applySettings(settings.data)
       if ('hintEndpoint' in patch) hints.setRemote(settings.data.hintEndpoint ? new RemoteChatProvider(settings.data.hintEndpoint) : undefined)
-      if ('visionEndpoint' in patch) ar = createArEngine(settings.data.visionEndpoint || undefined)
     },
     startWorld: () => startWorld(),
     nextCase: () => startNextCase(),
   })
-  ui.append(shell.el, investigation.el, hud.el, dialogue.el, caseFile.el, ...hud.layers)
+  ui.append(shell.el, investigation.el, hud.el, dialogue.el, caseFile.el)
   applySettings(settings.data)
 
   // ---- Boot ----------------------------------------------------------------------------------------------------
@@ -149,7 +136,7 @@ async function boot(): Promise<void> {
   shell.setBootProgress(1)
 
   // ---- Flow ----------------------------------------------------------------------------------------------------
-  const deps = () => ({ events, profiles, hints, ar, now })
+  const deps = () => ({ events, profiles, hints, now })
 
   async function beginProfile(profile: Profile | undefined, intro: 'auto' | 'force' | 'skip' = 'auto'): Promise<void> {
     if (!profile) return
