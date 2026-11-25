@@ -188,9 +188,10 @@ kbd { font-family: ui-monospace, monospace; font-size: 0.72em; background: #000a
 }
 @keyframes title-live { 50% { opacity: 0.4; box-shadow: 0 0 4px #ff2a3a55; } }
 .page.title .logo { position: relative; text-align: start; }
-.page.title .logo small { color: #e46a69; font-size: 0.84rem; letter-spacing: 0.18em; }
+.page.title .logo small { display: block; color: #e46a69; font-size: 0.84rem; letter-spacing: 0.18em; }
 .page.title .logo h1 {
-  margin-top: 2px;
+  /* the display face's tall alef/lam glyphs rise above the line box; keep them clear of the kicker line */
+  margin-top: 0.14em;
   font-size: clamp(3.8rem, 7.7vw, 6.9rem);
   line-height: 1.04;
   text-shadow: 0 7px 38px #000, 0 0 50px #b3121f50;

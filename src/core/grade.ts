@@ -1,5 +1,6 @@
 import type { CaseFile, EvidenceId } from '../data/types'
 import type { CaseState } from './caseState'
+import { arabicDigits } from './clock'
 
 export type GradeLabel = 'ممتاز' | 'جيد جدًا' | 'جيد' | 'مقبول'
 export type GradeBreakdown = { label: string; delta: number }
@@ -40,8 +41,8 @@ export function computeGrade(stats: GradeStats, file: CaseFile, state: Pick<Case
   return {
     grade, stars, missed,
     breakdown: [
-      { label: `الأدلة المطلوبة (${found}/${required.length})`, delta: evidencePoints },
-      { label: `الاستنتاجات (${state.deductions.size}/${file.deductions.length})`, delta: deductionPoints },
+      { label: `الأدلة المطلوبة (${arabicDigits(found)} من ${arabicDigits(required.length)})`, delta: evidencePoints },
+      { label: `الاستنتاجات (${arabicDigits(state.deductions.size)} من ${arabicDigits(file.deductions.length)})`, delta: deductionPoints },
       { label: 'الصور', delta: photoPoints },
       { label: 'خصم التلميحات', delta: -(hintPenalty + legacyHintPenalty) },
       { label: 'خصم الاتهامات الغلط', delta: -wrongPenalty },
