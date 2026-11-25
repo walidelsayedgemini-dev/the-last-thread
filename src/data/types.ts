@@ -72,7 +72,7 @@ export type RealEvent = {
 
 export type CharacterId =
   | 'yassin' | 'zeinab' | 'hassan' | 'ragab' | 'mahmoud' | 'shawky' | 'bahr' | 'fathy'
-  | 'salma' | 'nabil' | 'adham'
+  | 'salma' | 'nabil' | 'adham' | 'nadia' | 'farid' | 'omar' | 'hoda' | 'khaled'
 
 /** Deep character profile ("ملف تعريف"): drives the notebook, dialogue tone and the figure. */
 export type CharacterProfile = {
@@ -110,7 +110,10 @@ export type EvidenceId =
   | 'e_library_photo' | 'e_qaitbay_photo' | 'e_pillar_photo' | 'e_match_night_photo'
   | 'e02_black_envelope' | 'e02_burned_map' | 'e02_red_receipt' | 'e02_corniche_photo'
   | 'e02_key_tag' | 'e02_ledger_page' | 'e02_messenger_note' | 'e02_sea_glass'
-  | 'e02_recording' | 'e02_archive_stamp'
+  | 'e02_recording' | 'e02_archive_stamp' | 'e02_radio_log' | 'e02_stock_manifest'
+  | 'e03_mud_prints' | 'e03_coop_register' | 'e03_broken_lantern' | 'e03_bus_token'
+  | 'e03_negative' | 'e03_river_note' | 'e03_red_staple' | 'e03_tide_chart'
+  | 'e03_camera_roll' | 'e03_lock_key' | 'e03_false_permit' | 'e03_final_statement'
 
 export type Evidence = {
   id: EvidenceId
@@ -129,7 +132,8 @@ export type Evidence = {
 
 export type DeductionId =
   | 'd_trail' | 'd_markers' | 'd_alibi' | 'd_where' | 'd_forgery' | 'd_motive'
-  | 'd02_route' | 'd02_motive' | 'd02_forgery' | 'd02_betrayal'
+  | 'd02_route' | 'd02_motive' | 'd02_forgery' | 'd02_betrayal' | 'd02_chain' | 'd02_confrontation'
+  | 'd03_route' | 'd03_records' | 'd03_witness' | 'd03_motive' | 'd03_confrontation'
 
 export type Deduction = {
   id: DeductionId

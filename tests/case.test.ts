@@ -4,8 +4,11 @@ import { DialogueSession, fillText } from '../src/core/dialogue'
 import { parseCairoLocal } from '../src/core/clock'
 import type { GateContext } from '../src/core/gates'
 import { CASE_01 } from '../src/data/case01'
+import { CASE_02 } from '../src/data/case02'
+import { CASE_03 } from '../src/data/case03'
+import { nextCaseId } from '../src/data/cases'
 import { CHARACTERS } from '../src/data/characters'
-import { DIALOGUES } from '../src/data/dialogues'
+import { DIALOGUES, DIALOGUES_BY_CASE } from '../src/data/dialogues'
 import { LOCAL_HINTS } from '../src/data/hints'
 import { PLACES } from '../src/data/places'
 
@@ -171,5 +174,71 @@ describe('dialogue session', () => {
   })
   it('fills placeholders', () => {
     expect(fillText('يا {player} من {home} {x}', { player: 'ياسين', home: 'أبيس' })).toBe('يا ياسين من أبيس {x}')
+  })
+})
+
+describe('expanded cases', () => {
+  const makeCase = (file: typeof CASE_02 | typeof CASE_03) => {
+    const state = new CaseState()
+    const engine = new CaseEngine(file, state, (): GateContext => ({ mode: 'story', stamp: parseCairoLocal('2026-11-25T21:00'), eventNear: () => false }))
+    return { state, engine }
+  }
+
+  it('registers case03 after case02 and keeps dialogue casts case-scoped', () => {
+    expect(nextCaseId('case02')).toBe('case03')
+    expect(Object.keys(DIALOGUES_BY_CASE.case02).sort()).toEqual(['adham', 'farid', 'nabil', 'nadia', 'salma'])
+    expect(Object.keys(DIALOGUES_BY_CASE.case03).sort()).toEqual(['hoda', 'khaled', 'omar'])
+    expect(DIALOGUES_BY_CASE.case02.hoda).toBeUndefined()
+    expect(DIALOGUES_BY_CASE.case03.adham).toBeUndefined()
+    for (const id of ['nadia', 'farid', 'omar', 'hoda', 'khaled'] as const) expect(CHARACTERS[id]).toBeDefined()
+  })
+
+  it('plays case02 evidence, board, and staged Adham confrontation to accusation', () => {
+    const { engine, state } = makeCase(CASE_02)
+    const hs = (id: string) => engine.useHotspot(CASE_02.hotspots.find(h => h.id === id)!)
+    hs('hs02_envelope'); hs('hs02_map'); hs('hs02_receipt'); hs('hs02_key'); hs('hs02_library')
+    hs('hs02_bus_city'); hs('hs02_nabil_recording'); hs('hs02_note'); hs('hs02_radio'); hs('hs02_manifest')
+    hs('hs02_corniche_photo'); hs('hs02_sea_glass')
+    expect(state.evidence.size).toBe(CASE_02.evidence.length)
+    expect(engine.currentObjective()?.id).toBe('o02_adham')
+    expect(engine.tie('e02_burned_map', 'e02_recording').result).toMatchObject({ ok: true, deduction: 'd02_route' })
+    expect(engine.tie('e02_key_tag', 'e02_ledger_page').result).toMatchObject({ ok: true, deduction: 'd02_forgery' })
+    expect(engine.tie('e02_corniche_photo', 'e02_messenger_note').result).toMatchObject({ ok: true, deduction: 'd02_betrayal' })
+    expect(engine.tie('e02_key_tag', 'e02_stock_manifest').result).toMatchObject({ ok: true, deduction: 'd02_chain' })
+    expect(engine.tie('e02_radio_log', 'e02_stock_manifest').result).toMatchObject({ ok: true, deduction: 'd02_confrontation' })
+
+    const adham = new DialogueSession(DIALOGUES_BY_CASE.case02.adham!, engine)
+    expect(adham.start()).toBe(true)
+    expect(adham.view()!.nodeId).toBe('a_confront')
+    adham.choose(0); expect(adham.advance()).toBe(true) // recording pressure, back to the hub
+    adham.choose(1); expect(adham.advance()).toBe(true) // note pressure, back to the hub
+    adham.choose(2)
+    expect(state.flags.has('case02_final_confronted')).toBe(true)
+    expect(engine.canAccuse()).toBe(true)
+    expect(engine.accuse('adham', 'm02_money')).toBe('ok')
+    expect(state.flags.has('case_solved')).toBe(true)
+  })
+
+  it('plays case03 evidence, dialogue confession, deductions, and accusation', () => {
+    const { engine, state } = makeCase(CASE_03)
+    const hs = (id: string) => engine.useHotspot(CASE_03.hotspots.find(h => h.id === id)!)
+    hs('hs03_staple'); hs('hs03_mud'); hs('hs03_register'); hs('hs03_bus_city'); hs('hs03_lantern'); hs('hs03_note')
+    hs('hs03_negative'); hs('hs03_tide'); hs('hs03_lock'); hs('hs03_permit')
+    expect(state.evidence.size).toBe(11)
+    const hoda = new DialogueSession(DIALOGUES_BY_CASE.case03.hoda!, engine)
+    expect(hoda.start()).toBe(true)
+    expect(hoda.view()!.nodeId).toBe('h3_confront')
+    hoda.choose(0)
+    expect(state.evidence.has('e03_final_statement')).toBe(true)
+    expect(state.flags.has('case03_confronted')).toBe(true)
+    expect(state.evidence.size).toBe(CASE_03.evidence.length)
+    expect(engine.tie('e03_mud_prints', 'e03_bus_token').result).toMatchObject({ ok: true, deduction: 'd03_route' })
+    expect(engine.tie('e03_coop_register', 'e03_false_permit').result).toMatchObject({ ok: true, deduction: 'd03_records' })
+    expect(engine.tie('e03_negative', 'e03_camera_roll').result).toMatchObject({ ok: true, deduction: 'd03_witness' })
+    expect(engine.tie('e03_tide_chart', 'e03_false_permit').result).toMatchObject({ ok: true, deduction: 'd03_motive' })
+    expect(engine.tie('e03_final_statement', 'e03_false_permit').result).toMatchObject({ ok: true, deduction: 'd03_confrontation' })
+    expect(engine.canAccuse()).toBe(true)
+    expect(engine.accuse('hoda', 'm03_water')).toBe('ok')
+    expect(state.flags.has('case_solved')).toBe(true)
   })
 })

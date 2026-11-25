@@ -444,13 +444,108 @@ const adham: Dialogue = {
     ] },
     a_dismiss: { id: 'a_dismiss', lines: [{ who: 'adham', text: 'الصورة ظلال يا ابني. البحر بيكبر كل حاجة.' }], next: 'a_first' },
     a_cold: { id: 'a_cold', lines: [{ who: 'adham', text: 'محمود خلص قضيته. دي مش نوبتي.' }], next: 'a_first' },
-    a_confront: { id: 'a_confront', lines: [{ who: 'player', text: 'التسجيل نادى اسمك، والصورة حطتك عند الفانوس. الرسالة دي كانت ليك.' }, { who: 'adham', text: '…الليلة دي كنت محتاج فلوس. شوقي سلّمني الملف، وبعده ناس تانية كملت الدفع. خد الرسالة وسجّل اعترافي.' }], effects: [{ type: 'evidence', id: 'e02_messenger_note' }, { type: 'flag', id: 'case02_adham_tied' }, { type: 'flag', id: 'adham_confronted' }] },
+    a_confront: {
+      id: 'a_confront',
+      lines: [{ who: 'player', text: 'التسجيل نادى اسمك، والصورة حطتك عند الفانوس. الرسالة دي كانت ليك.' }, { who: 'adham', text: 'إنت جايب خيوط كتير… بس البحر لسه يقدر يبلعها.' }],
+      effects: [{ type: 'flag', id: 'case02_adham_tied' }, { type: 'flag', id: 'case02_final_confronted' }],
+      choices: [
+        { text: 'واجهه بصوت التسجيل.', next: 'a_record', present: 'e02_recording', confront: true },
+        { text: 'حط الرسالة قدامه.', next: 'a_note', when: { evidence: ['e02_messenger_note'] }, present: 'e02_messenger_note', confront: true },
+        { text: 'اقفل عليه بالسجل والصوت.', next: 'a_final', when: { evidence: ['e02_messenger_note', 'e02_radio_log', 'e02_stock_manifest'] }, present: 'e02_stock_manifest', confront: true },
+      ],
+    },
+    a_record: { id: 'a_record', lines: [{ who: 'player', text: 'الصوت قال اسمك قبل الفجر. مفيش بحر هيشوّش التسجيل.' }, { who: 'adham', text: 'كان اسمي في الشغل… مش معنى كده إني استلمت.' }], effects: [{ type: 'flag', id: 'adham_record_pressed' }], next: 'a_confront' },
+    a_note: { id: 'a_note', lines: [{ who: 'player', text: '«المبلغ وصل. اقفل الباب عند السور». الرسالة مكتوبة للّي كان واقف هناك.' }, { who: 'adham', text: 'الرسالة ممكن تكون لأي حارس. إنت لسه ناقصك مين سلّم ومين قبض.' }], effects: [{ type: 'flag', id: 'adham_note_pressed' }], next: 'a_confront' },
+    a_final: {
+      id: 'a_final',
+      lines: [
+        { who: 'player', text: 'دفتر اللاسلكي حطّك عند مخزن ٧، والكشف يربط البطاقة بالفلوس. دي مش نوبة… دي سلسلة.' },
+        { who: 'adham', text: 'أنا كنت آخر واحد في السور. ماعرفتش مين فوقي.' },
+        { who: 'player', text: 'بس عرفت إن الدفع كمل بعد شوقي، وإنك فتحت الباب. قدامك فرصة واحدة تقول كل الأسماء.' },
+        { who: 'adham', text: 'خلاص… شوقي بدأ، وفريد غطّى الأرقام، وأنا كنت الباب. خدوا الدفتر، وسيبوا البحر يشهد.' },
+      ],
+      effects: [{ type: 'flag', id: 'case02_adham_tied' }, { type: 'flag', id: 'case02_final_confronted' }, { type: 'flag', id: 'adham_confronted' }],
+    },
     a_solved: { id: 'a_solved', lines: [{ who: 'adham', text: 'الدفتر عند النيابة. أنا هواجه اللي عملته.' }] },
+  },
+}
+
+const nadia: Dialogue = {
+  character: 'nadia', entries: [{ node: 'n2_done', when: { evidence: ['e02_radio_log'] } }, { node: 'n2_first' }],
+  nodes: {
+    n2_first: { id: 'n2_first', lines: [{ who: 'nadia', text: 'إنت قريب محمود؟ لو جاي تسأل عن صوت الليلة دي، اقفل الباب الأول.' }], choices: [
+      { text: 'معايا رسالة من عند السور.', next: 'n2_log', when: { evidence: ['e02_messenger_note'] }, present: 'e02_messenger_note', confront: true },
+      { text: 'عاوز أعرف مين قال «مخزن ٧».', next: 'n2_hint' },
+    ] },
+    n2_hint: { id: 'n2_hint', lines: [{ who: 'nadia', text: 'الصوت اتقطع عند كلمة «مخزن». دور في دفتر اللاسلكي، الورق ساعات يسمع أكتر من الجهاز.' }], next: 'n2_first' },
+    n2_log: { id: 'n2_log', lines: [{ who: 'nadia', text: 'الرسالة دي اتكتبت بعد الاتصال. اسمع السطر اللي اتشال: «أدهم… مخزن سبعة». بعده التشويش بلع باقي الكلام.' }], effects: [{ type: 'evidence', id: 'e02_radio_log' }, { type: 'flag', id: 'nadia_trust' }], next: 'n2_done' },
+    n2_done: { id: 'n2_done', lines: [{ who: 'nadia', text: 'دلوقتي الصوت عندك. متخليش حد يقنعك إن التشويش معناه مفيش حقيقة.' }] },
+  },
+}
+
+const farid: Dialogue = {
+  character: 'farid', entries: [{ node: 'f2_done', when: { evidence: ['e02_stock_manifest'] } }, { node: 'f2_first' }],
+  nodes: {
+    f2_first: { id: 'f2_first', lines: [{ who: 'farid', text: 'مخزن ٧ مش مفتوح للزيارات. واللي يفتح درج من غير إذن، بيقفل على نفسه.' }], choices: [
+      { text: 'بطاقة المفتاح من درج شوقي.', next: 'f2_card', when: { evidence: ['e02_key_tag'] }, present: 'e02_key_tag', confront: true },
+      { text: 'الصوت جاب اسم مخزن ٧.', next: 'f2_manifest', when: { evidence: ['e02_radio_log'] }, present: 'e02_radio_log', confront: true },
+    ] },
+    f2_card: { id: 'f2_card', lines: [{ who: 'farid', text: 'البطاقة دي خرجت من عندنا. بس الختم اللي عليها اتعمل من غير رقم وارد.' }], effects: [{ type: 'flag', id: 'farid_pressed' }], next: 'f2_manifest' },
+    f2_manifest: { id: 'f2_manifest', lines: [{ who: 'farid', text: 'لو عايز الورق، بص تحت دفتر الاستلام. الكشف اتقص منه تلات خانات، لكن اللي اتشال سايب مكانه واضح.' }], effects: [{ type: 'evidence', id: 'e02_stock_manifest' }, { type: 'flag', id: 'farid_trust' }], next: 'f2_done' },
+    f2_done: { id: 'f2_done', lines: [{ who: 'farid', text: 'الرقم اتربط. أنا هقول للنيابة كل اللي فاكره قبل ما حد يبدّل الدفتر.' }] },
+  },
+}
+
+const omar: Dialogue = {
+  character: 'omar', entries: [{ node: 'o3_done', when: { evidence: ['e03_river_note'] } }, { node: 'o3_first' }],
+  nodes: {
+    o3_first: { id: 'o3_first', lines: [{ who: 'omar', text: 'البوابة بتفتح وقتها بس. لو جاي من طرف الجمعية، أنا ما شوفتش حاجة.' }], choices: [
+      { text: 'الفانوس اتكسر من جوّه.', next: 'o3_lantern', when: { evidence: ['e03_broken_lantern'] }, present: 'e03_broken_lantern', confront: true },
+      { text: 'آثار العجل وصلت للترعة.', next: 'o3_prints', when: { evidence: ['e03_mud_prints'] }, present: 'e03_mud_prints', confront: true },
+    ] },
+    o3_lantern: { id: 'o3_lantern', lines: [{ who: 'omar', text: 'سمعت خَبطة جوّه البوابة، مش من برّه. العربية كانت شايلة صندوق وختم.' }], next: 'o3_note' },
+    o3_prints: { id: 'o3_prints', lines: [{ who: 'omar', text: 'أنا شفت نفس النقشة. العربية وقفت عند البوابة، وبعدها الميّه مشيت في اتجاه تاني.' }], next: 'o3_note' },
+    o3_note: { id: 'o3_note', lines: [{ who: 'omar', text: 'كتبت الوقت في دفتري: ٢:٤٠. الاسم كان هدى… شطبته أول ما سمعت عربية الجمعية.' }], effects: [{ type: 'evidence', id: 'e03_river_note' }, { type: 'flag', id: 'omar_trust' }], next: 'o3_done' },
+    o3_done: { id: 'o3_done', lines: [{ who: 'omar', text: 'لو هتواجه حد، واجهه بالساعة. الساعة ما بتخافش من الختم.' }] },
+  },
+}
+
+const hoda: Dialogue = {
+  character: 'hoda', entries: [{ node: 'h3_confront', when: { evidence: ['e03_false_permit', 'e03_camera_roll'] } }, { node: 'h3_first' }],
+  nodes: {
+    h3_first: { id: 'h3_first', lines: [{ who: 'hoda', text: 'الجمعية فاتحة للناس، بس مش كل ورقة ينفع تتقري قدام القهوة.' }], choices: [
+      { text: 'عاوز أسأل عن رقم بوابة ٣.', next: 'h3_route' },
+      { text: 'السجل ده فيه توقيعك.', next: 'h3_route', when: { evidence: ['e03_coop_register'] }, present: 'e03_coop_register', confront: true },
+    ] },
+    h3_route: { id: 'h3_route', lines: [{ who: 'hoda', text: 'البوابة اتفتحت للصيانة. لو الميّه اتغيرت، يبقى الطلمبة لعبت مش الختم.' }], effects: [{ type: 'flag', id: 'hoda_pressed' }], next: 'h3_first' },
+    h3_confront: {
+      id: 'h3_confront', lines: [{ who: 'player', text: 'النيجاتيف حط عربية الجمعية عند البوابة، والتصريح يديها سبب. والسجل بيقول إن الختم كان عندك.' }, { who: 'hoda', text: 'إنت فاكر إن صورة وورقة يقدروا يهدّوا جمعية كاملة؟' }], choices: [
+        { text: 'واجهها بالسجل.', next: 'h3_final', when: { evidence: ['e03_coop_register'] }, present: 'e03_coop_register', confront: true },
+        { text: 'واجهها بالتصريح المزوّر.', next: 'h3_final', present: 'e03_false_permit', confront: true },
+        { text: 'واجهها ببكرة الفيلم.', next: 'h3_final', present: 'e03_camera_roll', confront: true },
+      ],
+    },
+    h3_final: { id: 'h3_final', lines: [{ who: 'player', text: 'التوقيت والملف والصور في ناحية، وكلامك في الناحية التانية.' }, { who: 'hoda', text: 'أنا غيّرت المجرى أسبوع واحد. قالوا لي الجمعية هتعلن إفلاسها لو ما مضيتش. كنت بحمي ناس كتير… بس حميت الورق الأول.' }], effects: [{ type: 'evidence', id: 'e03_final_statement' }, { type: 'flag', id: 'case03_confronted' }], next: 'h3_done' },
+    h3_done: { id: 'h3_done', lines: [{ who: 'hoda', text: 'اكتب اسمي زي ما هو. بس اكتب كمان مين كان مستني العقد.' }] },
+  },
+}
+
+const khaled: Dialogue = {
+  character: 'khaled', entries: [{ node: 'k3_done', when: { evidence: ['e03_camera_roll'] } }, { node: 'k3_first' }],
+  nodes: {
+    k3_first: { id: 'k3_first', lines: [{ who: 'khaled', text: 'أنا بصوّر اللي الناس بتعدّيه. بس الفيلم ده مش للبيع.' }], choices: [
+      { text: 'عاوز أشوف العربية عند الترعة.', next: 'k3_roll' },
+      { text: 'مين حاول ياخد النيجاتيف؟', next: 'k3_warn' },
+    ] },
+    k3_warn: { id: 'k3_warn', lines: [{ who: 'khaled', text: 'حد من الجمعية عرض فلوس، وبعدها بعت حد يهددني. عشان كده خبّيت البكرة تحت مقعد البحر.' }], next: 'k3_roll' },
+    k3_roll: { id: 'k3_roll', lines: [{ who: 'khaled', text: 'خد الصور. العربية والصندوق واضحين. اليد اللي فتحت الدرج ست… والختم النبيتي مش صدفة.' }], effects: [{ type: 'evidence', id: 'e03_negative' }, { type: 'evidence', id: 'e03_camera_roll' }, { type: 'flag', id: 'khaled_trust' }], next: 'k3_done' },
+    k3_done: { id: 'k3_done', lines: [{ who: 'khaled', text: 'لو هتكتبها، اكتب إن الصورة اتاخدت قبل ما الميّه تغيّر لونها.' }] },
   },
 }
 
 /** Case01 remains the default export for old callers; new callers select by case id. */
 export const DIALOGUES_BY_CASE: Record<string, Partial<Record<CharacterId, Dialogue>>> = {
   case01: DIALOGUES,
-  case02: { salma, nabil, adham },
+  case02: { salma, nabil, adham, nadia, farid },
+  case03: { omar, hoda, khaled },
 }
