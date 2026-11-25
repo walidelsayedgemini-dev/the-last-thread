@@ -13,7 +13,7 @@ import type { CaseSnapshot } from '../core/caseState'
 import type { StorageAdapter } from './storage'
 
 export const MAX_PROFILES = 3
-export const PROGRESS_VERSION = 3
+export const PROGRESS_VERSION = 4
 const INDEX_KEY = 'ltt.profiles.index'
 const profileKey = (id: string) => `ltt.profile.${id}`
 
@@ -29,6 +29,13 @@ export type Avatar = {
   home: string
 }
 
+export type ProgressStats = {
+  photos: number
+  hints: number
+  wrongAccusations: number
+  hintTiers?: Partial<Record<1 | 2 | 3, number>>
+}
+
 export type Progress = {
   v: number
   caseId: string
@@ -41,7 +48,11 @@ export type Progress = {
   storyMinutes: number
   playMs: number
   /** Bookkeeping for the end-of-case report. */
-  stats: { photos: number; hints: number; wrongAccusations: number; hintTiers?: Partial<Record<1 | 2 | 3, number>> }
+  stats: ProgressStats
+  /** Profile-scoped unlocks, shared by every completed case in this save slot. */
+  achievements: string[]
+  /** The in-story onboarding is shown once per profile, not once per browser. */
+  tutorial: { completed: boolean }
 }
 
 export type Profile = {
@@ -70,6 +81,7 @@ export function newProgress(mode: GameMode, caseId = 'case01'): Progress {
     case: initial, cases: { [caseId]: initial },
     position: { zone: 'abis', x: 30, z: 232, yaw: 0 },
     storyMinutes: 0, playMs: 0, stats: { photos: 0, hints: 0, wrongAccusations: 0, hintTiers: {} },
+    achievements: [], tutorial: { completed: false },
   }
 }
 
@@ -115,6 +127,8 @@ export function migrate(raw: unknown, mode: GameMode = 'story'): Progress {
     case: migratedCase, cases,
     position: { ...base.position, ...((out.position as object) ?? {}) },
     stats: { ...base.stats, ...((out.stats as object) ?? {}) },
+    achievements: strings(out.achievements),
+    tutorial: { completed: Boolean((out.tutorial as { completed?: unknown } | undefined)?.completed) },
   }
 }
 
@@ -191,6 +205,11 @@ export class ProfileService {
 
   get active(): Profile | undefined {
     return this.activeId ? this.get(this.activeId) : undefined
+  }
+
+  /** Union of achievements unlocked in the available save slots. */
+  allAchievementIds(): string[] {
+    return [...new Set(this.readIndex().flatMap(id => this.get(id)?.progress.achievements ?? []))]
   }
 
   /** Persist progress for the active profile. */

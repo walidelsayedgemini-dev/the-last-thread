@@ -5,16 +5,18 @@
 import { arabicDigits, formatDateTime } from '../core/clock'
 import { CASE_01 } from '../data/case01'
 import { CHARACTERS } from '../data/characters'
+import { endingLines } from '../data/endings'
 import type { GameMode } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Settings, SettingsStore } from '../engine/save'
+import { ACHIEVEMENTS, getAchievement } from '../game/achievements'
 import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
 import { HOMES, MAX_PROFILES, type Avatar, type ProfileService } from '../services/profiles'
 import { playerPortrait, portraitUrl, titleArt } from './art'
 import { h, setChildren, svg } from './dom'
 
-export type ScreenId = 'boot' | 'title' | 'profiles' | 'create' | 'mode' | 'intro' | 'pause' | 'settings' | 'ending' | 'none'
+export type ScreenId = 'boot' | 'title' | 'profiles' | 'create' | 'mode' | 'intro' | 'pause' | 'settings' | 'achievements' | 'ending' | 'none'
 
 export type ShellActions = {
   /** Start playing an existing profile. */
@@ -29,6 +31,8 @@ export type ShellActions = {
   startWorld(): void
   /** Open the next case for the current profile (shown on the ending screen). */
   nextCase(): void
+  /** Reset the active profile's onboarding and show it again when possible. */
+  replayTutorial(): void
 }
 
 const ACCENTS = ['#b3121f', '#d9a441', '#3b7ea1', '#5b8c5a', '#8a5aa8', '#e2e2e2']
@@ -73,7 +77,7 @@ export class Shell {
     this.el.dataset.screen = screen
     const page = {
       boot: () => this.boot(), title: () => this.title(), profiles: () => this.profiles(), create: () => this.create(), mode: () => this.mode(),
-      intro: () => h('div'), pause: () => this.pause(), settings: () => this.settingsPage(), ending: () => h('div'), none: () => h('div'),
+      intro: () => h('div'), pause: () => this.pause(), settings: () => this.settingsPage(), achievements: () => this.achievements(), ending: () => h('div'), none: () => h('div'),
     }[screen]()
     setChildren(this.el, page)
     if (screen !== 'boot' && screen !== 'none') this.s.audio.play('ui')
@@ -148,7 +152,8 @@ export class Shell {
           h('div', { class: 'menu' },
             has && action('متابعة التحقيق', 'ارجع لآخر نقطة وصلت لها', '٠١', true, () => this.go('profiles', 'title')),
             action('تحقيق جديد', 'ابدأ قضية من أول الخيط', has ? '٠٢' : '٠١', !has, () => this.startCreate()),
-            action('الإعدادات', 'الصوت وحجم الخط والتباين', has ? '٠٣' : '٠٢', false, () => this.go('settings', 'title'))))),
+            action('الإنجازات', 'شوف الخيوط اللي فتحتها', has ? '٠٣' : '٠٢', false, () => this.go('achievements', 'title')),
+            action('الإعدادات', 'الصوت وحجم الخط والتباين', has ? '٠٤' : '٠٣', false, () => this.go('settings', 'title'))))),
       h('footer', null,
         h('span', null, 'لعبة تحقيق بأجواء نوار'),
         h('span', { class: 'title-footer-divider', 'aria-hidden': true }, '•'),
@@ -283,11 +288,13 @@ export class Shell {
     const stars = h('div', { class: 'stars', 'aria-label': `${report.stars} من ٥ نجوم` },
       [1, 2, 3, 4, 5].map(i => h('span', { class: i <= report.stars ? 'on' : '', style: { '--d': `${i * 0.12}s` } }, '★')))
     const missed = report.missed.map(id => file.evidence.find(e => e.id === id)).filter(e => e !== undefined)
+    const epilogue = endingLines(file.id, report.grade, file.finale.ending)
+    const unlocked = session.progress.achievements.map(id => getAchievement(id)).filter((a): a is NonNullable<typeof a> => Boolean(a))
     setChildren(this.el, h('section', { class: 'page ending' },
       h('div', { class: 'stamp solved' }, 'القضية اتقفلت'),
       h('small', { class: 'ending-case' }, `القضية ${file.number}`),
       h('h2', null, file.title),
-      file.finale.ending.map(l => h('p', { class: 'end-line' }, session.fill(l))),
+      h('div', { class: 'epilogue' }, h('small', null, 'خاتمة على مقاس الخيط'), epilogue.map(l => h('p', { class: 'end-line' }, session.fill(l)))),
       h('div', { class: 'grade-card' },
         h('div', { class: 'grade-head' }, h('small', null, 'تقديرك'), h('b', { class: 'grade-word' }, report.grade), stars),
         h('ul', { class: 'breakdown' }, report.breakdown.map(b =>
@@ -297,6 +304,9 @@ export class Shell {
         h('div', null, h('small', null, 'صور'), h('b', null, arabicDigits(st.photos))),
         h('div', null, h('small', null, 'تلميحات'), h('b', null, arabicDigits(st.hints))),
         h('div', null, h('small', null, 'اتهامات غلط'), h('b', null, arabicDigits(st.wrongAccusations)))),
+      unlocked.length > 0 && h('section', { class: 'ending-achievements' },
+        h('h3', null, 'إنجازات اتفتحت'),
+        h('div', { class: 'achievement-strip' }, unlocked.map(a => h('article', { class: 'achievement-card' }, h('b', null, a.icon), h('span', null, a.title))))),
       missed.length > 0 && h('details', { class: 'missed' },
         h('summary', null, `فاتك ${arabicDigits(missed.length)} دليل`),
         h('ul', null, missed.map(e => h('li', null, h('b', null, e.title), h('small', null, ` • ${e.source}`)))),
@@ -313,6 +323,7 @@ export class Shell {
       h('div', { class: 'menu' },
         h('button', { class: 'btn primary', onclick: () => this.act.resume() }, 'كمّل'),
         h('button', { class: 'btn', onclick: () => this.act.casefile() }, 'ملف القضية'),
+        h('button', { class: 'btn', onclick: () => this.go('achievements', 'pause') }, 'الإنجازات'),
         h('button', { class: 'btn', onclick: () => this.go('settings', 'pause') }, 'الإعدادات'),
         h('button', { class: 'btn ghost', onclick: () => this.act.quit() }, 'حفظ والخروج')),
       h('p', { class: 'controls' }, 'اضغط على العلامات اللي على الصورة أو على الشخص اللي عاوز تكلّمه. من الخريطة اتنقّل بين أماكن المنطقة، والميكروباص بيوصّل أبيس بإسكندرية. ملف القضية: Tab • الخريطة: M • تلميح: H • القائمة: Esc'))
@@ -335,10 +346,26 @@ export class Shell {
           h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'حجم الخط' }, ([[0.9, 'صغير'], [1, 'عادي'], [1.15, 'كبير'], [1.3, 'كبير جداً']] as const).map(([v, label]) =>
             h('button', { class: `chip${Math.abs(d.textScale - v) < 0.01 ? ' on' : ''}`, role: 'radio', 'aria-checked': String(Math.abs(d.textScale - v) < 0.01), onclick: () => { this.act.settings({ textScale: v }); this.go('settings', this.back) } }, label)))),
         check('تباين عالي (أوضح في الشمس)', 'highContrast')),
+      h('div', { class: 'settings-tutorial' },
+        h('b', null, 'شرح البداية'), h('p', { class: 'note' }, 'عايز تفتكر خطوات التحقيق؟ شغّل العلامات الإرشادية تاني.'),
+        h('button', { class: 'btn ghost', onclick: this.act.replayTutorial }, 'اعرض الشرح تاني')),
       h('details', null, h('summary', null, 'الخدمات المتقدمة (اختياري)'),
         h('p', { class: 'note' }, 'روابط اختيارية. من غيرها تفضل القصة والتلميحات المحلية شغّالة أوفلاين.'),
         url('رابط التلميحات الذكية (ChatGPT)', 'hintEndpoint', 'https://your-proxy.example/hint'),
         url('رابط قاعدة الأحداث الواقعية', 'eventsUrl', 'https://your-host.example/events.json')),
+      h('button', { class: 'btn ghost back', onclick: () => this.go(this.back ?? 'title') }, 'رجوع'))
+  }
+
+  private achievements(): HTMLElement {
+    const unlocked = new Set(this.s.profiles.allAchievementIds())
+    return h('section', { class: 'page achievements-page' },
+      h('div', { class: 'stamp' }, 'ملف الإنجازات'),
+      h('h2', null, 'الخيوط اللي فتحتها'),
+      h('p', { class: 'note' }, `${arabicDigits(unlocked.size)} من ${arabicDigits(ACHIEVEMENTS.length)} إنجاز`),
+      h('div', { class: 'achievement-grid' }, ACHIEVEMENTS.map(a =>
+        h('article', { class: `achievement-card${unlocked.has(a.id) ? ' unlocked' : ' locked'}` },
+          h('b', { class: 'achievement-icon', 'aria-hidden': true }, unlocked.has(a.id) ? a.icon : '؟'),
+          h('div', null, h('h3', null, unlocked.has(a.id) ? a.title : 'إنجاز مقفول'), h('p', null, a.description))))),
       h('button', { class: 'btn ghost back', onclick: () => this.go(this.back ?? 'title') }, 'رجوع'))
   }
 }

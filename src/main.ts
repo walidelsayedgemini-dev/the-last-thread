@@ -16,11 +16,13 @@ import { EventsDb, JsonUrlProvider, type EventsDocument } from './services/event
 import { HintService, RemoteChatProvider } from './services/hints'
 import { ProfileService, type Profile } from './services/profiles'
 import { LocalStorageAdapter, MemoryStorage } from './services/storage'
+import { achievementContext, evaluateAchievements } from './game/achievements'
 import { CaseFileView } from './ui/casefile'
 import { DialogueView } from './ui/dialogueView'
 import { Hud } from './ui/hud'
 import { InvestigationView } from './ui/investigation'
 import { Shell } from './ui/shell'
+import { Tutorial } from './ui/tutorial'
 
 const SEED_FALLBACK: EventsDocument = { schemaVersion: 1, version: 0, events: [] }
 
@@ -81,6 +83,13 @@ async function boot(): Promise<void> {
   // ---- 2D investigation UI -------------------------------------------------------------------------------------
   const dialogue = new DialogueView(audio, text => session?.fill(text) ?? text)
   const hud = new Hud()
+  const tutorial = new Tutorial({
+    onComplete: () => {
+      if (!session) return
+      session.progress.tutorial.completed = true
+      session.save()
+    },
+  })
   const caseFile = new CaseFileView({
     audio, events,
     onClose: () => undefined,
@@ -115,10 +124,27 @@ async function boot(): Promise<void> {
       applySettings(settings.data)
       if ('hintEndpoint' in patch) hints.setRemote(settings.data.hintEndpoint ? new RemoteChatProvider(settings.data.hintEndpoint) : undefined)
     },
+    replayTutorial: () => {
+      if (!session) {
+        const saved = profiles.active
+        if (saved) {
+          saved.progress.tutorial.completed = false
+          profiles.save(saved.progress)
+        }
+        return
+      }
+      session.progress.tutorial.completed = false
+      session.save()
+      if (session.caseId === 'case01' && active) {
+        paused = false
+        shell.go('none')
+        tutorial.start(session)
+      }
+    },
     startWorld: () => startWorld(),
     nextCase: () => startNextCase(),
   })
-  ui.append(shell.el, investigation.el, hud.el, dialogue.el, caseFile.el)
+  ui.append(shell.el, investigation.el, hud.el, dialogue.el, caseFile.el, tutorial.el)
   applySettings(settings.data)
 
   // ---- Boot ----------------------------------------------------------------------------------------------------
@@ -144,6 +170,10 @@ async function boot(): Promise<void> {
     shell.go('none')
     unsubscribeCase?.()
     session = new Session(profile, deps())
+    if (intro === 'skip' || new URLSearchParams(location.search).get('tutorial') === '0') {
+      session.progress.tutorial.completed = true
+      session.save()
+    }
     currentPlace = nearestPlace(session.progress.position.zone, session.progress.position.x, session.progress.position.z)
     unsubscribeCase = session.onCase(handleCaseEvents)
     audio.startAmbience()
@@ -162,6 +192,7 @@ async function boot(): Promise<void> {
     hud.show(true)
     audio.playMusic(musicFor(currentPlace), { loop: true })
     loopRef?.resetAccumulator()
+    if (session.caseId === 'case01' && !session.progress.tutorial.completed && new URLSearchParams(location.search).get('tutorial') !== '0') tutorial.start(session)
   }
 
   function startNextCase(): void {
@@ -169,6 +200,7 @@ async function boot(): Promise<void> {
     const next = session.nextCaseId()
     if (!next || !session.startCase(next)) return
     window.clearTimeout(endingTimer)
+    tutorial.stop()
     const first = session.caseFile.hotspots[0]?.place ?? 'zeinab_home'
     currentPlace = first
     const place = PLACES[first]
@@ -187,6 +219,7 @@ async function boot(): Promise<void> {
     session.setPosition(place.district, place.pos.x, place.pos.z, 0)
     session.save()
     if (before !== place.district) audio.playMusic(musicFor(id), { loop: true })
+    if (before !== place.district) tutorial.action('travel')
     hud.hideNarration()
   }
 
@@ -198,6 +231,7 @@ async function boot(): Promise<void> {
       loopRef?.resetAccumulator()
     }
     caseFile.show(session)
+    tutorial.action('casefile')
   }
 
   function pause(): void {
@@ -221,6 +255,7 @@ async function boot(): Promise<void> {
 
   function quit(): void {
     window.clearTimeout(endingTimer)
+    tutorial.stop()
     if (dialogue.open) dialogue.close()
     caseFile.el.hidden = true
     session?.save()
@@ -241,6 +276,8 @@ async function boot(): Promise<void> {
     window.clearTimeout(endingTimer)
     endingTimer = window.setTimeout(() => {
       if (!session) return
+      checkAchievements()
+      tutorial.stop()
       audio.play('solved')
       audio.playMusic(MUSIC.title, { loop: true })
       active = false
@@ -265,16 +302,20 @@ async function boot(): Promise<void> {
         audio.play('deduction')
         haptic('success')
         hud.toast('ربطت خيط جديد!', 'deduction')
+        tutorial.action('thread')
       }
     }
     caseFile.refresh()
     investigation.refresh()
+    checkAchievements()
     if (changes.some(change => change.type === 'flag' && change.id === 'case_solved')) scheduleEnding()
   }
 
   function handleHotspot(hotspot: Hotspot): void {
     if (!session || !active || paused) return
     audio.play('ui')
+    if (hotspot.kind === 'inspect') tutorial.action('inspect')
+    else if (hotspot.kind === 'photo') tutorial.action('photo')
     if (hotspot.text) hud.narrate(session.fill(hotspot.text))
     if (hotspot.kind === 'travel' && hotspot.to) {
       session.useHotspot(hotspot)
@@ -308,7 +349,7 @@ async function boot(): Promise<void> {
     hud.hideNarration()
     const s = session
     dialogue.start(dlg, person, s.profile.avatar.name,
-      () => { session?.save(); investigation.refresh() },
+      () => { tutorial.action('talk'); session?.save(); investigation.refresh(); checkAchievements() },
       () => session?.flushDialogue(dlg),
       {
         backdrop: investigation.sceneImage,
@@ -323,10 +364,52 @@ async function boot(): Promise<void> {
     if (!session || !active || paused) return
     const cost = session.nextHintCost()
     const result = await session.hint()
+    tutorial.action('hint')
     if (!result) hud.toast('القضية اتقفلت، مفيش تلميحات.', 'info')
     else if ('wait' in result) hud.toast(`استنى ${arabicDigits(result.wait)} ثانية قبل التلميح الجاي.`, 'info')
     else { audio.play('paper'); hud.hint(result.text, result.tier, result.source, cost) }
     session.save()
+    checkAchievements()
+  }
+
+  function checkAchievements(): void {
+    if (!session) return
+    const current = session
+    const file = current.caseFile
+    const characters = CHARACTER_LIST.filter(c => current.inCase(c))
+    const solvedCaseIds = Object.entries(current.progress.cases ?? {})
+      .filter(([, snapshot]) => snapshot.flags.includes('case_solved'))
+      .map(([id]) => id)
+    if (current.state.flags.has('case_solved') && !solvedCaseIds.includes(current.caseId)) solvedCaseIds.push(current.caseId)
+    const secretsTotal = characters.filter(c => c.secret).length
+    const secretsUnlocked = characters.filter(c => c.secret && current.state.flags.has(c.secret.unlock)).length
+    const pastTotal = characters.reduce((sum, c) => sum + c.past.length, 0)
+    const pastUnlocked = characters.reduce((sum, c) => sum + c.past.filter(p => !p.unlock || current.state.flags.has(p.unlock)).length, 0)
+    const context = achievementContext({
+      caseId: current.caseId,
+      mode: current.mode,
+      evidenceFound: current.state.evidence.size,
+      evidenceTotal: file.evidence.length,
+      photoEvidenceFound: file.evidence.filter(e => e.kind === 'photo' && current.state.evidence.has(e.id)).length,
+      photoEvidenceTotal: file.evidence.filter(e => e.kind === 'photo').length,
+      deductionsFound: current.state.deductions.size,
+      deductionsTotal: file.deductions.length,
+      talkedTo: characters.filter(c => current.state.flags.has(`met_${c.id}`)).length,
+      charactersTotal: characters.length,
+      correctConfrontations: [...session.state.flags].filter(id => /_confronted$/.test(id)).length,
+      secretsUnlocked, secretsTotal, pastUnlocked, pastTotal,
+      storyMinutes: current.clock.elapsedStoryMinutes,
+      solvedCaseIds,
+      flags: current.state.flags,
+      stats: current.progress.stats,
+      solved: current.state.flags.has('case_solved'),
+      grade: current.state.flags.has('case_solved') ? current.gradeReport().grade : undefined,
+    })
+    const unlocked = evaluateAchievements(context, current.progress.achievements)
+    if (!unlocked.length) return
+    current.progress.achievements = [...new Set([...current.progress.achievements, ...unlocked.map(a => a.id)])]
+    current.save()
+    unlocked.forEach(a => hud.toast(`إنجاز جديد: ${a.title}`, 'deduction'))
   }
 
   // ---- Input and timing ----------------------------------------------------------------------------------------
