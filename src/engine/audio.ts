@@ -1,18 +1,43 @@
 /**
- * Noir audio director. Everything is synthesised with Web Audio (no audio files, ~0 KB shipped,
- * very low memory): a slow drone, wind, a heartbeat that quickens with tension, district
- * ambience (crickets/rooster in the village, sea and tram bell in the city) and one-shot stingers
- * for evidence, deductions, paper, thread and the camera.
+ * Noir audio director. Everything is synthesised with Web Audio except optional
+ * music files supplied by the caller. The procedural graph deliberately reuses
+ * one small noise buffer and schedules sparse one-shots rather than keeping a
+ * large graph per location.
  *
- * Browsers only allow audio after a user gesture, so call `unlock()` from the first click/key.
+ * Browsers only allow audio after a user gesture, so call `unlock()` from the
+ * first click/key.
  */
-export type Sfx = 'ui' | 'back' | 'evidence' | 'deduction' | 'paper' | 'thread' | 'shutter' | 'error' | 'travel' | 'accuse' | 'solved' | 'door'
+export type Sfx =
+  | 'ui' | 'back' | 'evidence' | 'deduction' | 'paper' | 'thread' | 'shutter'
+  | 'error' | 'travel' | 'accuse' | 'solved' | 'door'
+  | 'confront' | 'lie' | 'wrong' | 'pin' | 'drawer' | 'found' | 'typewriter'
 export type District = 'abis' | 'city'
+
+interface NoiseLoop {
+  source: AudioBufferSourceNode
+  gain: GainNode
+  filter: BiquadFilterNode
+}
+
+interface PlaceLayer {
+  id: string
+  gain: GainNode
+  sources: AudioScheduledSourceNode[]
+  nodes: AudioNode[]
+  controls: Record<string, GainNode>
+}
+
+interface MusicTrack {
+  element: HTMLAudioElement
+  source: MediaElementAudioSourceNode
+  gain: GainNode
+}
 
 export class Audio {
   readonly ctx: AudioContext
   private readonly master: GainNode
   private readonly ambience: GainNode
+  private readonly musicBus: GainNode
   private readonly sfx: GainNode
   private noise?: AudioBuffer
   private running = false
@@ -21,19 +46,28 @@ export class Audio {
   private district: District = 'abis'
   private night = 0.5
   private timers: number[] = []
+  private placeTimers: number[] = []
+  private placeEventToken = 0
+  private placeLayer?: PlaceLayer
+  private placeId?: string
   private droneFilter?: BiquadFilterNode
+  private droneGain?: GainNode
   private dissonance?: GainNode
   private windGain?: GainNode
   private districtGain?: GainNode
   private districtFilter?: BiquadFilterNode
+  private music?: MusicTrack
   private volume = { music: 0.7, sfx: 0.8, muted: false }
+  private lastTypewriterAt = -Infinity
 
   constructor() {
     this.ctx = new AudioContext()
     const comp = this.ctx.createDynamicsCompressor()
     this.master = this.ctx.createGain()
     this.ambience = this.ctx.createGain()
+    this.musicBus = this.ctx.createGain()
     this.sfx = this.ctx.createGain()
+    this.musicBus.connect(this.ambience)
     this.ambience.connect(this.master)
     this.sfx.connect(this.master)
     this.master.connect(comp).connect(this.ctx.destination)
@@ -68,7 +102,7 @@ export class Audio {
     return buf
   }
 
-  private loopNoise(type: BiquadFilterType, freq: number, q: number, gain: number, dest: AudioNode): { gain: GainNode; filter: BiquadFilterNode } {
+  private loopNoise(type: BiquadFilterType, freq: number, q: number, gain: number, dest: AudioNode): NoiseLoop {
     const src = this.ctx.createBufferSource()
     src.buffer = this.noiseBuffer()
     src.loop = true
@@ -80,7 +114,7 @@ export class Audio {
     g.gain.value = gain
     src.connect(filter).connect(g).connect(dest)
     src.start()
-    return { gain: g, filter }
+    return { source: src, gain: g, filter }
   }
 
   /** Start (or resume) the ambience bed. Safe to call repeatedly. */
@@ -90,6 +124,7 @@ export class Audio {
     this.setVolumes(this.volume.music, this.volume.sfx, this.volume.muted)
     if (!this.started) this.buildBed()
     this.applyScene()
+    this.switchPlace(this.placeId)
     this.scheduleHeartbeat()
     this.scheduleDistrictEvent()
   }
@@ -100,7 +135,8 @@ export class Audio {
     const ctx = this.ctx
     // Drone: detuned low saws through a low-pass, plus a hidden tritone that fades in with tension.
     const droneBus = ctx.createGain()
-    droneBus.gain.value = 0.16
+    droneBus.gain.value = this.music ? 0.105 : 0.16
+    this.droneGain = droneBus
     const filter = ctx.createBiquadFilter()
     filter.type = 'lowpass'
     filter.frequency.value = 160
@@ -148,6 +184,10 @@ export class Audio {
     this.running = false
     this.timers.forEach(clearTimeout)
     this.timers = []
+    this.cancelPlaceEvents()
+    const old = this.placeLayer
+    this.placeLayer = undefined
+    if (old) this.fadeOutPlace(old)
     this.ambience.gain.setTargetAtTime(0, this.ctx.currentTime, 0.2)
   }
 
@@ -168,6 +208,16 @@ export class Audio {
     const city = this.district === 'city'
     this.districtFilter?.frequency.setTargetAtTime(city ? 380 : 700, t, 1)
     this.districtGain?.gain.setTargetAtTime(city ? 0.22 : 0.03, t, 1.5)
+  }
+
+  /**
+   * Select a sparse location-specific sound bed. Unknown IDs are valid and
+   * simply receive the district bed. The transition is approximately 1.5 s.
+   */
+  setPlace(placeId: string): void {
+    if (this.placeId === placeId && (this.placeLayer || !this.running)) return
+    this.placeId = placeId
+    if (this.running && this.started) this.switchPlace(placeId)
   }
 
   private later(ms: number, fn: () => void): void {
@@ -236,16 +286,292 @@ export class Audio {
   private thump(vol: number): void {
     this.tone(70, 38, 0.18, 'sine', vol, 0, this.ambience)
   }
-  private crickets(): void {
-    for (let i = 0; i < 6; i++) this.tone(4200, 4300, 0.05, 'sine', 0.012, i * 0.09, this.ambience)
+  private crickets(dest: AudioNode = this.ambience): void {
+    for (let i = 0; i < 6; i++) this.tone(4200, 4300, 0.05, 'sine', 0.012, i * 0.09, dest)
   }
   private rooster(): void {
     this.tone(520, 700, 0.25, 'sawtooth', 0.01, 0, this.ambience)
     this.tone(700, 420, 0.5, 'sawtooth', 0.01, 0.28, this.ambience)
   }
-  private tramBell(): void {
-    this.tone(1320, 1300, 0.9, 'sine', 0.02, 0, this.ambience)
-    this.tone(1320, 1300, 0.9, 'sine', 0.02, 0.35, this.ambience)
+  private tramBell(dest: AudioNode = this.ambience): void {
+    this.tone(1320, 1300, 0.9, 'sine', 0.02, 0, dest)
+    this.tone(1320, 1300, 0.9, 'sine', 0.02, 0.35, dest)
+  }
+
+  private newPlaceLayer(id: string): PlaceLayer {
+    const gain = this.ctx.createGain()
+    gain.gain.value = 0.0001
+    gain.connect(this.ambience)
+    return { id, gain, sources: [], nodes: [gain], controls: {} }
+  }
+
+  private addPlaceNoise(layer: PlaceLayer, name: string, type: BiquadFilterType, freq: number, q: number, gain: number): GainNode {
+    const loop = this.loopNoise(type, freq, q, gain, layer.gain)
+    layer.sources.push(loop.source)
+    layer.nodes.push(loop.source, loop.filter, loop.gain)
+    layer.controls[name] = loop.gain
+    return loop.gain
+  }
+
+  private addPlaceTone(layer: PlaceLayer, freq: number, gain: number): void {
+    const oscillator = this.ctx.createOscillator()
+    const nodeGain = this.ctx.createGain()
+    oscillator.type = 'sine'
+    oscillator.frequency.value = freq
+    nodeGain.gain.value = gain
+    oscillator.connect(nodeGain).connect(layer.gain)
+    oscillator.start()
+    layer.sources.push(oscillator)
+    layer.nodes.push(oscillator, nodeGain)
+  }
+
+  private buildPlaceLayer(id: string): PlaceLayer | undefined {
+    const layer = this.newPlaceLayer(id)
+    switch (id) {
+      case 'cafe_ragab':
+        this.addPlaceNoise(layer, 'crowd', 'bandpass', 720, 0.7, 0.045)
+        this.addPlaceNoise(layer, 'tv', 'bandpass', 1650, 0.45, 0.012)
+        break
+      case 'canal_bridge':
+      case 'plot15':
+        this.addPlaceNoise(layer, 'water', 'lowpass', 850, 0.5, 0.07)
+        this.addPlaceNoise(layer, 'reeds', 'bandpass', 1350, 0.65, 0.025)
+        break
+      case 'zeinab_home':
+        this.addPlaceNoise(layer, 'room', 'lowpass', 250, 0.4, 0.012)
+        break
+      case 'mahmoud_house':
+        this.addPlaceNoise(layer, 'room', 'lowpass', 160, 0.35, 0.006)
+        break
+      case 'abis_mosque':
+        this.addPlaceNoise(layer, 'wind', 'bandpass', 480, 0.55, 0.018)
+        this.addPlaceNoise(layer, 'birds', 'bandpass', 2350, 0.7, 0.008)
+        break
+      case 'abis_stop':
+        this.addPlaceNoise(layer, 'engine', 'lowpass', 125, 0.7, 0.045)
+        break
+      case 'raml_stop':
+        this.addPlaceNoise(layer, 'engine', 'lowpass', 115, 0.8, 0.06)
+        this.addPlaceNoise(layer, 'tram', 'bandpass', 420, 0.5, 0.015)
+        break
+      case 'qaitbay':
+      case 'corniche':
+        this.addPlaceNoise(layer, 'waves', 'lowpass', 430, 0.55, 0.09)
+        this.addPlaceNoise(layer, 'foam', 'bandpass', 950, 0.5, 0.025)
+        break
+      case 'bibliotheca':
+        this.addPlaceNoise(layer, 'hall', 'lowpass', 600, 0.35, 0.012)
+        this.addPlaceTone(layer, 146, 0.008)
+        break
+      case 'mansheya':
+        this.addPlaceNoise(layer, 'traffic', 'lowpass', 190, 0.65, 0.05)
+        this.addPlaceNoise(layer, 'street', 'bandpass', 720, 0.5, 0.018)
+        break
+      case 'pompey':
+        this.addPlaceNoise(layer, 'wind', 'bandpass', 380, 0.6, 0.025)
+        this.addPlaceNoise(layer, 'city', 'lowpass', 105, 0.45, 0.025)
+        break
+      default:
+        return undefined
+    }
+    return layer
+  }
+
+  private switchPlace(id = this.placeId): void {
+    this.cancelPlaceEvents()
+    const old = this.placeLayer
+    this.placeLayer = undefined
+    if (old) this.fadeOutPlace(old)
+    if (!this.running || !this.started || !id) return
+    const next = this.buildPlaceLayer(id)
+    if (!next) return
+    this.placeLayer = next
+    const t = this.ctx.currentTime
+    next.gain.gain.setValueAtTime(0.0001, t)
+    next.gain.gain.setTargetAtTime(1, t, 0.5)
+    this.schedulePlaceEvents(next)
+  }
+
+  private fadeOutPlace(layer: PlaceLayer): void {
+    const t = this.ctx.currentTime
+    layer.gain.gain.cancelScheduledValues(t)
+    layer.gain.gain.setTargetAtTime(0.0001, t, 0.35)
+    window.setTimeout(() => this.disposePlaceLayer(layer), 1700)
+  }
+
+  private disposePlaceLayer(layer: PlaceLayer): void {
+    for (const source of layer.sources) {
+      try { source.stop() } catch { /* already stopped */ }
+      source.disconnect()
+    }
+    for (const node of layer.nodes) node.disconnect()
+  }
+
+  private cancelPlaceEvents(): void {
+    this.placeEventToken++
+    for (const timer of this.placeTimers) window.clearTimeout(timer)
+    this.placeTimers = []
+  }
+
+  private schedulePlaceTimer(layer: PlaceLayer, token: number, delay: number, fn: () => void): void {
+    let timer = 0
+    timer = window.setTimeout(() => {
+      this.placeTimers = this.placeTimers.filter(item => item !== timer)
+      if (this.running && this.placeEventToken === token && this.placeLayer === layer) fn()
+    }, delay)
+    this.placeTimers.push(timer)
+  }
+
+  private schedulePlaceEvents(layer: PlaceLayer): void {
+    const token = this.placeEventToken
+    this.schedulePlaceTimer(layer, token, 2200, () => this.placeEvent(layer, token))
+  }
+
+  private placePulse(layer: PlaceLayer, token: number, delay: number, fn: () => void): void {
+    this.schedulePlaceTimer(layer, token, delay, fn)
+  }
+
+  private placeEvent(layer: PlaceLayer, token: number): void {
+    const dest = layer.gain
+    switch (layer.id) {
+      case 'cafe_ragab':
+        layer.controls.crowd?.gain.setTargetAtTime(0.025 + Math.random() * 0.04, this.ctx.currentTime, 0.7)
+        layer.controls.tv?.gain.setTargetAtTime(0.006 + Math.random() * 0.012, this.ctx.currentTime, 1.2)
+        if (Math.random() < 0.42) {
+          this.tone(1550, 1250, 0.08, 'triangle', 0.025, 0, dest)
+          this.tone(2300, 1900, 0.055, 'sine', 0.016, 0.07, dest)
+        }
+        break
+      case 'canal_bridge':
+      case 'plot15':
+        if (Math.random() < 0.58) {
+          this.tone(720 + Math.random() * 90, 640, 0.16, 'sine', 0.025, 0, dest)
+          this.tone(1040, 920, 0.11, 'sine', 0.012, 0.18, dest)
+        }
+        if (this.night > 0.35 && Math.random() < 0.35) {
+          this.tone(430, 280, 0.2, 'sine', 0.03, 0, dest)
+          this.tone(520, 360, 0.16, 'sine', 0.018, 0.22, dest)
+        }
+        break
+      case 'zeinab_home':
+        if (Math.random() < 0.45) {
+          // Four gentle treadle/clicks: a short rhythm, then silence again.
+          for (const delay of [0, 160, 340, 520]) {
+            this.placePulse(layer, token, delay, () => {
+              this.burst(1250, 2.2, 0.035, 0.022, 0, dest)
+              this.tone(92, 72, 0.1, 'sine', 0.018, 0, dest)
+            })
+          }
+        }
+        break
+      case 'mahmoud_house':
+        if (Math.random() < 0.5) {
+          this.burst(180, 1.2, 0.28, 0.045, 0, dest)
+          this.tone(92, 63, 0.3, 'triangle', 0.025, 0, dest)
+        }
+        break
+      case 'abis_mosque':
+        if (Math.random() < 0.8) {
+          const base = 2200 + Math.random() * 700
+          this.tone(base, base * 1.08, 0.08, 'sine', 0.018, 0, dest)
+          this.tone(base * 1.18, base * 1.12, 0.1, 'sine', 0.014, 0.11, dest)
+        }
+        break
+      case 'abis_stop':
+      case 'raml_stop':
+        if (Math.random() < 0.52) this.tone(440, 520, 0.16, 'square', 0.025, 0, dest)
+        if (layer.id === 'raml_stop' && Math.random() < 0.34) this.tramBell(dest)
+        break
+      case 'qaitbay':
+      case 'corniche':
+        layer.controls.waves?.gain.setTargetAtTime(0.06 + Math.random() * 0.06, this.ctx.currentTime, 0.9)
+        if (Math.random() < 0.52) {
+          this.tone(1250, 1750, 0.12, 'sine', 0.02, 0, dest)
+          this.tone(1750, 1200, 0.13, 'sine', 0.014, 0.14, dest)
+        }
+        if (Math.random() < 0.32) this.burst(360, 1.1, 0.25, 0.028, 0, dest)
+        break
+      case 'bibliotheca':
+        if (Math.random() < 0.62) {
+          this.burst(500, 0.9, 0.06, 0.018, 0, dest)
+          this.burst(680, 1.1, 0.08, 0.014, 0.22, dest)
+        }
+        break
+      case 'mansheya':
+        if (Math.random() < 0.55) this.tone(260, 180, 0.18, 'sawtooth', 0.025, 0, dest)
+        if (Math.random() < 0.25) this.burst(1050, 1.4, 0.15, 0.035, 0, dest)
+        break
+      case 'pompey':
+        if (this.night > 0.35) this.crickets(dest)
+        if (Math.random() < 0.3) this.tone(220, 180, 0.18, 'sine', 0.018, 0, dest)
+        break
+    }
+    const next = layer.id === 'zeinab_home' ? 5000 + Math.random() * 5000 : 3500 + Math.random() * 6500
+    this.schedulePlaceTimer(layer, token, next, () => this.placeEvent(layer, token))
+  }
+
+  /** Stream an optional music file through the ambience/music bus. */
+  playMusic(url: string | null, opts?: { loop?: boolean; fade?: number }): void {
+    const fade = Math.max(0, opts?.fade ?? 1.5)
+    const previous = this.music
+    this.music = undefined
+    if (previous) this.fadeOutMusic(previous, fade)
+
+    if (!url) {
+      this.droneGain?.gain.setTargetAtTime(0.16, this.ctx.currentTime, 0.35)
+      return
+    }
+
+    let element: HTMLAudioElement
+    let source: MediaElementAudioSourceNode
+    try {
+      element = document.createElement('audio')
+      element.preload = 'auto'
+      element.loop = opts?.loop ?? true
+      element.crossOrigin = 'anonymous'
+      element.src = url
+      source = this.ctx.createMediaElementSource(element)
+    } catch {
+      // Unsupported media elements (or a non-browser test environment) are silent failures.
+      this.droneGain?.gain.setTargetAtTime(0.16, this.ctx.currentTime, 0.35)
+      return
+    }
+
+    const gain = this.ctx.createGain()
+    gain.gain.value = 0.0001
+    source.connect(gain).connect(this.musicBus)
+    const track: MusicTrack = { element, source, gain }
+    this.music = track
+    this.droneGain?.gain.setTargetAtTime(0.105, this.ctx.currentTime, 0.35)
+    const t = this.ctx.currentTime
+    if (fade === 0) gain.gain.setValueAtTime(1, t)
+    else gain.gain.setTargetAtTime(1, t, Math.max(0.05, fade / 3))
+    element.addEventListener('ended', () => {
+      if (this.music === track) {
+        this.music = undefined
+        this.fadeOutMusic(track, fade)
+        this.droneGain?.gain.setTargetAtTime(0.16, this.ctx.currentTime, 0.35)
+      }
+    })
+    element.addEventListener('error', () => {
+      if (this.music === track) {
+        this.music = undefined
+        this.fadeOutMusic(track, fade)
+        this.droneGain?.gain.setTargetAtTime(0.16, this.ctx.currentTime, 0.35)
+      }
+    })
+    void element.play().catch(() => undefined)
+  }
+
+  private fadeOutMusic(track: MusicTrack, fade: number): void {
+    const t = this.ctx.currentTime
+    track.gain.gain.cancelScheduledValues(t)
+    track.gain.gain.setTargetAtTime(0.0001, t, Math.max(0.03, fade / 3))
+    window.setTimeout(() => {
+      track.element.pause()
+      track.source.disconnect()
+      track.gain.disconnect()
+    }, Math.max(50, fade * 1000 + 100))
   }
 
   /** Soft footstep; call at stride intervals. `sprint` makes it heavier. */
@@ -280,6 +606,42 @@ export class Audio {
       case 'solved':
         for (const [i, f] of [262, 330, 392, 523].entries()) this.tone(f, f, 1.8, 'sine', 0.1, i * 0.25)
         break
+      case 'confront':
+        this.tone(58, 35, 0.65, 'sine', 0.23)
+        this.tone(145, 520, 1.05, 'sawtooth', 0.045)
+        this.tone(218, 690, 0.9, 'triangle', 0.025, 0.05)
+        break
+      case 'lie':
+        this.burst(2450, 1.5, 0.12, 0.18)
+        this.tone(740, 620, 0.28, 'square', 0.1)
+        this.tone(1030, 820, 0.24, 'sawtooth', 0.08, 0.015)
+        break
+      case 'wrong':
+        this.tone(92, 48, 0.3, 'sine', 0.19)
+        this.burst(170, 0.8, 0.18, 0.09, 0.02)
+        this.tone(220, 75, 0.55, 'triangle', 0.07, 0.08)
+        break
+      case 'pin':
+        this.burst(2200, 2, 0.045, 0.06)
+        this.tone(980, 860, 0.06, 'triangle', 0.045, 0.01)
+        break
+      case 'drawer':
+        this.burst(1450, 0.7, 0.2, 0.055)
+        this.burst(850, 0.8, 0.16, 0.035, 0.1)
+        break
+      case 'found':
+        this.play('evidence')
+        this.tone(1047, 1568, 0.55, 'sine', 0.07, 0.04)
+        this.tone(1568, 2093, 0.7, 'triangle', 0.04, 0.16)
+        break
+      case 'typewriter': {
+        // Dialogue can call this every character; never schedule more than 25/s.
+        const now = this.ctx.currentTime
+        if (now - this.lastTypewriterAt < 0.04) break
+        this.lastTypewriterAt = now
+        this.burst(2650, 1.8, 0.025, 0.028)
+        break
+      }
     }
   }
 }
