@@ -1,5 +1,6 @@
 import type { CharacterId, Dialogue } from './types'
 import { GATES } from './case01'
+import { VILLAGER_DIALOGUES } from './dialogues.villagers01'
 
 /**
  * Branching dialogue trees. Effects (evidence / flags) are applied when a node is shown or a choice
@@ -406,7 +407,7 @@ const mahmoud: Dialogue = {
   },
 }
 
-export const DIALOGUES: Partial<Record<CharacterId, Dialogue>> = { zeinab, hassan, ragab, bahr, fathy, shawky, mahmoud }
+export const DIALOGUES: Partial<Record<CharacterId, Dialogue>> = { ...VILLAGER_DIALOGUES, zeinab, hassan, ragab, bahr, fathy, shawky, mahmoud }
 
 
 const salma: Dialogue = {

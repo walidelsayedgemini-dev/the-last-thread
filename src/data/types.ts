@@ -110,6 +110,10 @@ export type EvidenceId =
   | 'e_cafe_bill' | 'e_microbus_ticket' | 'e_bahr_testimony' | 'e_harbor_thread'
   | 'e_library_envelope' | 'e_forged_contract' | 'e_fathy_testimony'
   | 'e_library_photo' | 'e_qaitbay_photo' | 'e_pillar_photo' | 'e_match_night_photo'
+  | 'e_rail_log' | 'e_market_driver' | 'e_pump_log' | 'e_miller_promise' | 'e_handwriting'
+  | 'e_bakery_ration' | 'e_school_note' | 'e_pump_payment' | 'e_omda_guestbook' | 'e_guava_trace'
+  | 'e_rail_tracks' | 'e_cemetery_cache' | 'e_pigeon_note' | 'e_health_alias' | 'e_waterwheel_carving'
+  | 'e_market_crates' | 'e_mill_receipt'
   | 'e02_black_envelope' | 'e02_burned_map' | 'e02_red_receipt' | 'e02_corniche_photo'
   | 'e02_key_tag' | 'e02_ledger_page' | 'e02_messenger_note' | 'e02_sea_glass'
   | 'e02_recording' | 'e02_archive_stamp' | 'e02_radio_log' | 'e02_stock_manifest'
@@ -121,6 +125,8 @@ export type Evidence = {
   id: EvidenceId
   title: string
   kind: EvidenceKind
+  /** Optional side-quest evidence; collectible for completeness achievements but not grade-critical. */
+  bonus?: boolean
   /** What the player sees in the notebook. */
   summary: string
   /** Close inspection text (the "magnifying glass" view). */
@@ -134,6 +140,7 @@ export type Evidence = {
 
 export type DeductionId =
   | 'd_trail' | 'd_markers' | 'd_alibi' | 'd_where' | 'd_forgery' | 'd_motive'
+  | 'd_vehicle' | 'd_water_pressure' | 'd_handwriting'
   | 'd02_route' | 'd02_motive' | 'd02_forgery' | 'd02_betrayal' | 'd02_chain' | 'd02_confrontation'
   | 'd03_route' | 'd03_records' | 'd03_witness' | 'd03_motive' | 'd03_confrontation'
 

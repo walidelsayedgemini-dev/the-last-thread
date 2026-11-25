@@ -24,8 +24,9 @@ export type GradeStats = {
  * to the ending UI and intentionally includes only evidence not found in this case.
  */
 export function computeGrade(stats: GradeStats, file: CaseFile, state: Pick<CaseState, 'evidence' | 'deductions'>): GradeResult {
-  const found = state.evidence.size
-  const evidencePoints = file.evidence.length ? Math.round((found / file.evidence.length) * 55) : 0
+  const required = file.evidence.filter(e => !e.bonus)
+  const found = required.filter(e => state.evidence.has(e.id)).length
+  const evidencePoints = required.length ? Math.round((found / required.length) * 55) : 0
   const deductionPoints = file.deductions.length ? Math.round((state.deductions.size / file.deductions.length) * 20) : 0
   const photoPoints = Math.min(10, Math.max(0, stats.photos) * 2)
   const tierCounts = stats.hintTiers ?? {}
@@ -35,11 +36,11 @@ export function computeGrade(stats: GradeStats, file: CaseFile, state: Pick<Case
   const raw = Math.max(0, Math.min(100, evidencePoints + deductionPoints + photoPoints - hintPenalty - legacyHintPenalty - wrongPenalty))
   const stars: 1 | 2 | 3 | 4 | 5 = raw >= 90 ? 5 : raw >= 75 ? 4 : raw >= 58 ? 3 : raw >= 38 ? 2 : 1
   const grade: GradeLabel = stars === 5 ? 'ممتاز' : stars === 4 ? 'جيد جدًا' : stars === 3 ? 'جيد' : 'مقبول'
-  const missed = file.evidence.filter(e => !state.evidence.has(e.id)).map(e => e.id)
+  const missed = required.filter(e => !state.evidence.has(e.id)).map(e => e.id)
   return {
     grade, stars, missed,
     breakdown: [
-      { label: `الأدلة (${found}/${file.evidence.length})`, delta: evidencePoints },
+      { label: `الأدلة المطلوبة (${found}/${required.length})`, delta: evidencePoints },
       { label: `الاستنتاجات (${state.deductions.size}/${file.deductions.length})`, delta: deductionPoints },
       { label: 'الصور', delta: photoPoints },
       { label: 'خصم التلميحات', delta: -(hintPenalty + legacyHintPenalty) },
