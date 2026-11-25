@@ -1,0 +1,30 @@
+node_modules/
+dist/
+shots/
+/.manus-webdev/preview-identity.json
+# Assets restored from assets.lock.json
+/assets/models/buildings/alex_building.glb
+/assets/models/buildings/village_house.glb
+/assets/models/buildings/village_mosque.glb
+/assets/models/characters/bahr.glb
+/assets/models/characters/fathy.glb
+/assets/models/characters/hassan.glb
+/assets/models/characters/player_f.glb
+/assets/models/characters/ragab.glb
+/assets/models/characters/shawky.glb
+/assets/models/characters/yassin.glb
+/assets/models/characters/zeinab.glb
+/assets/models/landmarks/bibliotheca.glb
+/assets/models/landmarks/pompey_pillar.glb
+/assets/models/landmarks/qaitbay_citadel.glb
+/assets/models/nature/palm_tree.glb
+/assets/models/nature/water_buffalo.glb
+/assets/models/props/fishing_boat.glb
+/assets/models/props/sewing_machine.glb
+/assets/models/props/street_lamp.glb
+/assets/models/vehicles/alex_tram.glb
+/assets/models/vehicles/black_sedan.glb
+/assets/models/vehicles/microbus.glb
+/assets/models/vehicles/tuktuk.glb
+# Assets restored from assets.lock.json
+/assets/models/characters/mahmoud.glb

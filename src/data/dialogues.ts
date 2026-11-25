@@ -1,0 +1,391 @@
+import type { CharacterId, Dialogue } from './types'
+import { GATES } from './case01'
+
+/**
+ * Branching dialogue trees. Effects (evidence / flags) are applied when a node is shown or a choice
+ * is taken. `{player}` is replaced with the player's name at runtime. The first matching `entries`
+ * item decides where a conversation starts, so characters greet differently as the case evolves.
+ */
+
+const zeinab: Dialogue = {
+  character: 'zeinab',
+  entries: [
+    { node: 'z_done', when: { flags: ['case_solved'] } },
+    { node: 'z_again', when: { flags: ['has_key'] } },
+    { node: 'z_first' },
+  ],
+  nodes: {
+    z_first: {
+      id: 'z_first',
+      lines: [
+        { who: 'zeinab', text: 'يا ضنايا يا {player}… خالك محمود له تلات أيام ماجاش، وبابه مقفول. قلبي واكلني عليه.' },
+      ],
+      choices: [
+        { text: 'هو قالك كان رايح فين؟', next: 'z_where' },
+        { text: 'محتاج أدخل بيته يا ستّي.', next: 'z_key' },
+        { text: 'اهدي يا ستّي… أنا هلاقيه.', next: 'z_calm' },
+      ],
+    },
+    z_calm: {
+      id: 'z_calm',
+      lines: [
+        { who: 'player', text: 'اهدي يا ستّي… أنا هلاقيه. وعد.' },
+        { who: 'zeinab', text: 'ربنا يحفظك. بس الوعود زي الخيوط… لازم عقدتها تبقى محكمة.' },
+      ],
+      next: 'z_hub',
+    },
+    z_where: {
+      id: 'z_where',
+      lines: [
+        { who: 'zeinab', text: 'قال رايح يخلّص مساحة القطعة ١٥ للجمعية. ورجع آخر مرة وشه أصفر… قاللي: «الأرض فيها ريحة فلوس يا أمي، والفلوس بتودّي في داهية».' },
+        { who: 'player', text: 'مين اللي كان بيقابله؟' },
+        { who: 'zeinab', text: 'ماقاليش اسم. بس لما سمع عربية بتعدّي من الشارع، شد الستارة وبص من الشباك كتير.' },
+      ],
+      effects: [{ type: 'flag', id: 'zeinab_talked' }],
+      next: 'z_hub',
+    },
+    z_key: {
+      id: 'z_key',
+      lines: [
+        { who: 'zeinab', text: 'المفتاح الاحتياطي ده معايا من يوم ما أخوك سافر. خده يا ضنايا… بس إوعى حد يشوفك.' },
+        { who: 'narrator', text: 'خدت المفتاح. معدنه بارد… وعليه خيط أحمر صغير ملفوف حواليه.' },
+      ],
+      effects: [{ type: 'flag', id: 'has_key' }, { type: 'flag', id: 'zeinab_talked' }],
+      next: 'z_hub',
+    },
+    z_hub: {
+      id: 'z_hub',
+      lines: [{ who: 'zeinab', text: 'إيه تاني يا ضنايا؟' }],
+      choices: [
+        { text: 'فين مفتاح بيته؟', next: 'z_key', when: { notFlags: ['has_key'] } },
+        { text: 'ماكينتك السنجر… خالي كان بيقعد جنبها كتير.', next: 'z_machine', when: { flags: ['zeinab_talked'], notFlags: ['machine_hint'] } },
+        { text: 'مين كان بيزوره من إسكندرية؟', next: 'z_trust', when: { flags: ['machine_hint'], notFlags: ['zeinab_trust'] } },
+        { text: 'سلامو عليكو يا ستّي.', next: 'z_bye' },
+      ],
+    },
+    z_machine: {
+      id: 'z_machine',
+      lines: [
+        { who: 'zeinab', text: 'آه… الدرج بتاعها فيه حاجات محمود كان بيخبّيها وهو صغير. افتحه يا ضنايا، يمكن فيه ريحته.' },
+      ],
+      effects: [{ type: 'flag', id: 'machine_hint' }],
+      next: 'z_hub',
+    },
+    z_trust: {
+      id: 'z_trust',
+      lines: [
+        { who: 'zeinab', text: 'هقولك اللي ماقولتوش لحد… كان بيروح كل خميس إسكندرية يقابل «واحد من زمان». ماعرفتش مين. بس لما رجع آخر مرة قال لي: «شوقي بيه مش هيسيبنا».' },
+      ],
+      effects: [{ type: 'flag', id: 'zeinab_trust' }, { type: 'flag', id: 'shawky_named' }],
+      next: 'z_hub',
+    },
+    z_bye: { id: 'z_bye', lines: [{ who: 'zeinab', text: 'في أمان الله. ومتتأخرش.' }] },
+    z_again: {
+      id: 'z_again',
+      lines: [{ who: 'zeinab', text: 'لقيت حاجة يا {player}؟ طمّني.' }],
+      choices: [
+        { text: 'لسه بدوّر يا ستّي.', next: 'z_hub' },
+        { text: 'خالي مش مخطوف… هو متخبّي.', next: 'z_hope', when: { flags: ['found_mahmoud'] } },
+      ],
+    },
+    z_hope: {
+      id: 'z_hope',
+      lines: [{ who: 'zeinab', text: 'الحمد لله! أنا قلبي قالي. روح له وقوله إن الخيط لسه مربوط.' }],
+    },
+    z_done: {
+      id: 'z_done',
+      lines: [{ who: 'zeinab', text: 'محمود رجع… والقعدة رجعت. ربنا ما يحرمنيش منكم يا {player}.' }],
+    },
+  },
+}
+
+const hassan: Dialogue = {
+  character: 'hassan',
+  entries: [{ node: 'h_again', when: { evidence: ['e_hassan_testimony'] } }, { node: 'h_first' }],
+  nodes: {
+    h_first: {
+      id: 'h_first',
+      lines: [
+        { who: 'hassan', text: 'زمان يا ابني كانت أبيس كلها برسيم وجاموس… دلوقتي الطريق الجديد هيعدّي من هنا وكل واحد مرتب فلوسه.' },
+      ],
+      choices: [
+        { text: 'سمعت حاجة عن خالي محمود؟', next: 'h_night' },
+        { text: 'مين المستفيد من الطريق؟', next: 'h_road' },
+      ],
+    },
+    h_night: {
+      id: 'h_night',
+      lines: [
+        { who: 'hassan', text: 'يا ابني ليلتها كنت صاحي من الحر… شفت مرسيدس سودا واقفة عند كوبري الترعة قرابة نص الليل.' },
+        { who: 'hassan', text: 'نزلوا اتنين، معاهم كشاف وعتلة، وراحوا ناحية القطعة ١٥. ورجعوا والتراب على جزمهم.' },
+        { who: 'hassan', text: 'واحد منهم صوته أعرفه… سيّد، سواق المعلم شوقي.' },
+      ],
+      effects: [{ type: 'evidence', id: 'e_hassan_testimony' }],
+      next: 'h_hub',
+    },
+    h_road: {
+      id: 'h_road',
+      lines: [
+        { who: 'hassan', text: 'اللي عنده ورق. والمعلم شوقي عنده ورق كتير… مع إن أبوه كان فلاح زيّي.' },
+      ],
+      effects: [{ type: 'flag', id: 'hassan_history' }],
+      next: 'h_hub',
+    },
+    h_hub: {
+      id: 'h_hub',
+      lines: [{ who: 'hassan', text: 'عاوز تعرف إيه تاني؟' }],
+      choices: [
+        { text: 'احكيلي عن شوقي زمان.', next: 'h_history', when: { notFlags: ['hassan_history'] } },
+        { text: 'مين شاف الكوبري غيرك؟', next: 'h_others' },
+        { text: 'شكراً يا عم حسن.', next: 'h_bye' },
+      ],
+    },
+    h_history: {
+      id: 'h_history',
+      lines: [
+        { who: 'hassan', text: 'شوقي وأبوه ومحمود كلهم قعدوا على الدكة دي. محمود بيقيس وشوقي بيدفع… وبعدين الخلاف بقى على ورقة واحدة.' },
+        { who: 'narrator', text: 'اتفتح دفتر الملاحظات: الشراكة القديمة بين محمود وشوقي. دي حتة مهمة.' },
+      ],
+      effects: [{ type: 'flag', id: 'hassan_history' }],
+      next: 'h_hub',
+    },
+    h_others: {
+      id: 'h_others',
+      lines: [{ who: 'hassan', text: 'القهوة. رجب سامع وشايف كل حاجة… بس اسأله بعد الضهر، قبلها بيبقى مخنوق.' }],
+      next: 'h_hub',
+    },
+    h_bye: { id: 'h_bye', lines: [{ who: 'hassan', text: 'الله معاك يا ابني. وخلّي عينك في الأرض.' }] },
+    h_again: {
+      id: 'h_again',
+      lines: [{ who: 'hassan', text: 'رجعت يا ابني؟ اسأل اللي إنت عاوزه.' }],
+      choices: [
+        { text: 'احكيلي عن شوقي زمان.', next: 'h_history', when: { notFlags: ['hassan_history'] } },
+        { text: 'متشكر يا عم حسن.', next: 'h_bye' },
+      ],
+    },
+  },
+}
+
+const ragab: Dialogue = {
+  character: 'ragab',
+  entries: [
+    { node: 'r_closed', when: { closedGate: GATES.cafeOpen } },
+    { node: 'r_again', when: { evidence: ['e_cafe_bill'] } },
+    { node: 'r_first' },
+  ],
+  nodes: {
+    r_closed: { id: 'r_closed', lines: [{ who: 'ragab', text: 'القهوة لسه ما فتحتش يا باشا… تعالى بعد العصر وهطلّعلك أحلى شاي.' }] },
+    r_first: {
+      id: 'r_first',
+      lines: [{ who: 'ragab', text: 'أهلاً يا باشا! شاي ولا قهوة؟ ولا جاي تسأل عن بشمهندس محمود؟' }],
+      choices: [
+        { text: 'عاوز أسألك عن ليلة الاختفاء.', next: 'r_night' },
+        { text: 'أنا جاي أشرب شاي بس.', next: 'r_tea' },
+      ],
+    },
+    r_tea: { id: 'r_tea', lines: [{ who: 'ragab', text: 'عيني! شاي سكر برة… ولو افتكرت حاجة هناديك.' }], next: 'r_first' },
+    r_night: {
+      id: 'r_night',
+      lines: [
+        { who: 'ragab', text: 'الليلة دي القهوة كانت مقلوبة… بس سيّد، سواق المعلم شوقي، قعد حوالي ساعة وشرب شيشتين.' },
+        { who: 'ragab', text: 'دفعلي ٩٥ جنيه وطلب فاتورة… عمره ما طلب فاتورة قبل كده! هو ده الراجل الغريب.' },
+        { who: 'narrator', text: 'رجب فتح الدفتر وأراك السطر. اسم «سيّد» وتوقيت ١١:٠٥ م.' },
+      ],
+      effects: [{ type: 'evidence', id: 'e_cafe_bill' }],
+      next: 'r_again',
+    },
+    r_again: {
+      id: 'r_again',
+      lines: [{ who: 'ragab', text: 'فاكر حاجة تانية يا باشا. اسألني.' }],
+      choices: [
+        { text: 'فاكر حاجة تانية من الليلة دي؟', next: 'r_more', when: { notEvidence: ['e_match_night_photo'] } },
+        { text: 'متشكر يا معلم.', next: 'r_bye' },
+      ],
+    },
+    r_more: {
+      id: 'r_more',
+      lines: [{ who: 'ragab', text: '…استنى أفتكر.' }],
+      choices: [
+        { text: '(افتكر)', next: 'r_match', when: { gate: GATES.matchDay } },
+        { text: '(انتظر)', next: 'r_nomatch', when: { closedGate: GATES.matchDay } },
+      ],
+    },
+    r_match: {
+      id: 'r_match',
+      lines: [
+        { who: 'ragab', text: 'النهاردة ماتش الاتحاد… وصوت الجمهور فكّرني! كنت بصوّر الجمهور الليلة دي… استنى!' },
+        { who: 'ragab', text: 'شوف الصورة. في الخلفية شوقي نفسه بيكلّم سيّد قدام المرسيدس. ماكنتش واخد بالي!' },
+      ],
+      effects: [{ type: 'evidence', id: 'e_match_night_photo' }],
+    },
+    r_nomatch: {
+      id: 'r_nomatch',
+      lines: [{ who: 'ragab', text: 'مش جاي لي حاجة دلوقتي… بس كلّمني يوم ماتش الاتحاد، الجمهور بيصحّي ذاكرتي.' }],
+    },
+    r_bye: { id: 'r_bye', lines: [{ who: 'ragab', text: 'تحت أمرك يا باشا. القهوة مفتوحة.' }] },
+  },
+}
+
+const bahr: Dialogue = {
+  character: 'bahr',
+  entries: [
+    { node: 'b_done', when: { flags: ['found_mahmoud'] } },
+    { node: 'b_again', when: { evidence: ['e_bahr_testimony'] } },
+    { node: 'b_first' },
+  ],
+  nodes: {
+    b_first: {
+      id: 'b_first',
+      lines: [{ who: 'bahr', text: 'إيه يا ريّس؟ مش من هنا انت. جاي تسأل على إيه؟' }],
+      choices: [
+        { text: 'جاي أدوّر على خالي.', next: 'b_cold' },
+        { text: 'الخيط ده تعرفه؟', next: 'b_thread', when: { evidence: ['e_thread_door'] } },
+      ],
+    },
+    b_cold: { id: 'b_cold', lines: [{ who: 'bahr', text: 'ما أعرفش حد. الموج بيرمي كل يوم ناس… ويرجّعهم.' }], next: 'b_first' },
+    b_thread: {
+      id: 'b_thread',
+      lines: [
+        { who: 'bahr', text: '…العقدة دي عقدة بحّارة. أنا اللي علّمتها لمحمود من عشرين سنة.' },
+        { who: 'bahr', text: 'جالي بعد المغرب وهو مرعوب وقاللي: «لو حد جه يسأل… ابعتله الخيط». خبّيته في العشة القديمة تحت القلعة.' },
+        { who: 'bahr', text: 'روح للميناء… وصوّر القلعة من هناك. لو شفت الخيط الأحمر على السلم، يبقى إنت جاي من عنده.' },
+      ],
+      effects: [{ type: 'evidence', id: 'e_bahr_testimony' }, { type: 'flag', id: 'shed_known' }],
+    },
+    b_again: {
+      id: 'b_again',
+      lines: [{ who: 'bahr', text: 'العشة تحت السور… صوّر القلعة وشوف الخيط. وبعدين افتح العشة بإيدك.' }],
+    },
+    b_done: {
+      id: 'b_done',
+      lines: [{ who: 'bahr', text: 'محمود لقيك أحسن ما كنت أتمنّى. ربنا يسلّمكم يا ريّس.' }],
+    },
+  },
+}
+
+const fathy: Dialogue = {
+  character: 'fathy',
+  entries: [
+    { node: 'f_closed', when: { closedGate: GATES.siteOpen } },
+    { node: 'f_again', when: { evidence: ['e_fathy_testimony'] } },
+    { node: 'f_first' },
+  ],
+  nodes: {
+    f_closed: { id: 'f_closed', lines: [{ who: 'fathy', text: 'الموقع قفل يا بيه. ارجع الصبح، من التاسعة للخامسة.' }] },
+    f_first: {
+      id: 'f_first',
+      lines: [
+        { who: 'fathy', text: 'العمود ده عمره أكتر من ألف وسبعمية سنة. أنا هنا بقالي تلاتين سنة وماشفتش حاجة بتتغيّر… غير الناس.' },
+      ],
+      choices: [
+        { text: 'شوفت المعلم شوقي هنا؟', next: 'f_shawky' },
+        { text: 'محمود زار المكان ده؟', next: 'f_mahmoud' },
+      ],
+    },
+    f_mahmoud: {
+      id: 'f_mahmoud',
+      lines: [{ who: 'fathy', text: 'من سنين كان بيجي هو وشوقي شباب… وبيتصوّروا تحت العمود. وبعدين وقفوا يجوا.' }],
+      next: 'f_first',
+    },
+    f_shawky: {
+      id: 'f_shawky',
+      lines: [
+        { who: 'fathy', text: 'جه من تلات ليالي وكان متوتّر. رمى ورقة ممزقة في الصندوق اللي عند المدخل.' },
+        { who: 'fathy', text: 'أنا لقيتها الصبح: نص عقد بيع أرض، وعليه ختم الجمعية… والتوقيع مش توقيع محمود. أنا عارف خطه.' },
+      ],
+      effects: [{ type: 'evidence', id: 'e_fathy_testimony' }],
+    },
+    f_again: { id: 'f_again', lines: [{ who: 'fathy', text: 'لو احتجت شهادتي أنا موجود. الحق لازم يتقال.' }] },
+  },
+}
+
+const shawky: Dialogue = {
+  character: 'shawky',
+  entries: [
+    { node: 's_after', when: { evidence: ['e_forged_contract'] } },
+    { node: 's_confront', when: { evidence: ['e_library_envelope'] } },
+    { node: 's_first' },
+  ],
+  nodes: {
+    s_first: {
+      id: 's_first',
+      lines: [
+        { who: 'shawky', text: 'أهلاً يا بشمهندس! صاحب خالك الله يرحمه… قصدي الله يرجعه بالسلامة. اتفضل.' },
+        { who: 'player', text: '«الله يرحمه»؟ هو مات؟' },
+        { who: 'shawky', text: 'لا لا… لسان زلق. اتفضل اسأل.' },
+      ],
+      choices: [
+        { text: 'كنت فين ليلة الأربعاء؟', next: 's_alibi' },
+        { text: 'سيّد سواقك كان في أبيس.', next: 's_driver', when: { evidence: ['e_cafe_bill'] } },
+        { text: 'ورقة الأرض اللي اترمت في الموقع؟', next: 's_paper', when: { evidence: ['e_fathy_testimony'] } },
+      ],
+    },
+    s_alibi: {
+      id: 's_alibi',
+      lines: [{ who: 'shawky', text: 'في بيتي نايم زي الخلق. الشهود كتير… وإنت حافظ كلام الناس.' }],
+      next: 's_first',
+    },
+    s_driver: {
+      id: 's_driver',
+      lines: [
+        { who: 'shawky', text: '…سيّد؟ بيروح بيشرب شاي. مالي أنا؟' },
+        { who: 'narrator', text: 'عينه رمشت مرتين. إيده اتحرّكت ناحية الدرج.' },
+      ],
+      effects: [{ type: 'flag', id: 'shawky_pressed' }],
+      next: 's_first',
+    },
+    s_paper: {
+      id: 's_paper',
+      lines: [{ who: 'shawky', text: 'ورقة؟ أنا بتخلّص من ورق كتير يا بشمهندس. ده شغلي.' }],
+      effects: [{ type: 'flag', id: 'shawky_pressed' }],
+      next: 's_first',
+    },
+    s_confront: {
+      id: 's_confront',
+      lines: [
+        { who: 'player', text: 'عندي الشهادة الأصلية من الجمعية، بتوقيع محمود… قبل ما تزحزح الحجر.' },
+        { who: 'shawky', text: '…ده كلام فاضي. مفيش حاجة تثبت.' },
+        { who: 'player', text: 'العقد اللي في درجك مزوّر. وده الدليل.' },
+      ],
+      choices: [
+        { text: 'افتح الدرج بنفسك.', next: 's_snap' },
+        { text: 'لو سلّمت نفسك دلوقتي هتنزل عقوبتك.', next: 's_snap' },
+      ],
+    },
+    s_snap: {
+      id: 's_snap',
+      lines: [
+        { who: 'shawky', text: '…خد! خد العقد الملعون! بس إنت مش هتخرج بيه من هنا يا بشمهندس…' },
+        { who: 'narrator', text: 'رمى الملف على المكتب وإيده بتترعش. الورقة عليها توقيع محمود… بس الحروف مايلة بشكل مريب.' },
+      ],
+      effects: [{ type: 'evidence', id: 'e_forged_contract' }, { type: 'flag', id: 'shawky_confronted' }],
+    },
+    s_after: {
+      id: 's_after',
+      lines: [{ who: 'shawky', text: 'روح للي تروحله… أنا مش هتكلم تاني من غير محامي.' }],
+    },
+  },
+}
+
+const mahmoud: Dialogue = {
+  character: 'mahmoud',
+  entries: [{ node: 'm_after', when: { flags: ['case_solved'] } }, { node: 'm_first' }],
+  nodes: {
+    m_first: {
+      id: 'm_first',
+      lines: [
+        { who: 'mahmoud', text: 'يا ابن الإيه! لقيتني… بسرعة أكتر من اللي توقعت.' },
+        { who: 'player', text: 'عقدة البحّارة… ماكنتش هتفوتني.' },
+        { who: 'mahmoud', text: 'شوقي زحزح حجر الحدود وزوّر عقد البيع علشان تعويض الطريق. وأنا خبّيت الشهادة الأصلية في خزنة أمانات المكتبة… كودها حروف ق-١٥.' },
+        { who: 'mahmoud', text: 'واجهه بالورق. وسيب اللوحة تتكلم. أنا مستنيك هنا… بس خد بالك.' },
+      ],
+      effects: [{ type: 'flag', id: 'mahmoud_briefed' }],
+    },
+    m_after: {
+      id: 'm_after',
+      lines: [{ who: 'mahmoud', text: 'الخيط اتربط يا {player}. وعقدته المرة دي مش هتتفك.' }],
+    },
+  },
+}
+
+export const DIALOGUES: Partial<Record<CharacterId, Dialogue>> = { zeinab, hassan, ragab, bahr, fathy, shawky, mahmoud }

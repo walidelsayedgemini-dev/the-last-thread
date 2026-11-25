@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "_comment": "Seed schedule for the real-events database. Entries with provisional=true are PLACEHOLDERS and must be replaced by the official fixture list: serve an updated copy of this file (or any URL set in EVENTS_SOURCE_URL) with a higher `version`/`updatedAt` and the game merges it without a new release. All times are Cairo local time.",
+  "events": [
+    {
+      "id": "weekly-friday-prayer",
+      "kind": "friday_prayer",
+      "title": "صلاة الجمعة – جامع العزبة",
+      "at": "2026-01-02T11:30",
+      "recurring": { "weekday": 5, "from": "11:30", "to": "13:30" },
+      "venue": "جامع العزبة – أبيس",
+      "note": "الشارع بيفضى وبتتقفل المحلات.",
+      "source": "seed",
+      "updatedAt": 1
+    },
+    {
+      "id": "weekly-market-thursday",
+      "kind": "market_day",
+      "title": "سوق الخميس – أبيس",
+      "at": "2026-01-01T07:00",
+      "recurring": { "weekday": 4, "from": "07:00", "to": "14:00" },
+      "venue": "ساحة السوق – أبيس",
+      "note": "الأهالي كلهم في السوق والقهوة هادية.",
+      "source": "seed",
+      "updatedAt": 1
+    },
+    {
+      "id": "match-ittihad-sample-1",
+      "kind": "match_ittihad",
+      "title": "الاتحاد السكندري – مباراة (جدول تجريبي)",
+      "at": "2026-11-27T19:00",
+      "venue": "ستاد برج العرب",
+      "note": "موعد مؤقت للتجربة، يُستبدل بالجدول الرسمي.",
+      "provisional": true,
+      "source": "seed",
+      "updatedAt": 1
+    },
+    {
+      "id": "match-ittihad-sample-2",
+      "kind": "match_ittihad",
+      "title": "الاتحاد السكندري – مباراة (جدول تجريبي)",
+      "at": "2026-12-04T20:30",
+      "venue": "ستاد الإسكندرية",
+      "note": "موعد مؤقت للتجربة، يُستبدل بالجدول الرسمي.",
+      "provisional": true,
+      "source": "seed",
+      "updatedAt": 1
+    },
+    {
+      "id": "match-ittihad-sample-3",
+      "kind": "match_ittihad",
+      "title": "الاتحاد السكندري – مباراة (جدول تجريبي)",
+      "at": "2026-12-11T18:00",
+      "venue": "ستاد الإسكندرية",
+      "note": "موعد مؤقت للتجربة، يُستبدل بالجدول الرسمي.",
+      "provisional": true,
+      "source": "seed",
+      "updatedAt": 1
+    }
+  ]
+}
