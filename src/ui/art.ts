@@ -27,6 +27,18 @@ const SCENE_FILE: Record<string, string> = {
   bibliotheca: 'bibliotheca',
   pompey: 'pompey',
   corniche: 'corniche',
+  abis_market: 'abis-market',
+  bakery: 'bakery',
+  old_school: 'old-school',
+  pump_station: 'pump-station',
+  omda_house: 'omda-house',
+  guava_orchard: 'guava-orchard',
+  rail_crossing: 'rail-crossing',
+  cemetery: 'cemetery',
+  pigeon_tower: 'pigeon-tower',
+  mill: 'mill',
+  health_unit: 'health-unit',
+  waterwheel: 'waterwheel',
 }
 
 const byStem = (files: Record<string, string>, stem: string) => files[Object.keys(files).find(k => k.endsWith(`/${stem}.webp`)) ?? '']

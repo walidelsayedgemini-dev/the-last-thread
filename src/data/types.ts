@@ -16,6 +16,7 @@ export type Vec2 = { x: number; z: number }
 export type PlaceId =
   | 'zeinab_home' | 'mahmoud_house' | 'cafe_ragab' | 'abis_mosque' | 'canal_bridge' | 'plot15'
   | 'abis_stop' | 'raml_stop' | 'mansheya' | 'qaitbay' | 'bibliotheca' | 'pompey' | 'corniche'
+  | 'abis_market' | 'bakery' | 'old_school' | 'pump_station' | 'omda_house' | 'guava_orchard' | 'rail_crossing' | 'cemetery' | 'pigeon_tower' | 'mill' | 'health_unit' | 'waterwheel'
 
 export type Place = {
   id: PlaceId
@@ -73,6 +74,7 @@ export type RealEvent = {
 export type CharacterId =
   | 'yassin' | 'zeinab' | 'hassan' | 'ragab' | 'mahmoud' | 'shawky' | 'bahr' | 'fathy'
   | 'salma' | 'nabil' | 'adham' | 'nadia' | 'farid' | 'omar' | 'hoda' | 'khaled'
+  | 'umm_saeed' | 'omda' | 'mounir' | 'abdo' | 'hamada' | 'hagga_fatma' | 'metwally' | 'dr_amal' | 'barakat' | 'saber'
 
 /** Deep character profile ("ملف تعريف"): drives the notebook, dialogue tone and the figure. */
 export type CharacterProfile = {
