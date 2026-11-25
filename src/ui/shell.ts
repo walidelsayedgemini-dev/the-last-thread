@@ -120,14 +120,35 @@ export class Shell {
 
   private title(): HTMLElement {
     const has = this.s.profiles.list().length > 0
+    const action = (label: string, hint: string, number: string, primary: boolean, onclick: () => void) =>
+      h('button', { class: `title-action${primary ? ' is-primary' : ''}`, onclick },
+        h('span', { class: 'title-action-number', 'aria-hidden': true }, number),
+        h('span', { class: 'title-action-copy' }, h('b', null, label), h('small', null, hint)),
+        h('span', { class: 'title-action-arrow', 'aria-hidden': true }, '←'))
     return h('section', { class: 'page title' },
-      this.logo(),
-      h('p', { class: 'tagline' }, CASE_01.tagline),
-      h('div', { class: 'menu' },
-        has && h('button', { class: 'btn primary', onclick: () => this.go('profiles', 'title') }, 'متابعة التحقيق'),
-        h('button', { class: has ? 'btn' : 'btn primary', onclick: () => this.startCreate() }, 'تحقيق جديد'),
-        h('button', { class: 'btn ghost', onclick: () => this.go('settings', 'title') }, 'الإعدادات')),
-      h('footer', null, 'لعبة تحقيق بأجواء نوار – إسكندرية وأبيس • المرحلة ١ (Manus)'))
+      h('div', { class: 'title-atmosphere', 'aria-hidden': true },
+        h('div', { class: 'title-glow' }),
+        h('div', { class: 'title-horizon' }),
+        h('div', { class: 'title-wire' })),
+      h('div', { class: 'title-content' },
+        h('div', { class: 'title-copy' },
+          h('p', { class: 'title-kicker' }, h('span', { class: 'title-live' }), 'آخر اتصال • منذ ٣ أيام'),
+          this.logo(),
+          h('p', { class: 'tagline' }, CASE_01.tagline),
+          h('div', { class: 'title-location' },
+            h('span', { class: 'title-location-mark', 'aria-hidden': true }, '⌖'),
+            h('span', null, 'أبيس / عزبة ١٥'),
+            h('span', { class: 'title-location-rule' }))),
+        h('nav', { class: 'title-menu', 'aria-label': 'القائمة الرئيسية' },
+          h('p', { class: 'title-menu-heading' }, 'ابدأ التحقيق'),
+          h('div', { class: 'menu' },
+            has && action('متابعة التحقيق', 'ارجع لآخر نقطة وصلت لها', '٠١', true, () => this.go('profiles', 'title')),
+            action('تحقيق جديد', 'ابدأ قضية من أول الخيط', has ? '٠٢' : '٠١', !has, () => this.startCreate()),
+            action('الإعدادات', 'الصوت والحركة وجودة الرسوم', has ? '٠٣' : '٠٢', false, () => this.go('settings', 'title'))))),
+      h('footer', null,
+        h('span', null, 'لعبة تحقيق بأجواء نوار'),
+        h('span', { class: 'title-footer-divider', 'aria-hidden': true }, '•'),
+        h('span', null, 'إسكندرية وأبيس')))
   }
 
   private startCreate(): void {
