@@ -33,12 +33,40 @@ interface MusicTrack {
   gain: GainNode
 }
 
+interface VoiceTrack {
+  element: HTMLAudioElement
+  source: MediaElementAudioSourceNode
+  gain: GainNode
+}
+
+export type AmbientCue = 'wind' | 'birds' | 'crickets' | 'frogs' | 'prayer' | 'rain' | 'tram' | 'waves' | 'gulls' | 'cafe' | 'backgammon' | 'water' | 'reeds' | 'traffic' | 'street'
+
+/** Pure location/hour routing used by the procedural director and unit tests. */
+export function ambientSelection(placeId: string, hour: number): readonly AmbientCue[] {
+  const h = ((hour % 24) + 24) % 24
+  const night = h < 6 || h >= 19
+  const prayerWindow = (h >= 4.5 && h < 6.5) || (h >= 18 && h < 21)
+  switch (placeId) {
+    case 'abis_mosque': return prayerWindow ? ['wind', 'birds', 'prayer'] : night ? ['wind', 'crickets'] : ['wind', 'birds']
+    case 'raml_stop': return ['rain', 'tram', 'traffic']
+    case 'qaitbay':
+    case 'corniche': return ['waves', 'gulls', 'wind']
+    case 'cafe_ragab': return ['cafe', 'backgammon']
+    case 'canal_bridge':
+    case 'plot15': return night ? ['water', 'reeds', 'crickets', 'frogs'] : ['water', 'reeds', 'birds']
+    case 'mansheya': return ['traffic', 'street']
+    case 'pompey': return night ? ['wind', 'crickets'] : ['wind', 'birds']
+    default: return night ? ['wind', 'crickets'] : ['wind', 'birds']
+  }
+}
+
 export class Audio {
   readonly ctx: AudioContext
   private readonly master: GainNode
   private readonly ambience: GainNode
   private readonly musicBus: GainNode
   private readonly sfx: GainNode
+  private readonly voiceBus: GainNode
   private noise?: AudioBuffer
   private running = false
   private started = false
@@ -50,6 +78,7 @@ export class Audio {
   private placeEventToken = 0
   private placeLayer?: PlaceLayer
   private placeId?: string
+  private sceneHour = -1
   private droneFilter?: BiquadFilterNode
   private droneGain?: GainNode
   private dissonance?: GainNode
@@ -57,7 +86,8 @@ export class Audio {
   private districtGain?: GainNode
   private districtFilter?: BiquadFilterNode
   private music?: MusicTrack
-  private volume = { music: 0.7, sfx: 0.8, muted: false }
+  private voice?: VoiceTrack
+  private volume = { music: 0.7, ambient: 0.65, sfx: 0.8, voice: 0.85, voiceEnabled: true, muted: false }
   private lastTypewriterAt = -Infinity
 
   constructor() {
@@ -67,23 +97,27 @@ export class Audio {
     this.ambience = this.ctx.createGain()
     this.musicBus = this.ctx.createGain()
     this.sfx = this.ctx.createGain()
-    this.musicBus.connect(this.ambience)
+    this.voiceBus = this.ctx.createGain()
     this.ambience.connect(this.master)
+    this.musicBus.connect(this.master)
     this.sfx.connect(this.master)
+    this.voiceBus.connect(this.master)
     this.master.connect(comp).connect(this.ctx.destination)
-    this.setVolumes(0.7, 0.8)
+    this.setVolumes(0.7, 0.8, false, 0.65, 0.85, true)
   }
 
   unlock(): void {
     if (this.ctx.state === 'suspended') void this.ctx.resume()
   }
 
-  /** `music` scales the ambience bed, `sfx` the stingers. Both 0..1. */
-  setVolumes(music: number, sfx: number, muted = false): void {
-    this.volume = { music, sfx, muted }
+  /** Music, ambience, effects, and voice each scale their own bus. Values are 0..1. */
+  setVolumes(music: number, sfx: number, muted = false, ambient = music, voice = 0.85, voiceEnabled = true): void {
+    this.volume = { music, ambient, sfx, voice, voiceEnabled, muted }
     const t = this.ctx.currentTime
-    this.ambience.gain.setTargetAtTime(muted || !this.running ? 0 : music * 0.6, t, 0.08)
+    this.ambience.gain.setTargetAtTime(muted || !this.running ? 0 : ambient * 0.6, t, 0.08)
+    this.musicBus.gain.setTargetAtTime(muted ? 0 : music * 0.6, t, 0.08)
     this.sfx.gain.setTargetAtTime(muted ? 0 : sfx * 0.9, t, 0.05)
+    this.voiceBus.gain.setTargetAtTime(muted || !voiceEnabled ? 0 : voice, t, 0.05)
   }
 
   /** One shared 2 s noise buffer (~350 KB) reused by wind, sea and every percussive sound. */
@@ -121,7 +155,7 @@ export class Audio {
   startAmbience(): void {
     if (this.running) return
     this.running = true
-    this.setVolumes(this.volume.music, this.volume.sfx, this.volume.muted)
+    this.setVolumes(this.volume.music, this.volume.sfx, this.volume.muted, this.volume.ambient, this.volume.voice, this.volume.voiceEnabled)
     if (!this.started) this.buildBed()
     this.applyScene()
     this.switchPlace(this.placeId)
@@ -182,6 +216,7 @@ export class Audio {
   /** Fade the bed out and cancel scheduled events (pause / back to title). */
   stopAmbience(): void {
     this.running = false
+    this.stopVoice()
     this.timers.forEach(clearTimeout)
     this.timers = []
     this.cancelPlaceEvents()
@@ -197,6 +232,15 @@ export class Audio {
     this.night = night
     this.tension = Math.min(1, Math.max(0, tension))
     this.applyScene()
+  }
+
+  /** Update darkness from the story clock without exposing WebAudio details to the UI. */
+  setClock(hour: number): void {
+    const normalized = ((hour % 24) + 24) % 24
+    if (Math.abs(normalized - this.sceneHour) < 0.05) return
+    this.sceneHour = normalized
+    const darkness = normalized < 6 ? 1 : normalized < 7 ? 0.65 : normalized < 18 ? 0 : normalized < 19 ? 0.55 : 1
+    this.setScene(this.district, darkness, this.tension)
   }
 
   private applyScene(): void {
@@ -239,9 +283,10 @@ export class Audio {
   private scheduleDistrictEvent(): void {
     const tick = () => {
       if (this.ctx.state === 'running') {
-        if (this.district === 'abis' && this.night > 0.4) this.crickets()
-        else if (this.district === 'abis') this.rooster()
-        else this.tramBell()
+        const cue = this.district === 'city' ? 'traffic' : this.night > 0.4 ? 'crickets' : 'birds'
+        if (cue === 'crickets') this.crickets()
+        else if (cue === 'birds') this.birds()
+        else this.tone(180, 120, 0.22, 'sawtooth', 0.012, 0, this.ambience)
       }
       this.later(7000 + Math.random() * 9000, tick)
     }
@@ -289,9 +334,26 @@ export class Audio {
   private crickets(dest: AudioNode = this.ambience): void {
     for (let i = 0; i < 6; i++) this.tone(4200, 4300, 0.05, 'sine', 0.012, i * 0.09, dest)
   }
-  private rooster(): void {
-    this.tone(520, 700, 0.25, 'sawtooth', 0.01, 0, this.ambience)
-    this.tone(700, 420, 0.5, 'sawtooth', 0.01, 0.28, this.ambience)
+  private birds(dest: AudioNode = this.ambience): void {
+    const base = 1800 + Math.random() * 900
+    this.tone(base, base * 1.18, 0.08, 'sine', 0.012, 0, dest)
+    this.tone(base * 1.2, base * 0.95, 0.1, 'sine', 0.01, 0.16, dest)
+  }
+  private frogs(dest: AudioNode = this.ambience): void {
+    this.tone(230, 180, 0.12, 'triangle', 0.025, 0, dest)
+    this.tone(260, 200, 0.1, 'triangle', 0.018, 0.2, dest)
+  }
+  private gull(dest: AudioNode = this.ambience): void {
+    this.tone(1050, 1550, 0.34, 'sine', 0.018, 0, dest)
+    this.tone(1550, 930, 0.28, 'sine', 0.014, 0.24, dest)
+  }
+  private prayer(dest: AudioNode = this.ambience): void {
+    // A distant, wordless call-like swell: intentionally sparse and atmospheric, never a looped prayer recording.
+    for (const [freq, delay] of [[220, 0], [277, 0.22], [330, 0.48], [277, 0.82]] as const) this.tone(freq, freq * 1.015, 0.85, 'sine', 0.012, delay, dest)
+  }
+  private rain(dest: AudioNode = this.ambience): void {
+    this.burst(3900, 0.5, 0.12, 0.025, 0, dest)
+    this.burst(5200, 0.6, 0.08, 0.016, 0.13, dest)
   }
   private tramBell(dest: AudioNode = this.ambience): void {
     this.tone(1320, 1300, 0.9, 'sine', 0.02, 0, dest)
@@ -336,6 +398,7 @@ export class Audio {
       case 'plot15':
         this.addPlaceNoise(layer, 'water', 'lowpass', 850, 0.5, 0.07)
         this.addPlaceNoise(layer, 'reeds', 'bandpass', 1350, 0.65, 0.025)
+        if (id === 'plot15') this.addPlaceNoise(layer, 'wind', 'bandpass', 330, 0.55, 0.025)
         break
       case 'zeinab_home':
         this.addPlaceNoise(layer, 'room', 'lowpass', 250, 0.4, 0.012)
@@ -353,11 +416,13 @@ export class Audio {
       case 'raml_stop':
         this.addPlaceNoise(layer, 'engine', 'lowpass', 115, 0.8, 0.06)
         this.addPlaceNoise(layer, 'tram', 'bandpass', 420, 0.5, 0.015)
+        this.addPlaceNoise(layer, 'rain', 'highpass', 3600, 0.45, 0.012)
         break
       case 'qaitbay':
       case 'corniche':
         this.addPlaceNoise(layer, 'waves', 'lowpass', 430, 0.55, 0.09)
         this.addPlaceNoise(layer, 'foam', 'bandpass', 950, 0.5, 0.025)
+        this.addPlaceNoise(layer, 'gulls', 'bandpass', 1800, 0.55, 0.004)
         break
       case 'bibliotheca':
         this.addPlaceNoise(layer, 'hall', 'lowpass', 600, 0.35, 0.012)
@@ -438,12 +503,15 @@ export class Audio {
         layer.controls.crowd?.gain.setTargetAtTime(0.025 + Math.random() * 0.04, this.ctx.currentTime, 0.7)
         layer.controls.tv?.gain.setTargetAtTime(0.006 + Math.random() * 0.012, this.ctx.currentTime, 1.2)
         if (Math.random() < 0.42) {
+          // Two dry wooden clicks: a backgammon move in the café's foreground.
           this.tone(1550, 1250, 0.08, 'triangle', 0.025, 0, dest)
           this.tone(2300, 1900, 0.055, 'sine', 0.016, 0.07, dest)
         }
         break
       case 'canal_bridge':
       case 'plot15':
+        if (this.night > 0.35) this.frogs(dest)
+        else if (Math.random() < 0.7) this.birds(dest)
         if (Math.random() < 0.58) {
           this.tone(720 + Math.random() * 90, 640, 0.16, 'sine', 0.025, 0, dest)
           this.tone(1040, 920, 0.11, 'sine', 0.012, 0.18, dest)
@@ -471,7 +539,8 @@ export class Audio {
         }
         break
       case 'abis_mosque':
-        if (Math.random() < 0.8) {
+        if (ambientSelection(layer.id, this.sceneHour).includes('prayer') && Math.random() < 0.13) this.prayer(dest)
+        else if (Math.random() < 0.8) {
           const base = 2200 + Math.random() * 700
           this.tone(base, base * 1.08, 0.08, 'sine', 0.018, 0, dest)
           this.tone(base * 1.18, base * 1.12, 0.1, 'sine', 0.014, 0.11, dest)
@@ -480,6 +549,7 @@ export class Audio {
       case 'abis_stop':
       case 'raml_stop':
         if (Math.random() < 0.52) this.tone(440, 520, 0.16, 'square', 0.025, 0, dest)
+        if (layer.id === 'raml_stop' && Math.random() < 0.3) this.rain(dest)
         if (layer.id === 'raml_stop' && Math.random() < 0.34) this.tramBell(dest)
         break
       case 'qaitbay':
@@ -489,6 +559,7 @@ export class Audio {
           this.tone(1250, 1750, 0.12, 'sine', 0.02, 0, dest)
           this.tone(1750, 1200, 0.13, 'sine', 0.014, 0.14, dest)
         }
+        if (Math.random() < 0.3) this.gull(dest)
         if (Math.random() < 0.32) this.burst(360, 1.1, 0.25, 0.028, 0, dest)
         break
       case 'bibliotheca':
@@ -561,6 +632,46 @@ export class Audio {
       }
     })
     void element.play().catch(() => undefined)
+  }
+
+  /** Play one keyed dialogue clip; the caption remains the source of truth. */
+  playVoice(url: string | null): void {
+    this.stopVoice()
+    if (!url || !this.volume.voiceEnabled || this.volume.muted) return
+    let element: HTMLAudioElement
+    let source: MediaElementAudioSourceNode
+    try {
+      element = document.createElement('audio')
+      element.preload = 'auto'
+      element.crossOrigin = 'anonymous'
+      element.src = url
+      source = this.ctx.createMediaElementSource(element)
+    } catch {
+      return
+    }
+    const gain = this.ctx.createGain()
+    gain.gain.value = 0.0001
+    source.connect(gain).connect(this.voiceBus)
+    const track: VoiceTrack = { element, source, gain }
+    this.voice = track
+    const t = this.ctx.currentTime
+    gain.gain.setTargetAtTime(1, t, 0.03)
+    const duck = this.volume.muted ? 0 : 0.28
+    this.ambience.gain.setTargetAtTime(this.running ? this.volume.ambient * 0.6 * duck : 0, t, 0.08)
+    this.musicBus.gain.setTargetAtTime(this.volume.music * 0.6 * duck, t, 0.08)
+    const finish = () => { if (this.voice === track) this.stopVoice(track) }
+    element.addEventListener('ended', finish, { once: true })
+    element.addEventListener('error', finish, { once: true })
+    void element.play().catch(finish)
+  }
+
+  stopVoice(track = this.voice): void {
+    if (!track || (this.voice && track !== this.voice)) return
+    if (this.voice === track) this.voice = undefined
+    try { track.element.pause() } catch { /* already stopped */ }
+    track.source.disconnect()
+    track.gain.disconnect()
+    this.setVolumes(this.volume.music, this.volume.sfx, this.volume.muted, this.volume.ambient, this.volume.voice, this.volume.voiceEnabled)
   }
 
   private fadeOutMusic(track: MusicTrack, fade: number): void {

@@ -8,7 +8,10 @@ import type { StorageAdapter } from '../services/storage'
 export type Settings = {
   version: 1
   musicVolume: number
+  ambientVolume: number
   sfxVolume: number
+  voiceVolume: number
+  voiceEnabled: boolean
   muted: boolean
   reducedMotion: boolean
   /** Optional URL of your hint proxy that talks to ChatGPT (see services/hints.ts). Empty = offline hints. */
@@ -25,7 +28,7 @@ const SETTINGS_KEY = 'ltt.settings.v1'
 
 function defaultSettings(): Settings {
   return {
-    version: 1, musicVolume: 0.7, sfxVolume: 0.8, muted: false,
+    version: 1, musicVolume: 0.7, ambientVolume: 0.65, sfxVolume: 0.8, voiceVolume: 0.85, voiceEnabled: true, muted: false,
     reducedMotion: false, hintEndpoint: '', eventsUrl: '',
     textScale: 1, highContrast: false,
   }
@@ -50,7 +53,10 @@ export function parseSettings(raw: string | null): Settings {
   return {
     version: 1,
     musicVolume: num(d.musicVolume, base.musicVolume, 0, 1),
+    ambientVolume: num(d.ambientVolume, base.ambientVolume, 0, 1),
     sfxVolume: num(d.sfxVolume, base.sfxVolume, 0, 1),
+    voiceVolume: num(d.voiceVolume, base.voiceVolume, 0, 1),
+    voiceEnabled: d.voiceEnabled !== false,
     muted: d.muted === true,
     reducedMotion: d.reducedMotion === true,
     hintEndpoint: url(d.hintEndpoint),
