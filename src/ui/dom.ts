@@ -14,7 +14,13 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs | 
       if (v === undefined || v === null || v === false) continue
       if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v as EventListener)
       else if (k === 'class') el.className = String(v)
-      else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v)
+      else if (k === 'style' && typeof v === 'object') {
+        // Custom properties (--x) are ignored by Object.assign on CSSStyleDeclaration.
+        for (const [prop, value] of Object.entries(v as Record<string, string>)) {
+          if (prop.startsWith('--')) el.style.setProperty(prop, value)
+          else (el.style as unknown as Record<string, string>)[prop] = value
+        }
+      }
       else if (k === 'dataset' && typeof v === 'object') Object.assign(el.dataset, v)
       else if (v === true) el.setAttribute(k, '')
       else el.setAttribute(k, String(v))
@@ -24,7 +30,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs | 
   return el
 }
 
-export function append(el: Element, children: (Child | Child[])[]): void {
+function append(el: Element, children: (Child | Child[])[]): void {
   for (const c of children.flat()) {
     if (c === null || c === undefined || c === false) continue
     el.append(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c)

@@ -96,7 +96,7 @@
 .inv-pin.kind-travel .inv-pin-dot, .inv-pin.kind-rest .inv-pin-dot { background: radial-gradient(circle, #e8cf9f 0 44%, #9c7b45 45% 100%); color: #1a1208; box-shadow: 0 0 0 4px #c9aa7840, 0 6px 18px #000a; }
 .inv-pin.kind-travel .inv-pin-dot::after, .inv-pin.kind-rest .inv-pin-dot::after { border-color: var(--gold); }
 .inv-pin-label {
-  display: grid; line-height: 1.3; text-align: start; padding: 6px 12px; border-radius: 8px; max-width: 220px;
+  display: grid; line-height: 1.3; text-align: start; padding: 6px 12px; border-radius: 8px; width: max-content; max-width: 220px;
   background: #05080bd9; border: 1px solid #ffffff26; box-shadow: 0 6px 18px #0009;
 }
 .inv-pin-label small { color: var(--red-hot); font-weight: 800; font-size: 0.75rem; }
@@ -152,6 +152,7 @@
 .inv-map-canal { fill: none; stroke: #2a6d7a; stroke-width: 10; opacity: 0.7; stroke-linecap: round; }
 .inv-map-route { fill: none; stroke: #c9aa7866; stroke-width: 2; stroke-dasharray: 6 8; }
 .inv-map-pin { cursor: pointer; }
+.inv-map-pin .pin-hit { fill: transparent; stroke: none; }
 .inv-map-pin .pin-halo { fill: #ef707822; stroke: var(--red-hot); stroke-width: 1.5; }
 .inv-map-pin .pin-dot { fill: var(--red-hot); }
 .inv-map-pin .pin-label { fill: var(--bone); font: 700 15px var(--font); paint-order: stroke; stroke: #070d12; stroke-width: 4px; }
@@ -184,7 +185,7 @@
 .investigation.drawer-open .inv-drawer { width: 330px; }
 /* Physical sides on purpose: the drawer sits on the left in RTL and its tab hangs off its right edge. */
 .inv-drawer-toggle {
-  position: absolute; bottom: 16px; left: calc(100% + 14px); z-index: 3;
+  position: absolute; top: 14px; left: calc(100% + 14px); z-index: 3;
   display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 20px; white-space: nowrap;
   background: #05080bd9; border: 1px solid #ffffff2a; color: var(--bone); font-weight: 700; font-size: 0.85rem;
   box-shadow: 0 6px 18px #0009;
@@ -338,9 +339,11 @@
 
 @media (max-width: 1099px) {
   .hud .narration { bottom: calc(60px + var(--safe-b)); }
+  /* The guide owns the top of the stage on tablets/phones; toasts rise from above the bottom sheet. */
+  .hud .toasts { top: auto; bottom: calc(64px + var(--safe-b)); }
 }
 @media (max-width: 760px) {
-  .hud .toasts { top: calc(124px + var(--safe-t)); }
+  .hud .toasts { bottom: calc(112px + var(--safe-b)); }
   .hud .narration { bottom: calc(118px + var(--safe-b)); padding: 12px 14px 8px; }
   .hud .hint-bubble { top: auto; bottom: calc(118px + var(--safe-b)); inset-inline: 4vw; width: auto; }
 }

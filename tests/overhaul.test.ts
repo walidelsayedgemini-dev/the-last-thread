@@ -7,7 +7,6 @@ import { CASE_01 } from '../src/data/case01'
 import { CASE_02 } from '../src/data/case02'
 import { DIALOGUES, DIALOGUES_BY_CASE } from '../src/data/dialogues'
 import { getCase } from '../src/data/cases'
-import { createArEngine } from '../src/services/ar'
 import { EventsDb } from '../src/services/eventsDb'
 import { HintService } from '../src/services/hints'
 import { MemoryStorage } from '../src/services/storage'
@@ -22,7 +21,7 @@ function session(): Session {
   const storage = new MemoryStorage()
   const profiles = new ProfileService(storage, () => 1000)
   const profile = profiles.create({ name: 'ياسين' }, 'story')
-  return new Session(profile, { events: new EventsDb(storage), profiles, hints: new HintService(undefined, undefined, 0, () => 0), ar: createArEngine(), now: () => ctx.stamp })
+  return new Session(profile, { events: new EventsDb(storage), profiles, hints: new HintService(undefined, undefined, 0, () => 0), now: () => ctx.stamp })
 }
 
 describe('overhaul: confrontations', () => {
@@ -98,5 +97,18 @@ describe('overhaul: saves and case02', () => {
     expect(e.canAccuse()).toBe(true)
     expect(e.accuse('adham', 'm02_money')).toBe('ok')
     expect(e.state.flags.has('case_solved')).toBe(true)
+  })
+})
+describe('overhaul: case-scoped cast', () => {
+  it('only shows characters that have a part in the active case', async () => {
+    const { CHARACTERS } = await import('../src/data/characters')
+    const s = session()
+    expect(s.present(CHARACTERS.ragab)).toBe(true)
+    expect(s.present(CHARACTERS.salma)).toBe(false)
+    expect(s.knownCharacters().map(c => c.id).sort()).toEqual(['mahmoud', 'zeinab'])
+    s.startCase('case02')
+    expect(s.present(CHARACTERS.ragab)).toBe(false)
+    expect(s.present(CHARACTERS.salma)).toBe(true)
+    expect(s.knownCharacters().some(c => c.id === 'mahmoud' || c.id === 'zeinab')).toBe(false)
   })
 })

@@ -1,6 +1,6 @@
 /**
  * Case-file overlay (the "investigation folder"): evidence, people, objectives, the red-thread
- * board, map, real-world calendar and the final accusation. Built with the safe DOM helper.
+ * board, real-world calendar and the final accusation. Built with the safe DOM helper.
  */
 import { formatClock, formatDate, formatDateTime, arabicDigits } from '../core/clock'
 import { PLACES } from '../data/places'
@@ -11,9 +11,9 @@ import type { EventsDb } from '../services/eventsDb'
 import { portraitUrl } from './art'
 import { h, setChildren, svg } from './dom'
 
-type Tab = 'evidence' | 'people' | 'objectives' | 'board' | 'map' | 'calendar'
+type Tab = 'evidence' | 'people' | 'objectives' | 'board' | 'calendar'
 const TABS: [Tab, string][] = [
-  ['board', 'اللوحة'], ['evidence', 'الأدلة'], ['people', 'الأشخاص'], ['objectives', 'المهام'], ['map', 'الخريطة'], ['calendar', 'التقويم'],
+  ['board', 'اللوحة'], ['evidence', 'الأدلة'], ['people', 'الأشخاص'], ['objectives', 'المهام'], ['calendar', 'التقويم'],
 ]
 const KIND_LABEL: Record<Evidence['kind'], string> = { object: 'جسم', testimony: 'شهادة', document: 'مستند', photo: 'صورة', trace: 'أثر' }
 const EVENT_LABEL: Record<EventKind, string> = { match_ittihad: 'مباراة الاتحاد', market_day: 'سوق', friday_prayer: 'صلاة الجمعة' }
@@ -32,8 +32,6 @@ function markHelpSeen(): void {
 export type CaseFileDeps = {
   audio: Audio
   events: EventsDb
-  /** Where the player stands (for the map). */
-  where: () => { zone: 'abis' | 'city'; x: number; z: number }
   onClose: () => void
   onAccused: (result: 'ok' | 'wrong-culprit' | 'wrong-motive' | 'locked') => void
 }
@@ -108,7 +106,7 @@ export class CaseFileView {
     if (!s) return
     setChildren(this.tabsEl, TABS.map(([id, label]) =>
       h('button', { class: `cf-tab${id === this.tab ? ' on' : ''}`, role: 'tab', 'aria-selected': id === this.tab, onclick: () => { this.d.audio.play('ui'); this.setTab(id) } }, label)))
-    const page = { evidence: () => this.evidence(s), people: () => this.people(s), objectives: () => this.objectives(s), board: () => this.board(s), map: () => this.map(s), calendar: () => this.calendar(s) }[this.tab]()
+    const page = { evidence: () => this.evidence(s), people: () => this.people(s), objectives: () => this.objectives(s), board: () => this.board(s), calendar: () => this.calendar(s) }[this.tab]()
     setChildren(this.pageEl, page)
   }
 
@@ -340,41 +338,6 @@ export class CaseFileView {
       can
         ? [culprit, motive, h('p', { class: 'accuse-warn' }, 'خد بالك: الاتهام الغلط بيضايق الشخص، وبيعدّي ساعة من الوقت، وبيخصم من تقديرك.'), go]
         : h('p', { class: 'cf-empty' }, 'اربط الخيوط الأساسية في اللوحة الأول، وبعدها تقدر تتّهم حد.'))
-  }
-
-  // ---- Map ------------------------------------------------------------------------------------------------------------------------
-
-  private map(s: Session): HTMLElement {
-    const here = this.d.where()
-    const objective = s.engine.currentObjective()
-    const makeMap = (zone: 'abis' | 'city', title: string, bounds: { x0: number; x1: number; z0: number; z1: number }) => {
-      const W = 420
-      const H = Math.round((W * (bounds.z1 - bounds.z0)) / (bounds.x1 - bounds.x0))
-      const px = (x: number) => ((x - bounds.x0) / (bounds.x1 - bounds.x0)) * W
-      const pz = (z: number) => ((z - bounds.z0) / (bounds.z1 - bounds.z0)) * H
-      const root = svg('svg', { class: 'map-svg', viewBox: `0 0 ${W} ${H}`, width: '100%' })
-      root.append(svg('rect', { x: 0, y: 0, width: W, height: H, class: 'map-bg' }))
-      if (zone === 'city') root.append(svg('rect', { x: 0, y: 0, width: W, height: pz(-297), class: 'map-sea' }))
-      if (zone === 'abis') root.append(svg('rect', { x: 0, y: pz(143), width: W, height: pz(157) - pz(143), class: 'map-sea' }))
-      for (const p of Object.values(PLACES).filter(pl => pl.district === zone)) {
-        const g = svg('g', { class: `map-pin${objective?.place === p.id ? ' goal' : ''}` })
-        g.append(svg('circle', { cx: px(p.pos.x), cy: pz(p.pos.z), r: 5 }))
-        const t = svg('text', { x: px(p.pos.x), y: pz(p.pos.z) - 9, 'text-anchor': 'middle' })
-        t.textContent = p.short
-        g.append(t)
-        root.append(g)
-      }
-      if (here.zone === zone) {
-        const me = svg('g', { class: 'map-me' })
-        me.append(svg('circle', { cx: px(here.x), cy: pz(here.z), r: 6 }), svg('circle', { cx: px(here.x), cy: pz(here.z), r: 11, class: 'pulse' }))
-        root.append(me)
-      }
-      return h('figure', { class: 'map' }, h('figcaption', null, title, here.zone === zone ? ' (انت هنا)' : ''), root)
-    }
-    return h('div', { class: 'maps' },
-      makeMap('abis', 'أبيس – عزبة ١٥', { x0: -110, x1: 230, z0: 118, z1: 318 }),
-      makeMap('city', 'الإسكندرية', { x0: -400, x1: 250, z0: -390, z1: -70 }),
-      objective?.place && h('p', { class: 'board-note' }, `الهدف الحالي: ${objective.title} – ${PLACES[objective.place].name}`))
   }
 
   // ---- Calendar -----------------------------------------------------------------------------------------------------------------------

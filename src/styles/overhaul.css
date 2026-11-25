@@ -51,7 +51,7 @@
 .thread-loose { fill: none; stroke: var(--red-hot); stroke-width: 2.5; stroke-dasharray: 2 6; stroke-linecap: round; opacity: 0.85; }
 .board-help { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .board-help.active { color: var(--bone) !important; }
-.link { background: none; border: none; color: var(--gold); text-decoration: underline; padding: 0 4px; font-weight: 700; }
+.link { background: none; border: none; color: var(--gold); text-decoration: underline; padding: 8px 8px; min-height: 36px; font-weight: 700; }
 .board-help-card {
   position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, 90%);
   padding: 18px 22px; background: #0b1419f5; border: 1px solid var(--gold); border-radius: 12px; box-shadow: 0 20px 60px #000c;

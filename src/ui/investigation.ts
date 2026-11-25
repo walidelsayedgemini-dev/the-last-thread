@@ -44,6 +44,7 @@ export class InvestigationView {
   constructor(private readonly d: InvestigationDeps) {
     this.el = h('main', { class: 'investigation', hidden: true, 'aria-label': 'واجهة التحقيق' })
     this.drawerOpen = window.matchMedia?.(WIDE).matches ?? false
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => this.layoutPins()).observe(this.el)
   }
 
   get currentPlace(): PlaceId {
@@ -197,6 +198,65 @@ export class InvestigationView {
         this.drawer(s, place)),
       this.mobileNav(s),
     )
+    if (this.tab === 'scene') {
+      this.layoutPins()
+      const photo = this.el.querySelector<HTMLImageElement>('.inv-photo')
+      if (photo && !photo.complete) photo.addEventListener('load', () => this.layoutPins(), { once: true })
+    }
+  }
+  /**
+   * Pins are authored as percentages of the 16:9 photograph, but the photo is cropped with
+   * object-fit: cover. Map each pin onto the visible crop, keep it fully on screen, out from under
+   * the guide / standees / drawer tab, and away from other pins.
+   */
+  private layoutPins(): void {
+    const stage = this.el.querySelector<HTMLElement>('.inv-stage')
+    const pins = [...this.el.querySelectorAll<HTMLElement>('.inv-pin')]
+    if (!stage || pins.length === 0 || this.el.hidden) return
+    const W = stage.clientWidth
+    const H = stage.clientHeight
+    if (!W || !H) return
+    const photo = stage.querySelector<HTMLImageElement>('.inv-photo')
+    const ratio = photo?.naturalWidth && photo.naturalHeight ? photo.naturalWidth / photo.naturalHeight : 16 / 9
+    const scale = Math.max(W / ratio, H)
+    const iw = scale * ratio
+    const ih = scale
+    const ox = (W - iw) / 2
+    const oy = (H - ih) / 2
+    const box = stage.getBoundingClientRect()
+    const rel = (el: Element | null) => {
+      const r = el?.getBoundingClientRect()
+      return r && r.width > 0 ? { l: r.left - box.left, r: r.right - box.left, t: r.top - box.top, b: r.bottom - box.top } : undefined
+    }
+    const guide = rel(stage.querySelector('.inv-guide'))
+    const people = rel(stage.querySelector('.inv-people'))
+    const margin = 8
+    const top = (guide ? guide.b : 0) + margin
+    const placed: { l: number; r: number; t: number; b: number }[] = []
+    for (const pin of pins) {
+      const pw = pin.offsetWidth
+      const ph = pin.offsetHeight
+      let x = ox + (Number(pin.dataset.x) / 100) * iw
+      let y = oy + (Number(pin.dataset.y) / 100) * ih
+      x = Math.max(margin + pw / 2, Math.min(W - margin - pw / 2, x))
+      const overlapsPeople = (cx: number) => people && cx + pw / 2 > people.l && cx - pw / 2 < people.r
+      const bottom = (overlapsPeople(x) ? people!.t : H) - margin
+      y = Math.max(top + ph / 2, Math.min(bottom - ph / 2, y))
+      // Nudge down (then up) until it no longer collides with an already placed pin.
+      const hits = (cy: number) => placed.some(p => x - pw / 2 < p.r && x + pw / 2 > p.l && cy - ph / 2 < p.b + 4 && cy + ph / 2 > p.t - 4)
+      if (hits(y)) {
+        const step = ph / 2
+        for (let k = 1; k < 12; k++) {
+          const down = y + k * step
+          const up = y - k * step
+          if (down + ph / 2 <= bottom && !hits(down)) { y = down; break }
+          if (up - ph / 2 >= top && !hits(up)) { y = up; break }
+        }
+      }
+      placed.push({ l: x - pw / 2, r: x + pw / 2, t: y - ph / 2, b: y + ph / 2 })
+      pin.style.left = `${Math.round(x)}px`
+      pin.style.top = `${Math.round(y)}px`
+    }
   }
 
   private header(s: Session, place: Place): HTMLElement {
@@ -277,6 +337,7 @@ export class InvestigationView {
     return h('button', {
       class: `inv-pin kind-${hotspot.kind}${left > 60 ? ' label-start' : ''}`,
       style: { left: `${left}%`, top: `${top}%`, '--i': String(index) },
+      'data-x': String(left), 'data-y': String(top),
       'aria-label': `${KIND_LABEL[hotspot.kind]}: ${hotspot.label}`,
       onclick: () => { this.d.audio.play('pin'); this.d.onHotspot(hotspot) },
     },
@@ -341,6 +402,8 @@ export class InvestigationView {
     for (const p of places) {
       const cls = `inv-map-pin${p.id === current.id ? ' current' : ''}${p.id === goal ? ' goal' : ''}`
       const g = svg('g', { class: cls, transform: `translate(${px(p.pos.x)} ${py(p.pos.z)})`, tabindex: '0', role: 'button', 'aria-label': p.name })
+      // Generous invisible hit area: the visible dot is small on phones once the SVG scales down.
+      g.append(svg('circle', { r: 42, class: 'pin-hit' }))
       if (p.id === goal) g.append(svg('circle', { r: 19, class: 'pin-goal' }))
       g.append(svg('circle', { r: p.id === current.id ? 12 : 9, class: 'pin-halo' }))
       g.append(svg('circle', { r: p.id === current.id ? 5 : 4, class: 'pin-dot' }))
