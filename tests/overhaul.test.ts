@@ -51,8 +51,8 @@ describe('overhaul: confrontations', () => {
 describe('overhaul: session consequences and grade', () => {
   it('penalizes a wrong accusation, advances story time, and offends the accused', () => {
     const s = session()
-    s.engine.apply([{ type: 'evidence', id: 'e_boundary_stone' }, { type: 'evidence', id: 'e_survey_book' }, { type: 'evidence', id: 'e_library_envelope' }, { type: 'evidence', id: 'e_forged_contract' }, { type: 'evidence', id: 'e_thread_door' }, { type: 'evidence', id: 'e_qaitbay_photo' }, { type: 'flag', id: 'found_mahmoud' }])
-    s.tie('e_boundary_stone', 'e_survey_book'); s.tie('e_library_envelope', 'e_forged_contract'); s.tie('e_thread_door', 'e_qaitbay_photo')
+    s.engine.apply([{ type: 'evidence', id: 'e_boundary_stone' }, { type: 'evidence', id: 'e_survey_book' }, { type: 'evidence', id: 'e_library_envelope' }, { type: 'evidence', id: 'e_forged_contract' }, { type: 'evidence', id: 'e_thread_door' }, { type: 'evidence', id: 'e_qaitbay_photo' }, { type: 'evidence', id: 'e_rail_log' }, { type: 'evidence', id: 'e_market_driver' }, { type: 'evidence', id: 'e_pump_log' }, { type: 'evidence', id: 'e_miller_promise' }, { type: 'evidence', id: 'e_handwriting' }, { type: 'flag', id: 'found_mahmoud' }])
+    s.tie('e_boundary_stone', 'e_survey_book'); s.tie('e_library_envelope', 'e_forged_contract'); s.tie('e_thread_door', 'e_qaitbay_photo'); s.tie('e_rail_log', 'e_market_driver'); s.tie('e_pump_log', 'e_miller_promise'); s.tie('e_survey_book', 'e_handwriting')
     expect(s.accuse('hassan', 'm_road')).toBe('wrong-culprit')
     expect(s.progress.stats.wrongAccusations).toBe(1)
     expect(s.clock.elapsedStoryMinutes).toBe(60)
@@ -68,6 +68,17 @@ describe('overhaul: session consequences and grade', () => {
     expect(result.stars).toBe(1)
     expect(result.missed).toContain('e_survey_book')
     expect(result.breakdown.some(x => x.label.includes('الأدلة'))).toBe(true)
+  })
+  it('does not penalize skipping bonus side-quest evidence', () => {
+    const withoutBonus = new CaseState()
+    withoutBonus.evidence.set('e_thread_door', 1)
+    const withBonus = new CaseState()
+    withBonus.evidence.set('e_thread_door', 1)
+    withBonus.evidence.set('e_bakery_ration', 2)
+    const a = computeGrade({ photos: 0, hints: 0, wrongAccusations: 0 }, CASE_01, withoutBonus)
+    const b = computeGrade({ photos: 0, hints: 0, wrongAccusations: 0 }, CASE_01, withBonus)
+    expect(b.breakdown[0]).toEqual(a.breakdown[0])
+    expect(b.missed).not.toContain('e_bakery_ration')
   })
   it('exposes progressive hint cost', () => {
     const s = session()

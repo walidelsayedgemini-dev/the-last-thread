@@ -38,6 +38,22 @@ describe('case data integrity', () => {
     for (const o of CASE_01.objectives) if (o.place) expect(PLACES[o.place]).toBeDefined()
     for (const o of CASE_01.objectives) expect(LOCAL_HINTS[o.id], `hint ${o.id}`).toHaveLength(3)
     for (const c of Object.values(CHARACTERS)) expect(PLACES[c.place]).toBeDefined()
+    for (const id of ['umm_saeed', 'omda', 'mounir', 'abdo', 'hamada', 'hagga_fatma', 'metwally', 'dr_amal', 'barakat', 'saber'] as const) {
+      expect(DIALOGUES_BY_CASE.case01[id], `villager dialogue ${id}`).toBeDefined()
+    }
+  })
+  it('gives every new Abis place at least two object-keyed case01 hotspots', () => {
+    const expected: Record<string, string[]> = {
+      abis_market: ['scale', 'tricycle'], bakery: ['oven', 'bread_racks'], old_school: ['noticeboard', 'chalkboard'],
+      pump_station: ['engine', 'logbook'], omda_house: ['guestbook', 'car'], guava_orchard: ['ditch', 'hut'],
+      rail_crossing: ['booth', 'tracks'], cemetery: ['tomb_door', 'lantern'], pigeon_tower: ['coop_door', 'rings_box'],
+      mill: ['calendar', 'sacks'], health_unit: ['register', 'pharmacy_window'], waterwheel: ['trough', 'path'],
+    }
+    for (const [place, keys] of Object.entries(expected)) {
+      const spots = CASE_01.hotspots.filter(h => h.place === place)
+      expect(spots.length, place).toBeGreaterThanOrEqual(2)
+      for (const key of keys) expect(spots.some(h => h.id === `hs_${place}_${key}`), `${place}:${key}`).toBe(true)
+    }
   })
   it('dialogue nodes and effects are valid', () => {
     const ev = new Set(CASE_01.evidence.map(e => e.id))
@@ -51,7 +67,7 @@ describe('case data integrity', () => {
     }
   })
   it('critical-path evidence is never time-gated', () => {
-    const critical = ['e_thread_door', 'e_survey_book', 'e_boundary_stone', 'e_library_photo', 'e_library_envelope', 'e_bahr_testimony', 'e_qaitbay_photo', 'e_forged_contract']
+    const critical = ['e_thread_door', 'e_survey_book', 'e_boundary_stone', 'e_rail_log', 'e_market_driver', 'e_pump_log', 'e_miller_promise', 'e_handwriting', 'e_library_photo', 'e_library_envelope', 'e_bahr_testimony', 'e_qaitbay_photo', 'e_forged_contract']
     for (const id of critical) expect(CASE_01.evidence.find(e => e.id === id)!.gate, id).toBeUndefined()
   })
 })
@@ -101,6 +117,7 @@ describe('case engine', () => {
     hs('hs_door_thread'); hs('hs_desk'); hs('hs_coat')
     expect(['e_thread_door', 'e_survey_book', 'e_microbus_ticket'].every(id => engine.has(id as never))).toBe(true)
     hs('hs_stone')
+    hs('hs_rail_crossing_booth'); hs('hs_abis_market_tricycle'); hs('hs_pump_station_logbook'); hs('hs_mill_calendar'); hs('hs_old_school_chalkboard')
     // Hassan
     const h = talk(engine, 'hassan')
     h.choose(0)
@@ -126,6 +143,9 @@ describe('case engine', () => {
     engine.tie('e_boundary_stone', 'e_survey_book')
     engine.tie('e_library_envelope', 'e_forged_contract')
     engine.tie('e_thread_door', 'e_qaitbay_photo')
+    engine.tie('e_rail_log', 'e_market_driver')
+    engine.tie('e_pump_log', 'e_miller_promise')
+    engine.tie('e_survey_book', 'e_handwriting')
     expect(engine.canAccuse()).toBe(true)
     expect(engine.accuse('hassan', 'm_road')).toBe('wrong-culprit')
     expect(engine.accuse('shawky', 'm_theft')).toBe('wrong-motive')
@@ -133,6 +153,20 @@ describe('case engine', () => {
     expect(engine.state.flags.has('case_solved')).toBe(true)
     expect(engine.currentObjective()).toBeUndefined()
     expect(engine.grade()).toMatch(/[ABC]/)
+  })
+  it('solves without entering any optional villager errand', () => {
+    const { engine } = make()
+    engine.apply([
+      'e_thread_door', 'e_survey_book', 'e_microbus_ticket', 'e_boundary_stone', 'e_rail_log', 'e_market_driver',
+      'e_pump_log', 'e_miller_promise', 'e_handwriting', 'e_hassan_testimony', 'e_library_photo', 'e_library_envelope',
+      'e_bahr_testimony', 'e_qaitbay_photo', 'e_forged_contract',
+    ].map(id => ({ type: 'evidence', id }) as never))
+    engine.apply([{ type: 'flag', id: 'found_mahmoud' }])
+    for (const [a, b] of [['e_boundary_stone', 'e_survey_book'], ['e_library_envelope', 'e_forged_contract'], ['e_thread_door', 'e_qaitbay_photo'], ['e_rail_log', 'e_market_driver'], ['e_pump_log', 'e_miller_promise'], ['e_survey_book', 'e_handwriting']] as const) engine.tie(a, b)
+    expect(engine.canAccuse()).toBe(true)
+    expect(engine.accuse('shawky', 'm_road')).toBe('ok')
+    expect(engine.has('e_bakery_ration')).toBe(false)
+    expect(engine.has('e_pigeon_note')).toBe(false)
   })
 })
 

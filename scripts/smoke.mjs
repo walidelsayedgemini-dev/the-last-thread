@@ -150,13 +150,17 @@ try {
   const ending = await page.evaluate(() => {
     const { session } = window.__ltt
     const e = session.engine
-    const evidence = ['e_thread_door', 'e_survey_book', 'e_microbus_ticket', 'e_boundary_stone', 'e_library_envelope',
-      'e_forged_contract', 'e_qaitbay_photo', 'e_hassan_testimony', 'e_bahr_testimony']
+    const evidence = ['e_thread_door', 'e_survey_book', 'e_microbus_ticket', 'e_boundary_stone', 'e_rail_log', 'e_market_driver',
+      'e_pump_log', 'e_miller_promise', 'e_handwriting', 'e_library_envelope', 'e_forged_contract', 'e_qaitbay_photo',
+      'e_hassan_testimony', 'e_bahr_testimony']
     e.apply(evidence.map(id => ({ type: 'evidence', id })))
     e.apply([{ type: 'flag', id: 'found_mahmoud' }])
     session.tie('e_boundary_stone', 'e_survey_book')
     session.tie('e_library_envelope', 'e_forged_contract')
     session.tie('e_thread_door', 'e_qaitbay_photo')
+    session.tie('e_rail_log', 'e_market_driver')
+    session.tie('e_pump_log', 'e_miller_promise')
+    session.tie('e_survey_book', 'e_handwriting')
     const wrong = session.accuse('hassan', 'm_road')
     const ok = session.accuse('shawky', 'm_road')
     return { wrong, ok, grade: e.grade() }

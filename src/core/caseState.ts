@@ -181,7 +181,8 @@ export class CaseEngine {
 
   /** Share of all evidence found, 0..1 (used for the final grade). */
   completeness(): number {
-    return this.state.evidence.size / this.file.evidence.length
+    const required = this.file.evidence.filter(e => !e.bonus)
+    return required.length ? required.filter(e => this.state.evidence.has(e.id)).length / required.length : 1
   }
 
   /** Can the player make the final accusation? */
