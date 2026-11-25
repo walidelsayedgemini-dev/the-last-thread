@@ -77,6 +77,30 @@ const probe = () => {
     for (const [name, r] of pins) if (Math.min(r.right, d.right) - Math.max(r.left, d.left) > 10 && Math.min(r.bottom, d.bottom) - Math.max(r.top, d.top) > 10) issues.push(['pin-under-drawer', name])
     for (const p of document.querySelectorAll('.inv-person')) { const r = p.getBoundingClientRect(); if (Math.min(r.right, d.right) - Math.max(r.left, d.left) > 10 && Math.min(r.bottom, d.bottom) - Math.max(r.top, d.top) > 10) issues.push(['person-under-drawer', p.textContent.trim().slice(0, 20)]) }
   }
+  // village/city map labels colliding with each other
+  const labels = [...document.querySelectorAll('.inv-map-svg .pin-label')].filter(visible).map(el => [el.textContent.trim(), el.getBoundingClientRect()])
+  for (let i = 0; i < labels.length; i++) for (let j = i + 1; j < labels.length; j++) {
+    const [a, ra] = labels[i], [b, rb] = labels[j]
+    const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
+    if (ox > 2 && oy > 2) issues.push(['map-label-overlap', `${a} × ${b}`])
+  }
+  // any two visible leaf texts painted on top of each other (the classic "things overlapping" bug)
+  const textBox = el => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect() }
+  const texts = all.filter(el => el.children.length === 0 && el.textContent.trim() && !el.closest('svg, .inv-pin, .toasts, kbd, .inv-badge, details:not([open]) > :not(summary)') && getComputedStyle(el).position !== 'absolute')
+    .map(el => [el, textBox(el)]).filter(([, r]) => r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw)
+    // keep only texts that are actually on top at their own centre (drops everything under an open modal/sheet)
+    .filter(([el, r]) => { const t = document.elementFromPoint(Math.min(vw - 1, Math.max(0, r.left + r.width / 2)), Math.min(vh - 1, Math.max(0, r.top + r.height / 2))); return !!t && (el.contains(t) || t.contains(el)) })
+  for (let i = 0; i < texts.length; i++) for (let j = i + 1; j < texts.length; j++) {
+    const [a, ra] = texts[i], [b, rb] = texts[j]
+    if (a.contains(b) || b.contains(a)) continue
+    const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
+    if (ox > 6 && oy > 6) {
+      // only count it when both are actually painted there (not one scrolled away under a sticky header)
+      const cx = Math.max(ra.left, rb.left) + ox / 2, cy = Math.max(ra.top, rb.top) + oy / 2
+      const top = document.elementFromPoint(cx, cy)
+      if (top && (a.contains(top) || b.contains(top) || top.contains(a) || top.contains(b))) issues.push(['text-overlap', `${label(a)} × ${label(b)}`, Math.round(ox), Math.round(oy)])
+    }
+  }
   if (document.documentElement.scrollWidth > vw + 1) issues.push(['page-hscroll', document.documentElement.scrollWidth])
   return issues
 }
@@ -105,7 +129,10 @@ for (const vp of VIEWPORTS) {
     await shot(page, 'title')
     for (const btn of await page.locator('.shell button').all()) { if ((await btn.textContent()).includes('الإعدادات')) { await btn.click(); break } }
     await shot(page, 'settings')
+    await page.evaluate(() => document.querySelector('.shell .page')?.scrollTo?.(0, 99999)); await page.waitForTimeout(200); await shot(page, 'settings-bottom')
     await page.keyboard.press('Escape')
+    await page.evaluate(() => window.__ltt?.shell.go('achievements')); await page.waitForTimeout(400); await shot(page, 'achievements')
+    await page.evaluate(() => window.__ltt?.shell.go('title')); await page.waitForTimeout(400)
     await page.locator('.shell button').first().click()
     await shot(page, 'create')
     const custom = page.locator('.shell .card').nth(1)
@@ -120,19 +147,27 @@ for (const vp of VIEWPORTS) {
     await page.close()
   }
   // ---- investigation: every place, map, case file, dialogues, pause --------------------------------------------
-  for (const caseId of ['case01', 'case02']) {
+  for (const caseId of (process.env.QA_CASES ?? 'case01,case02,case03').split(',')) {
     const page = await ctx.newPage(); watch(page)
     await page.goto(BASE + '?autostart=story')
     await page.waitForFunction(() => window.__ltt?.session && !window.__ltt.investigation.el.hidden, null, { timeout: 60000 })
-    if (caseId === 'case02') {
-      await page.evaluate(() => { window.__ltt.session.startCase('case02'); window.__ltt.investigation.render?.() })
+    if (caseId === 'case01') {
+      // first-run coach marks
+      await page.waitForTimeout(1200)
+      if (await page.evaluate(() => !!document.querySelector('.tutorial-layer:not([hidden])'))) await shot(page, 'case01-tutorial')
+      await page.evaluate(() => document.querySelector('.tutorial-skip, [data-tutorial-skip]')?.click())
+    } else {
+      await page.evaluate(id => { window.__ltt.session.startCase(id); window.__ltt.investigation.render?.() }, caseId)
     }
     await page.waitForTimeout(1500)
+    await page.evaluate(() => window.__ltt.shell.showIntro(window.__ltt.session)); await page.waitForTimeout(2500); await shot(page, `${caseId}-intro`)
+    await page.evaluate(() => window.__ltt.shell.go('none')); await page.waitForTimeout(300)
     const places = await page.evaluate(() => Object.keys(window.__PLACES ?? {}))
     const ids = places.length ? places : await page.evaluate(() => [...document.querySelectorAll('.inv-map-card, [data-place]')].map(e => e.dataset.place).filter(Boolean))
     // Visit places through the investigation API (both districts).
     const all = await page.evaluate(() => window.__ltt.places ?? null)
-    const placeIds = all ?? ['zeinab_home', 'cafe_ragab', 'abis_mosque', 'canal_bridge', 'plot15', 'abis_stop', 'mahmoud_house', 'raml_stop', 'mansheya', 'bibliotheca', 'pompey', 'qaitbay', 'corniche']
+    const placeIds = all ?? []
+    if (!placeIds.length) note(vp.name, caseId, 'setup', 'window.__ltt.places missing')
     void ids
     for (const id of placeIds) {
       const ok = await page.evaluate(id => { try { window.__ltt.investigation.setPlace(id); return window.__ltt.investigation.currentPlace === id } catch (e) { return String(e) } }, id)
@@ -151,7 +186,7 @@ for (const vp of VIEWPORTS) {
     }
     await page.evaluate(() => window.__ltt.caseFile.close())
     const chars = await page.evaluate(() => (window.__ltt.session.knownCharacters?.() ?? []).map(c => c.id))
-    const everyone = caseId === 'case01' ? ['zeinab', 'mahmoud', 'ragab', 'hassan', 'shawky', 'bahr', 'fathy'] : ['salma', 'nabil', 'adham', 'zeinab']
+    const everyone = await page.evaluate(() => window.__ltt.cast?.() ?? [])
     for (const id of [...new Set([...everyone, ...chars])]) {
       await page.evaluate(id => window.__ltt.talk(id), id)
       await page.waitForTimeout(900)
@@ -164,6 +199,8 @@ for (const vp of VIEWPORTS) {
     }
     await page.evaluate(() => window.__ltt.pause()); await page.waitForTimeout(400); await shot(page, `${caseId}-pause`)
     await page.evaluate(() => window.__ltt.resume())
+    const ended = await page.evaluate(() => { try { window.__ltt.shell.showEnding(window.__ltt.session); return true } catch (e) { return String(e) } })
+    if (ended === true) { await page.waitForTimeout(1200); await shot(page, `${caseId}-ending`) } else note(vp.name, `${caseId}-ending`, 'ending', ended)
     await page.close()
   }
   await ctx.close()

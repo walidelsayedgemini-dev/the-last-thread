@@ -471,6 +471,9 @@ async function boot(): Promise<void> {
     ;(window as unknown as { __ltt: unknown }).__ltt = {
       get session() { return session },
       shell, hud, caseFile, investigation, events, profiles, settings,
+      /** QA helpers: every place id, and the characters that have a dialogue in the running case. */
+      places: PLACE_LIST.map(p => p.id),
+      cast: () => CHARACTER_LIST.filter(c => c.id !== 'yassin' && session?.inCase(c)).map(c => c.id),
       selectPlace: (id: PlaceId) => {
         if (PLACES[id]?.district === PLACES[investigation.currentPlace]?.district) investigation.setPlace(id)
       },
