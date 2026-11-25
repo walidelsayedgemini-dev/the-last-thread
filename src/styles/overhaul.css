@@ -1,0 +1,102 @@
+/* ==== Overhaul additions: title art, accessibility, board, ending ========================================== */
+
+/* ---- Title key art ---- */
+.page.title .title-bg {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 30% 50%;
+  opacity: 0.62; animation: title-pan 40s ease-in-out infinite alternate;
+}
+.page.title .title-atmosphere::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(270deg, #070d12f2 0%, #070d12b8 38%, #070d1230 70%, #070d1266 100%), linear-gradient(0deg, #070d12 0%, transparent 35%);
+}
+@keyframes title-pan { from { transform: scale(1.04) translateX(0); } to { transform: scale(1.1) translateX(-1.5%); } }
+.reduced-motion .page.title .title-bg { animation: none; }
+
+/* ---- Portrait images in cards ---- */
+.portrait.has-img { overflow: hidden; padding: 0; width: 96px; height: 128px; }
+.portrait.has-img img, .person-fig img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; display: block; }
+.person-fig { overflow: hidden; }
+
+/* ---- Settings ---- */
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg .chip { color: var(--bone); }
+
+/* ---- Readability ---- */
+.page p, .cf-page p, .ev-sum, .ev-detail { line-height: 1.85; }
+.ev-sum, .ev-detail, .sel-detail p, .deductions { font-size: calc(0.98rem * var(--text-scale, 1)) !important; }
+
+/* ---- Evidence placeholders ---- */
+.ev-ghosts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 0; }
+.ev-ghost {
+  width: 44px; height: 56px; display: grid; place-items: center; border: 1px dashed #ffffff33; border-radius: 4px;
+  color: #ffffff40; font-family: var(--display); font-size: 1.3rem;
+}
+.ev-ghosts small { color: var(--muted); margin-inline-start: 6px; }
+
+/* ---- Board ---- */
+.board-wrap { position: relative; }
+.board.picking { cursor: crosshair; }
+.pin-card.ghost {
+  cursor: default; background: transparent; color: #ffffff59; border: 2px dashed #ffffff30; box-shadow: none; transform: none !important;
+  display: grid; place-items: center; align-content: center; gap: 2px;
+}
+.pin-card.ghost b { font-family: var(--display); font-size: 1.6rem; }
+.pin-card.ghost small { color: #ffffff59; font-weight: 600; }
+.pin-card { transition: box-shadow 0.15s, outline-color 0.15s; }
+.pin-card:hover:not(.ghost) { box-shadow: 4px 8px 16px #000b; }
+.pin-card.selected { animation: card-lift 0.25s ease-out; }
+@keyframes card-lift { 50% { scale: 1.06; } }
+.thread.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: thread-draw 0.9s ease-out forwards; }
+@keyframes thread-draw { to { stroke-dashoffset: 0; } }
+.thread-loose { fill: none; stroke: var(--red-hot); stroke-width: 2.5; stroke-dasharray: 2 6; stroke-linecap: round; opacity: 0.85; }
+.board-help { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.board-help.active { color: var(--bone) !important; }
+.link { background: none; border: none; color: var(--gold); text-decoration: underline; padding: 0 4px; font-weight: 700; }
+.board-help-card {
+  position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, 90%);
+  padding: 18px 22px; background: #0b1419f5; border: 1px solid var(--gold); border-radius: 12px; box-shadow: 0 20px 60px #000c;
+  direction: rtl; text-align: start;
+}
+.board-help-card h4 { margin: 0 0 8px; color: var(--gold); font-family: var(--display); font-size: 1.2rem; }
+.board-help-card ol { list-style: arabic-indic; margin: 0 0 14px; padding-inline-start: 22px; display: grid; gap: 6px; line-height: 1.8; }
+.board-progress { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 12px; background: #0006; border: 1px solid var(--line); }
+.board-progress small { color: var(--muted); }
+.board-progress b { color: var(--gold); font-family: var(--display); font-size: 1.2rem; }
+.board-note.ok { border-inline-start-color: var(--ok); background: #0d1f17; }
+.board-note.bad { border-inline-start-color: var(--red-hot); background: #22100f; }
+.accuse-warn { margin: 0; color: var(--gold); font-size: 0.85rem; line-height: 1.7; }
+
+/* ---- Ending ---- */
+.ending-case { display: block; color: var(--muted); margin-top: 6px; }
+.grade-card {
+  margin: 20px 0 6px; padding: 16px 20px; background: #0009; border: 1px solid var(--line); border-top: 4px solid var(--gold);
+  display: grid; gap: 12px;
+}
+.grade-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.grade-head small { color: var(--muted); }
+.grade-word { font-family: var(--display); font-size: 2.2rem; color: var(--gold); }
+.stars { display: flex; gap: 4px; font-size: 1.8rem; direction: ltr; }
+.stars span { color: #ffffff22; }
+.stars span.on { color: var(--gold); text-shadow: 0 0 14px #c9aa7899; animation: star-pop 0.5s ease-out both; animation-delay: var(--d, 0s); }
+@keyframes star-pop { from { opacity: 0; transform: scale(0.3) rotate(-30deg); } 70% { transform: scale(1.25); } }
+.breakdown { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.breakdown li { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #ffffff14; }
+.breakdown li.plus b { color: var(--ok); }
+.breakdown li.minus b { color: var(--red-hot); }
+.missed { margin: 8px 0 14px; padding: 10px 14px; background: #0007; border: 1px solid var(--line); }
+.missed summary { cursor: pointer; color: var(--gold); font-weight: 700; }
+.missed ul { margin: 8px 0; padding-inline-start: 20px; display: grid; gap: 4px; }
+.missed small { color: var(--muted); }
+
+/* ---- High contrast ---- */
+body.high-contrast {
+  --line: #7f9aa4; --muted: #d3dcde; --bone: #ffffff; --paper: #000; --paper-2: #0b1418; --red-hot: #ff8a92; --gold: #f1cf8f;
+}
+body.high-contrast .inv-pin-label, body.high-contrast .inv-guide, body.high-contrast .dlg-box, body.high-contrast .hud .toast { background: #000; border-color: #fff; }
+body.high-contrast .inv-photo-shade { background: linear-gradient(180deg, #000c 0%, transparent 30%, transparent 58%, #000e 100%); }
+body.high-contrast .dlg-choice, body.high-contrast .inv-act, body.high-contrast .inv-map-card { border-color: #9fb6be; }
+body.high-contrast .inv-person-copy small, body.high-contrast .dlg-role { color: #e6ecee; }
+body.high-contrast .btn { border-color: #fff; }
+
+/* ---- Visible keyboard focus ---- */
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }

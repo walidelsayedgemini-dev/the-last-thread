@@ -1,13 +1,13 @@
-import { arabicDigits } from '../core/clock'
+import { arabicDigits, formatClock } from '../core/clock'
 import { CHARACTER_LIST } from '../data/characters'
 import { PLACES, PLACE_LIST } from '../data/places'
-import type { CharacterId, Hotspot, Place, PlaceId } from '../data/types'
+import type { CharacterId, CharacterProfile, Evidence, Hotspot, Place, PlaceId } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Session } from '../game/session'
+import { PIN_POS, isDaytime, portraitUrl, sceneUrl } from './art'
 import { h, setChildren, svg } from './dom'
 
 export type InvestigationTab = 'scene' | 'map'
-
 export type InvestigationDeps = {
   audio: Audio
   onHotspot: (hotspot: Hotspot) => void
@@ -18,34 +18,32 @@ export type InvestigationDeps = {
   onPause: () => void
 }
 
-const SCENE_IMAGES: Record<PlaceId, string> = {
-  zeinab_home: new URL('../assets/scenes/abis-fields.webp', import.meta.url).href,
-  mahmoud_house: new URL('../assets/scenes/abis-house.webp', import.meta.url).href,
-  cafe_ragab: new URL('../assets/scenes/abis-fields.webp', import.meta.url).href,
-  abis_mosque: new URL('../assets/scenes/abis-fields.webp', import.meta.url).href,
-  canal_bridge: new URL('../assets/scenes/abis-fields.webp', import.meta.url).href,
-  plot15: new URL('../assets/scenes/abis-fields.webp', import.meta.url).href,
-  abis_stop: new URL('../assets/scenes/abis-fields.webp', import.meta.url).href,
-  raml_stop: new URL('../assets/scenes/alexandria-street.webp', import.meta.url).href,
-  mansheya: new URL('../assets/scenes/alexandria-street.webp', import.meta.url).href,
-  qaitbay: new URL('../assets/scenes/qaitbay-harbor.webp', import.meta.url).href,
-  bibliotheca: new URL('../assets/scenes/bibliotheca.webp', import.meta.url).href,
-  pompey: new URL('../assets/scenes/alexandria-street.webp', import.meta.url).href,
-  corniche: new URL('../assets/scenes/qaitbay-harbor.webp', import.meta.url).href,
-}
-
 const KIND_LABEL: Record<Hotspot['kind'], string> = {
-  inspect: 'فحص ميداني', photo: 'صورة موقع', travel: 'انتقال', rest: 'استراحة',
+  inspect: 'افحص', photo: 'صوّر', travel: 'سافر', rest: 'استريّح',
 }
+const KIND_ICON: Record<Hotspot['kind'], string> = { inspect: '⌕', photo: '◉', travel: '⇢', rest: '☾' }
+const STOPS: Record<Place['district'], PlaceId> = { abis: 'abis_stop', city: 'raml_stop' }
+const DISTRICT_NAME: Record<Place['district'], string> = { abis: 'أبيس • عزبة ١٥', city: 'الإسكندرية' }
+const WIDE = '(min-width: 1100px)'
+
+/** Strip honorifics so the initial fallback is the person's own name. */
+const initial = (name: string) => name.replace(/^(ال|عم |المعلم |الحاجة )/, '').slice(0, 1)
 
 export class InvestigationView {
   readonly el: HTMLElement
   private session?: Session
   private placeId: PlaceId = 'zeinab_home'
   private tab: InvestigationTab = 'scene'
+  /** Desktop side drawer / mobile bottom sheet. */
+  private drawerOpen = false
+  private lastScene = ''
+  private readonly clockEl = h('span', { class: 'inv-clock', 'aria-label': 'الساعة' })
+  private lastClock = ''
+  private lastDay: boolean | undefined
 
   constructor(private readonly d: InvestigationDeps) {
-    this.el = h('main', { class: 'investigation', hidden: true, 'aria-label': 'واجهة التحقيق ثنائية الأبعاد' })
+    this.el = h('main', { class: 'investigation', hidden: true, 'aria-label': 'واجهة التحقيق' })
+    this.drawerOpen = window.matchMedia?.(WIDE).matches ?? false
   }
 
   get currentPlace(): PlaceId {
@@ -56,11 +54,33 @@ export class InvestigationView {
     return this.tab
   }
 
+  /** Current scene photograph (used as the dialogue backdrop). */
+  get sceneImage(): string {
+    return sceneUrl(this.placeId, this.session?.clock.hour)
+  }
+
+  /** Cheap per-frame clock update; re-renders only when day turns to night (or back). */
+  tickClock(hour: number): void {
+    if (this.el.hidden) return
+    const text = formatClock(hour)
+    if (text !== this.lastClock) {
+      this.lastClock = text
+      this.clockEl.textContent = `◷ ${text}`
+    }
+    const day = isDaytime(hour)
+    if (this.lastDay !== undefined && day !== this.lastDay) {
+      this.lastDay = day
+      this.render()
+    }
+    this.lastDay = day
+  }
+
   show(session: Session, placeId: PlaceId): void {
     this.session = session
     this.placeId = placeId
     this.tab = 'scene'
     this.el.hidden = false
+    this.d.audio.setPlace(placeId)
     this.render()
   }
 
@@ -72,10 +92,24 @@ export class InvestigationView {
     if (!this.el.hidden) this.render()
   }
 
+  /** Close the map or the mobile sheet; true if something was closed (Android back button). */
+  back(): boolean {
+    if (this.el.hidden) return false
+    if (this.tab === 'map') {
+      this.setTab('scene')
+      return true
+    }
+    if (this.drawerOpen && !window.matchMedia?.(WIDE).matches) {
+      this.toggleDrawer(false)
+      return true
+    }
+    return false
+  }
+
   setTab(tab: InvestigationTab): void {
     if (this.el.hidden) return
     this.tab = tab
-    this.d.audio.play('ui')
+    this.d.audio.play(tab === 'map' ? 'drawer' : 'ui')
     this.render()
   }
 
@@ -86,25 +120,61 @@ export class InvestigationView {
     this.placeId = placeId
     this.tab = 'scene'
     this.d.audio.play('travel')
+    this.d.audio.setPlace(placeId)
     this.d.onPlaceChange(placeId)
     this.render()
+  }
+
+  /** A card flies from the scene into the case-file button when evidence is found. */
+  celebrate(evidence: Evidence): void {
+    if (this.el.hidden) return
+    const target = [...this.el.querySelectorAll<HTMLElement>('.inv-file-btn')].find(b => b.offsetParent !== null)
+    if (document.body.classList.contains('reduced-motion')) {
+      target?.classList.add('bump')
+      window.setTimeout(() => target?.classList.remove('bump'), 700)
+      return
+    }
+    const card = h('div', { class: 'inv-fly-card', role: 'presentation' },
+      h('small', null, 'دليل جديد'), h('b', null, evidence.title))
+    const from = this.el.querySelector<HTMLElement>('.inv-stage')?.getBoundingClientRect()
+    card.style.left = `${from ? from.left + from.width / 2 : window.innerWidth / 2}px`
+    card.style.top = `${from ? from.top + from.height / 2 : window.innerHeight / 2}px`
+    document.body.append(card)
+    requestAnimationFrame(() => card.classList.add('in'))
+    window.setTimeout(() => {
+      const to = target?.getBoundingClientRect()
+      if (to) {
+        card.style.left = `${to.left + to.width / 2}px`
+        card.style.top = `${to.top + to.height / 2}px`
+      }
+      card.classList.add('fly')
+    }, 1100)
+    window.setTimeout(() => {
+      card.remove()
+      target?.classList.add('bump')
+      window.setTimeout(() => target?.classList.remove('bump'), 700)
+    }, 1800)
   }
 
   private selectPlace(placeId: PlaceId): void {
     const next = PLACES[placeId]
     const here = PLACES[this.placeId]
     if (!this.session || !next || next.district !== here.district) return
-    if (placeId === this.placeId) {
-      this.tab = 'scene'
-      this.d.audio.play('ui')
-      this.render()
-      return
-    }
-    this.placeId = placeId
     this.tab = 'scene'
-    this.d.audio.play('ui')
-    this.d.onPlaceChange(placeId)
+    if (placeId !== this.placeId) {
+      this.placeId = placeId
+      this.d.audio.play('travel')
+      this.d.audio.setPlace(placeId)
+      this.d.onPlaceChange(placeId)
+    } else this.d.audio.play('ui')
     this.render()
+  }
+
+  private toggleDrawer(open = !this.drawerOpen): void {
+    this.drawerOpen = open
+    this.d.audio.play('drawer')
+    this.el.classList.toggle('drawer-open', open)
+    this.el.querySelector('.inv-drawer-toggle')?.setAttribute('aria-expanded', String(open))
   }
 
   private render(): void {
@@ -113,141 +183,144 @@ export class InvestigationView {
     const place = PLACES[this.placeId]
     this.el.dataset.place = place.id
     this.el.dataset.district = place.district
+    this.el.dataset.tab = this.tab
+    this.el.dataset.daytime = String(isDaytime(s.clock.hour))
+    this.el.classList.toggle('drawer-open', this.drawerOpen)
+    const sceneKey = `${place.id}:${this.tab}`
+    const entering = sceneKey !== this.lastScene
+    this.lastScene = sceneKey
     setChildren(this.el,
-      h('div', { class: 'inv-frame' },
-        this.header(place),
-        h('div', { class: 'inv-layout' },
-          h('section', { class: 'inv-main-panel', 'aria-live': 'polite' }, this.tab === 'scene' ? this.scenePage(s, place) : this.mapPage(place)),
-          this.sidebar(s, place)),
-        this.mobileNav()),
+      this.header(s, place),
+      h('div', { class: 'inv-body' },
+        h('section', { class: `inv-stage${entering ? ' entering' : ''}`, 'aria-live': 'polite' },
+          ...(this.tab === 'scene' ? this.scene(s, place) : [this.mapPage(s, place)])),
+        this.drawer(s, place)),
+      this.mobileNav(s),
     )
   }
 
-  private header(place: Place): HTMLElement {
+  private header(s: Session, place: Place): HTMLElement {
+    const found = s.state.evidence.size
+    const map = this.tab === 'map'
     return h('header', { class: 'inv-header' },
-      h('div', { class: 'inv-brand' },
-        h('span', { class: 'inv-brand-mark', 'aria-hidden': true }, '⌕'),
-        h('div', null,
-          h('small', null, 'ملف تحقيق • القضية ٠١'),
-          h('b', null, 'الخيط الأخير'))),
-      h('div', { class: 'inv-current' },
-        h('small', null, place.district === 'abis' ? 'أبيس • عزبة ١٥' : 'الإسكندرية'),
+      h('div', { class: 'inv-where' },
+        h('small', null, DISTRICT_NAME[place.district], this.clockEl),
         h('b', null, place.name)),
-      h('nav', { class: 'inv-nav', 'aria-label': 'التنقّل في التحقيق' },
-        h('button', { class: `inv-nav-btn${this.tab === 'scene' ? ' active' : ''}`, 'aria-current': this.tab === 'scene' ? 'page' : undefined, onclick: () => this.setTab('scene') }, 'المشهد'),
-        h('button', { class: `inv-nav-btn${this.tab === 'map' ? ' active' : ''}`, 'aria-current': this.tab === 'map' ? 'page' : undefined, onclick: () => this.setTab('map') }, 'خريطة المواقع')),
-      h('div', { class: 'inv-header-actions' },
-        h('button', { class: 'inv-action-btn inv-file-action', onclick: this.d.onCaseFile }, 'ملف القضية'),
-        h('button', { class: 'inv-action-btn', 'aria-label': 'تلميح', onclick: this.d.onHint }, 'تلميح'),
-        h('button', { class: 'inv-action-btn inv-pause-action', 'aria-label': 'إيقاف مؤقت', onclick: this.d.onPause }, 'إيقاف')))
+      h('nav', { class: 'inv-actions', 'aria-label': 'أوامر التحقيق' },
+        h('button', { class: `inv-act inv-nav-btn${!map ? ' active' : ''}`, 'aria-pressed': String(!map), onclick: () => this.setTab('scene') },
+          h('span', { class: 'ico', 'aria-hidden': true }, '◉'), h('span', null, 'المشهد')),
+        h('button', { class: `inv-act inv-nav-btn${map ? ' active' : ''}`, 'aria-pressed': String(map), onclick: () => this.setTab('map') },
+          h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة'), h('kbd', null, 'M')),
+        h('button', { class: 'inv-act inv-file-btn', onclick: this.d.onCaseFile },
+          h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'ملف القضية'),
+          h('em', { class: 'inv-badge', 'aria-label': `${found} دليل` }, arabicDigits(found))),
+        h('button', { class: 'inv-act', onclick: this.d.onHint },
+          h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح'), h('kbd', null, 'H')),
+        h('button', { class: 'inv-act inv-pause-action', 'aria-label': 'القائمة', onclick: this.d.onPause },
+          h('span', { class: 'ico', 'aria-hidden': true }, '☰'), h('span', { class: 'lbl' }, 'القائمة'))))
   }
 
-  private scenePage(s: Session, place: Place): HTMLElement {
+  // ---- Scene -----------------------------------------------------------------------------------------------------
+  private scene(s: Session, place: Place): (HTMLElement | false)[] {
     const active = s.engine.activeHotspots().filter(hotspot => hotspot.place === place.id)
     const people = CHARACTER_LIST.filter(c => c.id !== 'yassin' && c.place === place.id && s.present(c))
-    const current = s.engine.currentObjective()
-    const foundHere = s.engine.file.evidence.filter(e => e.place === place.id && s.engine.has(e.id))
-    const consumed = s.engine.file.hotspots.filter(hotspot => hotspot.place === place.id && hotspot.consumable && s.state.hotspots.has(hotspot.id))
-    const art = h('div', { class: 'inv-scene-art' },
-      h('img', { class: 'inv-scene-photo', src: SCENE_IMAGES[place.id], alt: '', draggable: 'false' }),
-      h('div', { class: 'inv-scene-shade', 'aria-hidden': true }),
-      h('div', { class: 'inv-scene-stamp' }, 'سجل ميداني • ٠١'),
-      h('div', { class: 'inv-scene-caption' },
-        h('small', null, place.district === 'abis' ? 'أبيس / عزبة ١٥' : 'الإسكندرية'),
-        h('b', null, place.name),
-        h('span', null, `${arabicDigits(active.length)} تفاعلات متاحة`)),
-      ...active.map((hotspot, index) => this.scenePin(hotspot, index)),
-    )
-
-    return h('div', { class: 'inv-scene-page' },
-      art,
-      h('div', { class: 'inv-place-copy' },
-        h('div', { class: 'inv-section-kicker' }, h('span', null, 'المشهد الحالي'), h('i', null, place.district === 'abis' ? 'ABIS / 01' : 'ALEX / 01')),
-        h('h2', null, place.name),
-        h('p', null, place.description),
-        current && h('div', { class: 'inv-objective-strip' },
-          h('span', { class: 'inv-objective-mark', 'aria-hidden': true }, '⌖'),
-          h('div', null, h('small', null, 'الخيط التالي'), h('b', null, current.title), h('p', null, current.detail))),
-      ),
-      h('section', { class: 'inv-interactions' },
-        h('div', { class: 'inv-section-heading' },
-          h('div', null, h('small', null, 'افحص المكان'), h('h3', null, 'نقاط التحقيق')),
-          h('span', { class: 'inv-count-badge' }, `${arabicDigits(active.length)} متاح`)),
-        active.length
-          ? h('div', { class: 'inv-card-grid' }, active.map((hotspot, index) => this.hotspotCard(hotspot, index)))
-          : h('p', { class: 'inv-empty' }, 'مفيش أثر جديد ظاهر هنا دلوقتي. ارجع للموقع بعد ما تجمع خيطاً جديداً.'),
-      ),
-      people.length > 0 && h('section', { class: 'inv-people' },
-        h('div', { class: 'inv-section-heading' },
-          h('div', null, h('small', null, 'شهود وأشخاص'), h('h3', null, 'مين موجود؟')),
-          h('span', { class: 'inv-count-badge cyan' }, `${arabicDigits(people.length)} ملفات`)),
-        h('div', { class: 'inv-card-grid people-grid' }, people.map(character =>
-          h('article', { class: 'inv-person-card' },
-            h('div', { class: 'inv-person-portrait', style: { '--body': character.figure.body, '--accent': character.figure.accent } },
-              h('span', null, character.name.replace(/^(ال|عم |المعلم |الحاجة )/, '').slice(0, 1))),
-            h('div', { class: 'inv-person-copy' },
-              h('small', null, character.role),
-              h('b', null, character.nickname ?? character.name),
-              h('p', null, character.quote)),
-            h('button', { class: 'inv-talk-btn', onclick: () => this.d.onTalk(character.id) }, s.state.flags.has(`met_${character.id}`) ? 'تابع الحديث' : 'ابدأ الحوار')))),
-      ),
-      foundHere.length > 0 && h('section', { class: 'inv-recovered' },
-        h('small', null, 'أدلة عُثر عليها هنا'),
-        h('div', { class: 'inv-recovered-list' }, foundHere.map(e => h('span', null, e.title))),
-      ),
-      consumed.length > 0 && h('p', { class: 'inv-scene-note' }, `تم فحص ${arabicDigits(consumed.length)} نقطة في هذا الموقع.`),
-    )
+    return [
+      h('img', { class: 'inv-photo', src: sceneUrl(place.id, s.clock.hour), alt: place.name, draggable: 'false' }),
+      h('div', { class: 'inv-photo-shade', 'aria-hidden': true }),
+      this.guide(s, place, active.length + people.length),
+      h('div', { class: 'inv-pins' }, active.map((hotspot, i) => this.pin(hotspot, i, active.length))),
+      people.length > 0 && h('div', { class: 'inv-people', role: 'list', 'aria-label': 'الموجودين هنا' },
+        people.map(c => this.person(s, c))),
+      active.length === 0 && people.length === 0
+        && h('p', { class: 'inv-quiet' }, 'المكان هادي دلوقتي ومفيش أثر جديد. بص على الخطوة الجاية فوق.'),
+    ]
   }
 
-  private scenePin(hotspot: Hotspot, index: number): HTMLButtonElement {
-    const left = Math.max(12, Math.min(88, 50 + hotspot.offset.x * 3.2))
-    const top = Math.max(28, Math.min(78, 58 + hotspot.offset.z * 1.35))
-    const marker = h('button', {
-      class: `inv-scene-pin kind-${hotspot.kind}`,
-      style: { left: `${left}%`, top: `${top}%` },
-      'aria-label': hotspot.label,
-      title: hotspot.label,
-      onclick: () => this.d.onHotspot(hotspot),
-    }, arabicDigits(index + 1))
-    return marker
+  /** The single source of "what do I do now" guidance. */
+  private guide(s: Session, place: Place, things: number): HTMLElement {
+    const objective = s.engine.currentObjective()
+    if (!objective) {
+      return h('div', { class: 'inv-guide done' },
+        h('span', { class: 'inv-guide-mark', 'aria-hidden': true }, '✓'),
+        h('div', { class: 'inv-guide-copy' }, h('small', null, 'الخطوة الجاية'), h('b', null, 'افتح ملف القضية واربط الخيوط')),
+        h('button', { class: 'inv-guide-go', onclick: this.d.onCaseFile }, 'الملف', h('span', { 'aria-hidden': true }, '←')))
+    }
+    const target = objective.place ? PLACES[objective.place] : undefined
+    let action: HTMLElement | false = false
+    let where = objective.detail
+    if (target && target.id !== place.id) {
+      if (target.district === place.district) {
+        where = `المكان: ${target.name}`
+        action = h('button', { class: 'inv-guide-go', onclick: () => this.selectPlace(target.id) }, `روح ${target.short}`, h('span', { 'aria-hidden': true }, '←'))
+      } else {
+        const stop = PLACES[STOPS[place.district]]
+        where = `في ${target.district === 'city' ? 'إسكندرية' : 'أبيس'}: ${target.name}. اركب من ${stop.short}.`
+        if (place.id !== stop.id) action = h('button', { class: 'inv-guide-go', onclick: () => this.selectPlace(stop.id) }, `روح ${stop.short}`, h('span', { 'aria-hidden': true }, '←'))
+      }
+    } else if (target && things > 0) {
+      where = 'انت في المكان الصح. افحص العلامات أو كلّم اللي موجود.'
+    }
+    return h('div', { class: 'inv-guide' },
+      h('span', { class: 'inv-guide-mark', 'aria-hidden': true }, '⌖'),
+      h('div', { class: 'inv-guide-copy' },
+        h('small', null, 'الخطوة الجاية'),
+        h('b', null, objective.title),
+        h('span', null, where)),
+      action)
   }
 
-  private hotspotCard(hotspot: Hotspot, index: number): HTMLElement {
-    const kindClass = hotspot.kind === 'photo' ? 'photo' : hotspot.kind === 'travel' ? 'travel' : 'inspect'
-    const icon = hotspot.kind === 'photo' ? '◉' : hotspot.kind === 'travel' ? '↗' : '⌕'
-    const action = hotspot.kind === 'photo' ? 'راجع الصورة' : hotspot.kind === 'travel' ? 'ابدأ الانتقال' : 'افحص الأثر'
-    return h('button', { class: `inv-interaction-card ${kindClass}`, onclick: () => this.d.onHotspot(hotspot) },
-      h('span', { class: 'inv-card-index' }, arabicDigits(index + 1)),
-      h('span', { class: 'inv-card-icon', 'aria-hidden': true }, icon),
-      h('span', { class: 'inv-card-copy' },
-        h('small', null, KIND_LABEL[hotspot.kind]),
-        h('b', null, hotspot.label),
-        h('i', null, action)),
-      h('span', { class: 'inv-card-arrow', 'aria-hidden': true }, '←'))
+  private pin(hotspot: Hotspot, index: number, count: number): HTMLButtonElement {
+    const fixed = PIN_POS[hotspot.id]
+    const spread = count > 1 ? (index - (count - 1) / 2) * 20 : 0
+    const left = fixed?.x ?? Math.max(14, Math.min(86, 50 + hotspot.offset.x * 3 + spread))
+    const top = fixed?.y ?? Math.max(34, Math.min(62, 50 + hotspot.offset.z * 0.6))
+    return h('button', {
+      class: `inv-pin kind-${hotspot.kind}${left > 60 ? ' label-start' : ''}`,
+      style: { left: `${left}%`, top: `${top}%`, '--i': String(index) },
+      'aria-label': `${KIND_LABEL[hotspot.kind]}: ${hotspot.label}`,
+      onclick: () => { this.d.audio.play('pin'); this.d.onHotspot(hotspot) },
+    },
+    h('span', { class: 'inv-pin-dot', 'aria-hidden': true }, KIND_ICON[hotspot.kind]),
+    h('span', { class: 'inv-pin-label' }, h('small', null, KIND_LABEL[hotspot.kind]), h('b', null, hotspot.label)))
   }
 
-  private mapPage(place: Place): HTMLElement {
+  private person(s: Session, c: CharacterProfile): HTMLElement {
+    const src = portraitUrl(c.id)
+    const met = s.state.flags.has(`met_${c.id}`)
+    return h('button', { class: 'inv-person', role: 'listitem', onclick: () => this.d.onTalk(c.id), 'aria-label': `كلّم ${c.nickname ?? c.name}` },
+      h('span', { class: 'inv-person-art', style: { '--accent': c.figure.accent, '--body': c.figure.body } },
+        src ? h('img', { src, alt: '', draggable: 'false' }) : h('span', { class: 'inv-person-initial' }, initial(c.name))),
+      h('span', { class: 'inv-person-copy' },
+        h('b', null, c.nickname ?? c.name),
+        h('small', null, c.role),
+        h('i', null, met ? 'كمّل الكلام' : 'كلّمه')))
+  }
+
+  // ---- Map ---------------------------------------------------------------------------------------------------------
+  private mapPage(s: Session, place: Place): HTMLElement {
     const districtPlaces = PLACE_LIST.filter(p => p.district === place.district)
-    return h('div', { class: 'inv-map-page' },
-      h('div', { class: 'inv-map-heading' },
-        h('div', null,
-          h('div', { class: 'inv-section-kicker' }, h('span', null, 'تنقّل ميداني'), h('i', null, 'MAP / 2D')),
-          h('h2', null, place.district === 'abis' ? 'خريطة أبيس' : 'خريطة الإسكندرية'),
-          h('p', null, 'اختر موقعاً داخل المنطقة الحالية. الانتقال بين أبيس والإسكندرية يتم من موقفي الميكروباص داخل القصة.')),
-        h('span', { class: 'inv-map-district' }, place.district === 'abis' ? 'أبيس • ٠١' : 'الإسكندرية • ٠٢')),
-      this.mapSvg(districtPlaces, place),
-      h('div', { class: 'inv-place-grid' }, districtPlaces.map(p =>
-        h('button', { class: `inv-place-card${p.id === place.id ? ' selected' : ''}`, 'aria-current': p.id === place.id ? 'location' : undefined, onclick: () => this.selectPlace(p.id) },
-          h('span', { class: 'inv-place-index' }, arabicDigits(districtPlaces.indexOf(p) + 1)),
-          h('span', { class: 'inv-place-copy' }, h('b', null, p.name), h('small', null, p.short)),
-          p.id === place.id ? h('span', { class: 'inv-place-state' }, 'أنت هنا') : h('span', { class: 'inv-place-arrow' }, '←')))),
-      h('p', { class: 'inv-map-footnote' }, `خريطة توضيحية • ${arabicDigits(districtPlaces.length)} مواقع في المنطقة`),
-    )
+    const goal = s.engine.currentObjective()?.place
+    return h('div', { class: 'inv-map' },
+      h('div', { class: 'inv-map-head' },
+        h('h2', null, place.district === 'abis' ? 'خريطة أبيس' : 'خريطة الإسكندرية'),
+        h('p', null, 'اختار مكان تروحه. السفر بين أبيس وإسكندرية بيبقى من موقف الميكروباص.')),
+      this.mapSvg(districtPlaces, place, goal),
+      h('div', { class: 'inv-map-list' }, districtPlaces.map(p => {
+        const here = p.id === place.id
+        const isGoal = p.id === goal
+        return h('button', {
+          class: `inv-map-card${here ? ' here' : ''}${isGoal ? ' goal' : ''}`,
+          'aria-current': here ? 'location' : undefined,
+          onclick: () => this.selectPlace(p.id),
+        },
+        h('img', { src: sceneUrl(p.id, s.clock.hour), alt: '', loading: 'lazy' }),
+        h('span', null, h('b', null, p.name), h('small', null, here ? 'انت هنا' : isGoal ? 'الخطوة الجاية هنا' : p.short)))
+      })))
   }
 
-  private mapSvg(places: Place[], current: Place): SVGSVGElement {
+  private mapSvg(places: Place[], current: Place, goal?: PlaceId): SVGSVGElement {
     const W = 760
-    const H = 340
+    const H = 280
     const xs = places.map(p => p.pos.x)
     const zs = places.map(p => p.pos.z)
     const minX = Math.min(...xs) - 35
@@ -255,92 +328,73 @@ export class InvestigationView {
     const minZ = Math.min(...zs) - 25
     const maxZ = Math.max(...zs) + 25
     const px = (x: number) => 42 + ((x - minX) / Math.max(1, maxX - minX)) * (W - 84)
-    const py = (z: number) => 35 + ((z - minZ) / Math.max(1, maxZ - minZ)) * (H - 70)
-    const root = svg('svg', {
-      class: `inv-map-svg ${current.district}`,
-      viewBox: `0 0 ${W} ${H}`,
-      role: 'group',
-      'aria-label': current.district === 'abis' ? 'خريطة أبيس التفاعلية' : 'خريطة الإسكندرية التفاعلية',
-    })
-    root.append(svg('rect', { x: 0, y: 0, width: W, height: H, class: 'inv-map-bg' }))
+    const py = (z: number) => 40 + ((z - minZ) / Math.max(1, maxZ - minZ)) * (H - 75)
+    const root = svg('svg', { class: `inv-map-svg ${current.district}`, viewBox: `0 0 ${W} ${H}`, role: 'group', 'aria-label': 'الخريطة' })
+    root.append(svg('rect', { x: 0, y: 0, width: W, height: H, class: 'inv-map-bg', rx: 12 }))
     if (current.district === 'city') {
-      root.append(svg('rect', { x: 0, y: 0, width: W, height: H * 0.23, class: 'inv-map-sea' }))
-      root.append(svg('path', { d: `M0 ${H * 0.23} C${W * 0.22} ${H * 0.19}, ${W * 0.37} ${H * 0.31}, ${W * 0.58} ${H * 0.24} S${W * 0.83} ${H * 0.18}, ${W} ${H * 0.24}`, class: 'inv-map-shore' }))
+      root.append(svg('path', { d: `M0 0 H${W} V${H * 0.18} C${W * 0.7} ${H * 0.26}, ${W * 0.4} ${H * 0.13}, 0 ${H * 0.22} Z`, class: 'inv-map-sea' }))
     } else {
       root.append(svg('path', { d: `M0 ${H * 0.45} C${W * 0.22} ${H * 0.4}, ${W * 0.34} ${H * 0.49}, ${W * 0.57} ${H * 0.44} S${W * 0.82} ${H * 0.4}, ${W} ${H * 0.46}`, class: 'inv-map-canal' }))
-      root.append(svg('path', { d: `M0 ${H * 0.74} C${W * 0.2} ${H * 0.68}, ${W * 0.48} ${H * 0.82}, ${W} ${H * 0.68}`, class: 'inv-map-road' }))
     }
     const ordered = [...places].sort((a, b) => a.pos.x - b.pos.x)
-    if (ordered.length > 1) {
-      const route = ordered.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.pos.x)} ${py(p.pos.z)}`).join(' ')
-      root.append(svg('path', { d: route, class: 'inv-map-route' }))
-    }
+    root.append(svg('path', { d: ordered.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.pos.x)} ${py(p.pos.z)}`).join(' '), class: 'inv-map-route' }))
     for (const p of places) {
-      const g = svg('g', {
-        class: `inv-map-pin${p.id === this.placeId ? ' current' : ''}`,
-        transform: `translate(${px(p.pos.x)} ${py(p.pos.z)})`,
-        tabindex: '0',
-        role: 'button',
-        'aria-label': p.name,
-      })
-      g.append(svg('circle', { cx: 0, cy: 0, r: p.id === this.placeId ? 12 : 8, class: 'pin-halo' }))
-      g.append(svg('circle', { cx: 0, cy: 0, r: p.id === this.placeId ? 5 : 3.5, class: 'pin-dot' }))
-      const label = svg('text', { x: 0, y: -15, 'text-anchor': 'middle', class: 'pin-label' })
-      label.textContent = p.short
+      const cls = `inv-map-pin${p.id === current.id ? ' current' : ''}${p.id === goal ? ' goal' : ''}`
+      const g = svg('g', { class: cls, transform: `translate(${px(p.pos.x)} ${py(p.pos.z)})`, tabindex: '0', role: 'button', 'aria-label': p.name })
+      if (p.id === goal) g.append(svg('circle', { r: 19, class: 'pin-goal' }))
+      g.append(svg('circle', { r: p.id === current.id ? 12 : 9, class: 'pin-halo' }))
+      g.append(svg('circle', { r: p.id === current.id ? 5 : 4, class: 'pin-dot' }))
+      const label = svg('text', { y: -18, 'text-anchor': 'middle', class: 'pin-label' })
+      label.textContent = p.id === current.id ? `${p.short} (انت هنا)` : p.short
       g.append(label)
-      const choose = () => this.selectPlace(p.id)
-      g.addEventListener('click', choose)
-      g.addEventListener('keydown', (event: KeyboardEvent) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          choose()
-        }
+      g.addEventListener('click', () => this.selectPlace(p.id))
+      g.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.selectPlace(p.id) }
       })
       root.append(g)
     }
     return root
   }
 
-  private sidebar(s: Session, place: Place): HTMLElement {
-    const objective = s.engine.currentObjective()
+  // ---- Drawer ------------------------------------------------------------------------------------------------------
+  private drawer(s: Session, place: Place): HTMLElement {
+    const file = s.engine.file
     const found = s.state.evidence.size
-    const total = s.engine.file.evidence.length
-    const pct = Math.round((found / Math.max(1, total)) * 100)
-    const recent = s.engine.file.evidence.filter(e => s.engine.has(e.id)).slice(-3).reverse()
-    const objectives = s.engine.objectives().filter(x => !x.done).slice(0, 3)
-    return h('aside', { class: 'inv-sidebar', 'aria-label': 'ملخص القضية' },
-      h('article', { class: 'inv-case-card' },
-        h('div', { class: 'inv-case-card-head' }, h('small', null, 'القضية الحالية'), h('span', { class: 'inv-classified' }, 'سرّي')),
-        h('h3', null, s.engine.file.title),
-        h('p', null, s.engine.file.tagline),
-        h('div', { class: 'inv-progress' },
-          h('div', { class: 'inv-progress-meta' }, h('span', null, 'الأدلة المجموعة'), h('b', null, `${arabicDigits(found)} / ${arabicDigits(total)}`)),
-          h('div', { class: 'inv-progress-track' }, h('i', { style: { width: `${pct}%` } }))),
-        h('button', { class: 'inv-open-file', onclick: this.d.onCaseFile }, 'افتح ملف القضية', h('span', { 'aria-hidden': true }, '←'))),
-      h('article', { class: 'inv-side-section' },
-        h('div', { class: 'inv-side-title' }, h('small', null, 'الخطوة التالية'), h('span', { class: 'inv-side-signal' }, '●')),
-        objective
-          ? h('div', { class: 'inv-side-objective' }, h('b', null, objective.title), h('p', null, objective.detail), objective.place && h('small', null, `المكان: ${PLACES[objective.place].name}`))
-          : h('p', { class: 'inv-empty small' }, 'لا توجد مهمة مفتوحة. راجع لوحة الأدلة.'),
-        h('button', { class: 'inv-side-link', onclick: this.d.onHint }, 'طلب تلميح', h('span', { 'aria-hidden': true }, '↘'))),
-      objectives.length > 0 && h('article', { class: 'inv-side-section inv-objective-list' },
-        h('div', { class: 'inv-side-title' }, h('small', null, 'سجل المهام'), h('span', null, arabicDigits(objectives.length))),
-        h('ul', null, objectives.map(({ objective: item }) => h('li', null, item.title)))),
-      h('article', { class: 'inv-side-section inv-recent-section' },
-        h('div', { class: 'inv-side-title' }, h('small', null, 'آخر الأدلة'), h('span', null, recent.length ? arabicDigits(recent.length) : '—')),
-        recent.length
-          ? h('ul', null, recent.map(e => h('li', null, h('span', { class: `inv-evidence-dot kind-${e.kind}` }), h('span', null, e.title))))
-          : h('p', { class: 'inv-empty small' }, 'لسه مفيش أدلة في الملف.'),
-      ),
-      h('div', { class: 'inv-location-tag' }, h('span', { class: 'inv-location-pulse' }), h('span', null, `${place.district === 'abis' ? 'أبيس' : 'الإسكندرية'} • ${place.short}`)),
-    )
+    const total = file.evidence.length
+    const foundHere = file.evidence.filter(e => e.place === place.id && s.engine.has(e.id))
+    const recent = file.evidence.filter(e => s.engine.has(e.id)).slice(-3).reverse()
+    const objectives = s.engine.objectives()
+    const done = objectives.filter(o => o.done).length
+    const meter = (label: string, a: number, b: number) => h('div', { class: 'inv-meter' },
+      h('span', null, label), h('b', null, `${arabicDigits(a)} من ${arabicDigits(b)}`),
+      h('i', { class: 'track' }, h('i', { style: { width: `${Math.round((a / Math.max(1, b)) * 100)}%` } })))
+    return h('aside', { class: 'inv-drawer', 'aria-label': 'تفاصيل المكان والقضية' },
+      h('button', { class: 'inv-drawer-toggle', 'aria-expanded': String(this.drawerOpen), onclick: () => this.toggleDrawer() },
+        h('span', { class: 'grip', 'aria-hidden': true }), h('span', null, 'التفاصيل'), h('span', { class: 'chev', 'aria-hidden': true }, '›')),
+      h('div', { class: 'inv-drawer-body' },
+        h('section', null,
+          h('small', null, 'عن المكان'),
+          h('p', null, place.description),
+          foundHere.length > 0 && h('div', { class: 'inv-chips' }, foundHere.map(e => h('span', { class: `chip kind-${e.kind}` }, e.title)))),
+        h('section', null,
+          h('small', null, `القضية ${file.number} • ${file.title}`),
+          meter('الأدلة', found, total),
+          meter('المهام', done, objectives.length)),
+        h('section', null,
+          h('small', null, 'آخر الأدلة'),
+          recent.length
+            ? h('ul', { class: 'inv-recent' }, recent.map(e => h('li', null, h('span', { class: `dot kind-${e.kind}`, 'aria-hidden': true }), e.title)))
+            : h('p', { class: 'muted' }, 'لسه مفيش أدلة. افحص العلامات اللي على الصورة.')),
+        h('button', { class: 'inv-d-open', onclick: this.d.onCaseFile }, 'افتح ملف القضية ولوحة الخيوط', h('span', { 'aria-hidden': true }, '←'))))
   }
 
-  private mobileNav(): HTMLElement {
+  private mobileNav(s: Session): HTMLElement {
+    const found = s.state.evidence.size
     return h('nav', { class: 'inv-mobile-nav', 'aria-label': 'اختصارات التحقيق' },
-      h('button', { class: this.tab === 'scene' ? 'active' : '', onclick: () => this.setTab('scene') }, 'المشهد'),
-      h('button', { class: this.tab === 'map' ? 'active' : '', onclick: () => this.setTab('map') }, 'الخريطة'),
-      h('button', { onclick: this.d.onCaseFile }, 'ملف القضية'),
-      h('button', { onclick: this.d.onHint }, 'تلميح'))
+      h('button', { class: this.tab === 'scene' ? 'on' : '', onclick: () => this.setTab('scene') }, h('span', { class: 'ico', 'aria-hidden': true }, '◉'), h('span', null, 'المشهد')),
+      h('button', { class: this.tab === 'map' ? 'on' : '', onclick: () => this.setTab('map') }, h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة')),
+      h('button', { class: 'inv-file-btn', onclick: this.d.onCaseFile }, h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'الملف'), found > 0 && h('em', { class: 'inv-badge' }, arabicDigits(found))),
+      h('button', { onclick: this.d.onHint }, h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح')),
+      h('button', { onclick: this.d.onPause }, h('span', { class: 'ico', 'aria-hidden': true }, '☰'), h('span', null, 'القائمة')))
   }
 }

@@ -21,6 +21,10 @@ export type Settings = {
   visionEndpoint: string
   /** Optional URL of a remote real-events JSON document (see services/eventsDb.ts). */
   eventsUrl: string
+  /** Reading size multiplier for dialogue, narration and hints (accessibility). */
+  textScale: number
+  /** Stronger borders/brighter text for low-vision players and bright sunlight. */
+  highContrast: boolean
 }
 
 export const SETTINGS_KEY = 'ltt.settings.v1'
@@ -29,6 +33,7 @@ export function defaultSettings(): Settings {
   return {
     version: 1, musicVolume: 0.7, sfxVolume: 0.8, muted: false, sensitivity: 1, invertY: false,
     quality: 'medium', reducedMotion: false, hintEndpoint: '', visionEndpoint: '', eventsUrl: '',
+    textScale: 1, highContrast: false,
   }
 }
 
@@ -60,6 +65,8 @@ export function parseSettings(raw: string | null): Settings {
     hintEndpoint: url(d.hintEndpoint),
     visionEndpoint: url(d.visionEndpoint),
     eventsUrl: url(d.eventsUrl),
+    textScale: num(d.textScale, base.textScale, 0.85, 1.4),
+    highContrast: d.highContrast === true,
   }
 }
 

@@ -8,6 +8,7 @@ import type { Evidence, EvidenceId, EventKind } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
+import { portraitUrl } from './art'
 import { h, setChildren, svg } from './dom'
 
 type Tab = 'evidence' | 'people' | 'objectives' | 'board' | 'map' | 'calendar'
@@ -18,6 +19,15 @@ const KIND_LABEL: Record<Evidence['kind'], string> = { object: 'جسم', testimo
 const EVENT_LABEL: Record<EventKind, string> = { match_ittihad: 'مباراة الاتحاد', market_day: 'سوق', friday_prayer: 'صلاة الجمعة' }
 const CARD_W = 150
 const CARD_H = 96
+const HELP_KEY = 'ltt.help.board.v1'
+const KIND_ICON: Record<Evidence['kind'], string> = { object: '◆', testimony: '❝', document: '▤', photo: '◉', trace: '∿' }
+
+function helpSeen(): boolean {
+  try { return localStorage.getItem(HELP_KEY) === '1' } catch { return true }
+}
+function markHelpSeen(): void {
+  try { localStorage.setItem(HELP_KEY, '1') } catch { /* private mode */ }
+}
 
 export type CaseFileDeps = {
   audio: Audio
@@ -38,6 +48,10 @@ export class CaseFileView {
   private readonly pos = new Map<EvidenceId, { x: number; y: number }>()
   private flash?: { a: EvidenceId; b: EvidenceId }
   private note = ''
+  private noteKind: 'ok' | 'bad' | '' = ''
+  /** Deduction tied just now: its thread is drawn with an animation once. */
+  private fresh?: string
+  private showHelp = !helpSeen()
 
   constructor(private readonly d: CaseFileDeps) {
     this.tabsEl = h('nav', { class: 'cf-tabs', role: 'tablist' })
@@ -104,15 +118,19 @@ export class CaseFileView {
     const all = s.engine.file.evidence
     const found = all.filter(e => s.engine.has(e.id))
     const rows = found.map(e => this.evidenceCard(s, e, true))
+    const left = all.length - found.length
     return h('div', { class: 'cf-list' },
       h('p', { class: 'cf-count' }, `${arabicDigits(found.length)} من ${arabicDigits(all.length)} دليل`),
-      rows.length ? rows : h('p', { class: 'cf-empty' }, 'لسه ما جمعتش أي دليل. افحص المكان وكلّم الناس.'))
+      rows.length ? rows : h('p', { class: 'cf-empty' }, 'لسه ما جمعتش أي دليل. افحص المكان وكلّم الناس.'),
+      left > 0 && h('div', { class: 'ev-ghosts', 'aria-label': `باقي ${left} دليل` },
+        Array.from({ length: left }, () => h('span', { class: 'ev-ghost', 'aria-hidden': true }, '؟')),
+        h('small', null, `باقي ${arabicDigits(left)} دليل لسه ما لقيتهمش`)))
   }
 
   private evidenceCard(s: Session, e: Evidence, full: boolean): HTMLElement {
     const at = s.state.evidence.get(e.id)
     return h('article', { class: `ev kind-${e.kind}` },
-      h('div', { class: 'ev-tag' }, KIND_LABEL[e.kind]),
+      h('div', { class: 'ev-tag' }, KIND_ICON[e.kind], ' ', KIND_LABEL[e.kind]),
       h('h3', null, e.title),
       h('p', { class: 'ev-sum' }, e.summary),
       full && h('p', { class: 'ev-detail' }, e.detail),
@@ -127,9 +145,10 @@ export class CaseFileView {
       const secret = c.secret && s.state.flags.has(c.secret.unlock) ? c.secret.text : undefined
       const hidden = c.id === 'mahmoud' && !s.state.flags.has('found_mahmoud')
       return h('article', { class: 'person' },
-        h('div', { class: 'person-fig', style: { '--body': c.figure.body, '--accent': c.figure.accent } }, h('span', null, c.name.replace(/^(ال|عم |المعلم |الحاجة )/, '').slice(0, 1))),
+        h('div', { class: 'person-fig', style: { '--body': c.figure.body, '--accent': c.figure.accent } },
+          portraitUrl(c.id) && !hidden ? h('img', { src: portraitUrl(c.id), alt: '', loading: 'lazy' }) : h('span', null, hidden ? '؟' : c.name.replace(/^(ال|عم |المعلم |الحاجة )/, '').slice(0, 1))),
         h('div', { class: 'person-body' },
-          h('h3', null, c.name, h('small', null, ` • ${c.age} سنة`)),
+          h('h3', null, c.name, h('small', null, ` • ${arabicDigits(c.age)} سنة`)),
           h('p', { class: 'role' }, hidden ? 'مفقود' : c.role),
           h('p', null, hidden ? 'لسه ما قدرتش تتأكد من مكانه… الخيط الأحمر هو أثره الوحيد.' : c.appearance),
           !hidden && h('p', { class: 'rel' }, h('b', null, 'علاقته بالقضية: '), c.relationToCase),
@@ -155,46 +174,85 @@ export class CaseFileView {
   // ---- Board ---------------------------------------------------------------------------------------------------------------------
 
   private board(s: Session): HTMLElement {
-    const found = s.engine.file.evidence.filter(e => s.engine.has(e.id))
+    const all = s.engine.file.evidence
+    const found = all.filter(e => s.engine.has(e.id))
+    const missing = all.length - found.length
     found.forEach((e, i) => {
-      if (!this.pos.has(e.id)) this.pos.set(e.id, { x: 24 + (i % 5) * (CARD_W + 28), y: 24 + Math.floor(i / 5) * (CARD_H + 56) })
+      if (!this.pos.has(e.id)) this.pos.set(e.id, { x: 24 + (i % 5) * (CARD_W + 28), y: 34 + Math.floor(i / 5) * (CARD_H + 56) })
     })
+    const slots = found.length + missing
     const W = 5 * (CARD_W + 28) + 40
-    const H = Math.max(320, (Math.floor((found.length - 1) / 5) + 1) * (CARD_H + 56) + 40)
+    const H = Math.max(320, (Math.floor((slots - 1) / 5) + 1) * (CARD_H + 56) + 50)
     const lines = svg('svg', { class: 'board-lines', width: W, height: H, viewBox: `0 0 ${W} ${H}` })
+    const anchor = (id: EvidenceId) => {
+      const p = this.pos.get(id)
+      return p && { x: p.x + CARD_W / 2, y: p.y + 10 }
+    }
     const drawLine = (a: EvidenceId, b: EvidenceId, cls: string) => {
-      const pa = this.pos.get(a)
-      const pb = this.pos.get(b)
+      const pa = anchor(a)
+      const pb = anchor(b)
       if (!pa || !pb) return
-      const x1 = pa.x + CARD_W / 2
-      const y1 = pa.y + 10
-      const x2 = pb.x + CARD_W / 2
-      const y2 = pb.y + 10
-      const sag = Math.min(60, Math.hypot(x2 - x1, y2 - y1) * 0.18)
-      const path = svg('path', { d: `M${x1} ${y1} Q${(x1 + x2) / 2} ${(y1 + y2) / 2 + sag} ${x2} ${y2}`, class: cls })
+      const sag = Math.min(60, Math.hypot(pb.x - pa.x, pb.y - pa.y) * 0.18)
+      const path = svg('path', { d: `M${pa.x} ${pa.y} Q${(pa.x + pb.x) / 2} ${(pa.y + pb.y) / 2 + sag} ${pb.x} ${pb.y}`, class: cls, pathLength: 1 })
       lines.append(path)
     }
-    for (const dd of s.engine.file.deductions) if (s.state.deductions.has(dd.id)) for (const [a, b] of dd.pairs) if (s.engine.has(a) && s.engine.has(b)) drawLine(a, b, 'thread')
+    for (const dd of s.engine.file.deductions) {
+      if (!s.state.deductions.has(dd.id)) continue
+      for (const [a, b] of dd.pairs) if (s.engine.has(a) && s.engine.has(b)) drawLine(a, b, `thread${this.fresh === dd.id ? ' draw' : ''}`)
+    }
+    this.fresh = undefined
     if (this.flash) drawLine(this.flash.a, this.flash.b, 'thread-fail')
+    // A loose thread follows the pointer while one card is selected.
+    const loose = svg('path', { class: 'thread-loose', d: '' })
+    lines.append(loose)
 
     const cards = found.map(e => {
       const p = this.pos.get(e.id)!
-      const card = h('div', { class: `pin-card kind-${e.kind}${this.selected === e.id ? ' selected' : ''}`, style: { left: `${p.x}px`, top: `${p.y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }, tabindex: 0, role: 'button', 'aria-label': e.title },
-        h('i', { class: 'pin' }), h('small', null, KIND_LABEL[e.kind]), h('b', null, e.title))
+      const card = h('div', { class: `pin-card kind-${e.kind}${this.selected === e.id ? ' selected' : ''}`, style: { left: `${p.x}px`, top: `${p.y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }, tabindex: 0, role: 'button', 'aria-label': e.title, 'aria-pressed': String(this.selected === e.id) },
+        h('i', { class: 'pin' }), h('small', null, KIND_ICON[e.kind], ' ', KIND_LABEL[e.kind]), h('b', null, e.title))
       this.dragCard(card, e.id, lines, W, H)
       return card
+    })
+    const ghosts = Array.from({ length: missing }, (_, i) => {
+      const k = found.length + i
+      return h('div', { class: 'pin-card ghost', 'aria-hidden': true, style: { left: `${24 + (k % 5) * (CARD_W + 28)}px`, top: `${34 + Math.floor(k / 5) * (CARD_H + 56)}px`, width: `${CARD_W}px`, height: `${CARD_H}px` } },
+        h('b', null, '؟'), h('small', null, 'دليل لسه ما اتلقاش'))
     })
 
     const tied = s.engine.file.deductions.filter(dd => s.state.deductions.has(dd.id))
     const sel = this.selected ? s.engine.evidenceInfo(this.selected) : undefined
-    const wrap = h('div', { class: 'board-wrap' }, h('div', { class: 'board', style: { width: `${W}px`, height: `${H}px` } }, lines, cards))
+    const boardEl = h('div', { class: `board${this.selected ? ' picking' : ''}`, style: { width: `${W}px`, height: `${H}px` } }, lines, ghosts, cards)
+    if (this.selected) {
+      const from = anchor(this.selected)
+      boardEl.addEventListener('pointermove', e => {
+        if (!from) return
+        const r = boardEl.getBoundingClientRect()
+        const x = e.clientX - r.left
+        const y = e.clientY - r.top
+        loose.setAttribute('d', `M${from.x} ${from.y} Q${(from.x + x) / 2} ${(from.y + y) / 2 + 30} ${x} ${y}`)
+      })
+      boardEl.addEventListener('pointerleave', () => loose.setAttribute('d', ''))
+    }
+    const wrap = h('div', { class: 'board-wrap' }, boardEl,
+      this.showHelp && h('div', { class: 'board-help-card', role: 'note' },
+        h('h4', null, 'إزاي تربط الخيوط؟'),
+        h('ol', null,
+          h('li', null, 'اضغط على كارت دليل، هتلاقي خيط أحمر طالع منه.'),
+          h('li', null, 'اضغط على دليل تاني شايف إن ليه علاقة بالأول.'),
+          h('li', null, 'لو العلاقة صح هيتربط خيط ويطلعلك استنتاج جديد. ولو غلط مفيش خصم.')),
+        h('button', { class: 'btn primary', onclick: () => { markHelpSeen(); this.showHelp = false; this.render() } }, 'فهمت')))
+    const help = found.length < 2
+      ? 'اجمع دليلين على الأقل عشان تقدر تربط بينهم.'
+      : this.selected ? `اخترت «${sel?.title}». اضغط على دليل تاني تربطه بيه، أو اضغط عليه تاني للإلغاء.` : 'اضغط على دليل وبعدين على دليل تاني عشان تربطهم بخيط. وتقدر تسحب الكروت وترتّبها.'
     return h('div', { class: 'board-page' },
-      h('p', { class: 'board-help' }, found.length < 2 ? 'اجمع دليلين على الأقل عشان تقدر تربط بينهم.' : 'اضغط على دليل ثم على دليل تاني لتربطهم بخيط أحمر. اسحب الكروت لترتّبها.'),
+      h('p', { class: `board-help${this.selected ? ' active' : ''}` }, help, ' ',
+        h('button', { class: 'link', onclick: () => { this.showHelp = true; this.render() } }, 'شرح')),
       wrap,
       h('div', { class: 'board-side' },
+        h('div', { class: 'board-progress' },
+          h('small', null, 'الاستنتاجات'), h('b', null, `${arabicDigits(tied.length)} من ${arabicDigits(s.engine.file.deductions.length)}`)),
         sel && h('div', { class: 'sel-detail' }, h('h4', null, sel.title), h('p', null, sel.detail)),
-        this.note && h('p', { class: 'board-note' }, this.note),
-        h('h4', null, 'الاستنتاجات'),
+        this.note && h('p', { class: `board-note ${this.noteKind}` }, this.note),
         tied.length ? h('ul', { class: 'deductions' }, tied.map(dd => h('li', null, h('b', null, dd.title), ' – ', dd.conclusion))) : h('p', { class: 'cf-empty' }, 'لسه ما ربطتش أي خيط.'),
         this.accuseBlock(s)))
   }
@@ -237,8 +295,10 @@ export class CaseFileView {
     if (!s) return
     this.d.audio.play('ui')
     this.note = ''
+    this.noteKind = ''
     this.flash = undefined
     if (!this.selected || this.selected === id) {
+      if (!this.selected) this.d.audio.play('pin')
       this.selected = this.selected === id ? undefined : id
       return this.render()
     }
@@ -247,12 +307,14 @@ export class CaseFileView {
     const r = s.tie(a, id)
     if (r.ok) {
       const dd = s.engine.file.deductions.find(x => x.id === r.deduction)!
-      this.note = r.fresh ? `✔ خيط جديد: ${dd.title}` : 'الخيط ده مربوط قبل كده.'
-      if (r.fresh) this.d.audio.play('thread')
+      this.note = r.fresh ? `خيط جديد: ${dd.title}` : 'الخيط ده مربوط قبل كده.'
+      this.noteKind = 'ok'
+      if (r.fresh) { this.fresh = dd.id; this.d.audio.play('thread') }
     } else {
       this.flash = { a, b: id }
       this.d.audio.play('error')
-      this.note = r.reason === 'no-link' ? '✖ مفيش علاقة واضحة بين الدليلين دول… لسه.' : 'اختار دليلين مختلفين.'
+      this.noteKind = 'bad'
+      this.note = r.reason === 'no-link' ? 'مفيش علاقة واضحة بين الدليلين دول. جرّب دليل تاني.' : 'اختار دليلين مختلفين.'
     }
     this.render()
   }
@@ -260,7 +322,7 @@ export class CaseFileView {
   private accuseBlock(s: Session): HTMLElement {
     const can = s.engine.canAccuse()
     const solved = s.state.flags.has('case_solved')
-    if (solved) return h('p', { class: 'board-note' }, 'القضية اتقفلت. ✔')
+    if (solved) return h('p', { class: 'board-note ok' }, 'القضية اتقفلت.')
     const fin = s.engine.file.finale
     const culprit = h('select', { 'aria-label': 'المتهم' }, h('option', { value: '' }, 'اختار المتهم…'), s.engine.file.suspects.map(x => h('option', { value: x.id }, x.label)))
     const motive = h('select', { 'aria-label': 'الدافع' }, h('option', { value: '' }, 'اختار الدافع…'), fin.motives.map(m => h('option', { value: m.id }, m.text)))
@@ -270,11 +332,14 @@ export class CaseFileView {
       const r = s.accuse(culprit.value, motive.value)
       if (r === 'wrong-culprit') this.note = fin.wrongCulprit
       else if (r === 'wrong-motive') this.note = fin.wrongMotive
+      if (r !== 'ok') this.noteKind = 'bad'
       this.d.onAccused(r)
       this.render()
     } }, 'اتّهام')
     return h('div', { class: 'accuse' }, h('h4', null, 'الاتهام النهائي'),
-      can ? [culprit, motive, go] : h('p', { class: 'cf-empty' }, 'اربط الخيوط الأساسية (الحدود – العقد – الطريق) قبل ما تتّهم حد.'))
+      can
+        ? [culprit, motive, h('p', { class: 'accuse-warn' }, 'خد بالك: الاتهام الغلط بيضايق الشخص، وبيعدّي ساعة من الوقت، وبيخصم من تقديرك.'), go]
+        : h('p', { class: 'cf-empty' }, 'اربط الخيوط الأساسية في اللوحة الأول، وبعدها تقدر تتّهم حد.'))
   }
 
   // ---- Map ------------------------------------------------------------------------------------------------------------------------

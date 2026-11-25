@@ -1,8 +1,9 @@
 import './styles/main.css'
 import './styles/investigation.css'
-import { cairoStamp, nowFromQuery } from './core/clock'
+import './styles/dialogue.css'
+import './styles/overhaul.css'
+import { arabicDigits, cairoStamp, nowFromQuery } from './core/clock'
 import type { CaseEvent } from './core/caseState'
-import { CASE_01 } from './data/case01'
 import { CHARACTER_LIST } from './data/characters'
 import { PLACE_LIST, PLACES } from './data/places'
 import type { CharacterId, Hotspot, PlaceId } from './data/types'
@@ -11,6 +12,7 @@ import { GameLoop } from './engine/loop'
 import { SettingsStore, type Settings } from './engine/save'
 import { Session } from './game/session'
 import { createArEngine, type ArEngine } from './services/ar'
+import { haptic, onBackButton } from './services/native'
 import { EventsDb, JsonUrlProvider, type EventsDocument } from './services/eventsDb'
 import { HintService, RemoteChatProvider } from './services/hints'
 import { ProfileService, type Profile } from './services/profiles'
@@ -67,7 +69,16 @@ async function boot(): Promise<void> {
   const applySettings = (d: Settings) => {
     audio.setVolumes(d.musicVolume, d.sfxVolume, d.muted)
     document.body.classList.toggle('reduced-motion', d.reducedMotion)
+    document.body.classList.toggle('high-contrast', d.highContrast)
+    document.documentElement.style.setProperty('--text-scale', String(d.textScale))
+    document.documentElement.style.fontSize = `${Math.round(16 * Math.min(1.2, d.textScale))}px`
   }
+  const MUSIC = {
+    title: new URL('audio/title.mp3', document.baseURI).href,
+    abis: new URL('audio/abis.mp3', document.baseURI).href,
+    city: new URL('audio/city.mp3', document.baseURI).href,
+  }
+  const musicFor = (id: PlaceId) => (PLACES[id]?.district === 'city' ? MUSIC.city : MUSIC.abis)
 
   // ---- 2D investigation UI -------------------------------------------------------------------------------------
   const dialogue = new DialogueView(audio, text => session?.fill(text) ?? text)
@@ -85,7 +96,15 @@ async function boot(): Promise<void> {
       return { zone: pos.zone, x: pos.x, z: pos.z }
     },
     onClose: () => undefined,
-    onAccused: result => { if (result === 'ok') { caseFile.close(); scheduleEnding() } },
+    onAccused: result => {
+      if (result === 'ok') { haptic('success'); caseFile.close(); scheduleEnding(); return }
+      if (result === 'wrong-culprit' || result === 'wrong-motive') {
+        audio.play('wrong')
+        haptic('error')
+        hud.toast('اتهام غلط: الشخص اتضايق، والساعة عدّت، والتقدير اتخصم منه.', 'warn')
+        investigation.refresh()
+      }
+    },
   })
   const investigation = new InvestigationView({
     audio,
@@ -110,6 +129,7 @@ async function boot(): Promise<void> {
       if ('visionEndpoint' in patch) ar = createArEngine(settings.data.visionEndpoint || undefined)
     },
     startWorld: () => startWorld(),
+    nextCase: () => startNextCase(),
   })
   ui.append(shell.el, investigation.el, hud.el, dialogue.el, caseFile.el, ...hud.layers)
   applySettings(settings.data)
@@ -117,6 +137,10 @@ async function boot(): Promise<void> {
   // ---- Boot ----------------------------------------------------------------------------------------------------
   splash?.remove()
   shell.setBootProgress(0.12)
+  // The title theme starts on the first gesture (browsers block autoplay before that).
+  const startTitleMusic = () => { audio.unlock(); if (!active) audio.playMusic(MUSIC.title, { loop: true }) }
+  window.addEventListener('pointerdown', startTitleMusic, { once: true })
+  window.addEventListener('keydown', startTitleMusic, { once: true })
   const seedPromise = loadSeed()
   await document.fonts.ready
   shell.setBootProgress(0.58)
@@ -149,16 +173,34 @@ async function boot(): Promise<void> {
     active = true
     investigation.show(session, currentPlace)
     hud.show(true)
+    audio.playMusic(musicFor(currentPlace), { loop: true })
     loopRef?.resetAccumulator()
-    hud.toast('ابدأ التحقيق من الخريطة.', 'info')
+  }
+
+  function startNextCase(): void {
+    if (!session) return
+    const next = session.nextCaseId()
+    if (!next || !session.startCase(next)) return
+    window.clearTimeout(endingTimer)
+    const first = session.caseFile.hotspots[0]?.place ?? 'zeinab_home'
+    currentPlace = first
+    const place = PLACES[first]
+    session.setPosition(place.district, place.pos.x, place.pos.z, 0)
+    session.save()
+    unsubscribeCase?.()
+    unsubscribeCase = session.onCase(handleCaseEvents)
+    shell.showIntro(session)
   }
 
   function persistPlace(id: PlaceId): void {
     if (!session) return
     const place = PLACES[id]
+    const before = PLACES[currentPlace]?.district
     currentPlace = id
     session.setPosition(place.district, place.pos.x, place.pos.z, 0)
     session.save()
+    if (before !== place.district) audio.playMusic(musicFor(id), { loop: true })
+    hud.hideNarration()
   }
 
   function openCaseFile(): void {
@@ -198,6 +240,7 @@ async function boot(): Promise<void> {
     unsubscribeCase?.()
     unsubscribeCase = undefined
     audio.stopAmbience()
+    audio.playMusic(MUSIC.title, { loop: true })
     hud.show(false)
     investigation.hide()
     active = false
@@ -212,6 +255,7 @@ async function boot(): Promise<void> {
     endingTimer = window.setTimeout(() => {
       if (!session) return
       audio.play('solved')
+      audio.playMusic(MUSIC.title, { loop: true })
       active = false
       paused = false
       caseFile.el.hidden = true
@@ -224,13 +268,16 @@ async function boot(): Promise<void> {
   function handleCaseEvents(changes: CaseEvent[]): void {
     for (const change of changes) {
       if (change.type === 'evidence') {
-        audio.play('evidence')
+        audio.play('found')
+        haptic('medium')
+        investigation.celebrate(change.evidence)
         hud.toast(`دليل جديد: ${change.evidence.title}`, 'evidence')
       } else if (change.type === 'evidence-gated') {
         hud.toast(change.reason ?? 'الدليل ده لسه ماظهرش… ارجع في وقت تاني.', 'warn')
       } else if (change.type === 'deduction') {
         audio.play('deduction')
-        hud.toast('ربطت خيطاً جديداً!', 'deduction')
+        haptic('success')
+        hud.toast('ربطت خيط جديد!', 'deduction')
       }
     }
     caseFile.refresh()
@@ -252,8 +299,9 @@ async function boot(): Promise<void> {
       if (changes.some(change => change.type === 'evidence')) {
         session.progress.stats.photos++
         session.save()
-        hud.toast('تمت إضافة سجل الصورة إلى ملف القضية.', 'info')
+        audio.play('shutter')
       }
+      investigation.refresh()
       return
     }
     session.useHotspot(hotspot)
@@ -266,21 +314,31 @@ async function boot(): Promise<void> {
     if (!person) return
     const dlg = session.talk(id)
     if (!dlg) {
-      hud.toast(`${person.name} مش عاوز يتكلم دلوقتي.`, 'info')
+      audio.play('error')
+      hud.toast(session.dialogueUnavailableReason(id) ?? `${person.name} مش عاوز يتكلم دلوقتي.`, 'info')
       return
     }
-    dialogue.start(dlg, person, session.profile.avatar.name,
+    hud.hideNarration()
+    const s = session
+    dialogue.start(dlg, person, s.profile.avatar.name,
       () => { session?.save(); investigation.refresh() },
       () => session?.flushDialogue(dlg),
+      {
+        backdrop: investigation.sceneImage,
+        avatar: s.profile.avatar,
+        evidence: eid => { const e = s.caseFile.evidence.find(x => x.id === eid); return e && { title: e.title, kind: e.kind } },
+        onConfront: lie => haptic(lie ? 'warning' : 'medium'),
+      },
     )
   }
 
   async function askHint(): Promise<void> {
     if (!session || !active || paused) return
+    const cost = session.nextHintCost()
     const result = await session.hint()
-    if (!result) hud.toast('القضية اتقفلت… مفيش تلميحات.', 'info')
-    else if ('wait' in result) hud.toast(`استنى ${result.wait} ثانية قبل التلميح الجاي.`, 'info')
-    else hud.hint(result.text, result.tier, result.source)
+    if (!result) hud.toast('القضية اتقفلت، مفيش تلميحات.', 'info')
+    else if ('wait' in result) hud.toast(`استنى ${arabicDigits(result.wait)} ثانية قبل التلميح الجاي.`, 'info')
+    else { audio.play('paper'); hud.hint(result.text, result.tier, result.source, cost) }
     session.save()
   }
 
@@ -299,6 +357,16 @@ async function boot(): Promise<void> {
     else if (event.code === 'KeyJ') { event.preventDefault(); caseFile.show(session!, 'objectives') }
   })
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause() })
+  // Android back button: close the innermost layer first; returning false minimises the app.
+  onBackButton(() => {
+    if (dialogue.open) { dialogue.close(); return true }
+    if (!caseFile.el.hidden) { caseFile.close(); return true }
+    if (investigation.back()) return true
+    if (active && !paused) { pause(); return true }
+    if (paused) { resume(); return true }
+    if (shell.screen !== 'title' && shell.screen !== 'boot') { shell.key(new KeyboardEvent('keydown', { code: 'Escape' })); return true }
+    return false
+  })
   window.addEventListener('pagehide', () => session?.save())
 
   const loop = new GameLoop({
@@ -315,14 +383,7 @@ async function boot(): Promise<void> {
       shell.frame(dt)
       dialogue.frame(dt)
       if (session && active && !paused) {
-        hud.frame({
-          hour: session.clock.hour,
-          mode: session.mode,
-          objective: session.engine.currentObjective(),
-          evidence: session.state.evidence.size,
-          total: CASE_01.evidence.length,
-          photoNearby: false,
-        })
+        investigation.tickClock(session.clock.hour)
       }
     },
   })

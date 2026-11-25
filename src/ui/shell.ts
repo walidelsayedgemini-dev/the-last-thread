@@ -4,13 +4,14 @@
  */
 import { arabicDigits, formatDateTime } from '../core/clock'
 import { CASE_01 } from '../data/case01'
-import { CHARACTERS, PLAYER_MODELS } from '../data/characters'
+import { CHARACTERS } from '../data/characters'
 import type { GameMode } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Settings, SettingsStore } from '../engine/save'
 import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
 import { HOMES, MAX_PROFILES, type Avatar, type ProfileService } from '../services/profiles'
+import { playerPortrait, portraitUrl, titleArt } from './art'
 import { h, setChildren, svg } from './dom'
 
 export type ScreenId = 'boot' | 'title' | 'profiles' | 'create' | 'mode' | 'intro' | 'pause' | 'settings' | 'ending' | 'none'
@@ -26,6 +27,8 @@ export type ShellActions = {
   settings(patch: Partial<Settings>): void
   /** Finish the intro and enter the world. */
   startWorld(): void
+  /** Open the next case for the current profile (shown on the ending screen). */
+  nextCase(): void
 }
 
 const ACCENTS = ['#b3121f', '#d9a441', '#3b7ea1', '#5b8c5a', '#8a5aa8', '#e2e2e2']
@@ -106,7 +109,7 @@ export class Shell {
 
   private logo(): HTMLElement {
     return h('div', { class: 'logo' },
-      h('small', null, 'قضية رقم ١ • الإسكندرية'),
+      h('small', null, 'لعبة تحقيق • أبيس والإسكندرية'),
       h('h1', null, 'الخيط ', h('span', null, 'الأخير')),
       this.threadArt())
   }
@@ -127,6 +130,7 @@ export class Shell {
         h('span', { class: 'title-action-arrow', 'aria-hidden': true }, '←'))
     return h('section', { class: 'page title' },
       h('div', { class: 'title-atmosphere', 'aria-hidden': true },
+        titleArt() && h('img', { class: 'title-bg', src: titleArt(), alt: '', draggable: 'false' }),
         h('div', { class: 'title-glow' }),
         h('div', { class: 'title-horizon' }),
         h('div', { class: 'title-wire' })),
@@ -144,7 +148,7 @@ export class Shell {
           h('div', { class: 'menu' },
             has && action('متابعة التحقيق', 'ارجع لآخر نقطة وصلت لها', '٠١', true, () => this.go('profiles', 'title')),
             action('تحقيق جديد', 'ابدأ قضية من أول الخيط', has ? '٠٢' : '٠١', !has, () => this.startCreate()),
-            action('الإعدادات', 'الصوت والحركة والمؤثرات البصرية', has ? '٠٣' : '٠٢', false, () => this.go('settings', 'title'))))),
+            action('الإعدادات', 'الصوت وحجم الخط والتباين', has ? '٠٣' : '٠٢', false, () => this.go('settings', 'title'))))),
       h('footer', null,
         h('span', null, 'لعبة تحقيق بأجواء نوار'),
         h('span', { class: 'title-footer-divider', 'aria-hidden': true }, '•'),
@@ -203,10 +207,10 @@ export class Shell {
       h('h2', null, 'اختار شخصيتك'),
       h('div', { class: 'cards' },
         h('button', { class: `card${!custom ? ' on' : ''}`, onclick: () => { a.kind = 'yassin'; a.name = 'ياسين'; a.gender = 'male'; this.go('create', this.back) } },
-          h('div', { class: 'portrait', style: { '--body': yassin.figure.body, '--accent': yassin.figure.accent } }, h('span', null, 'ي')),
+          h('div', { class: 'portrait has-img', style: { '--body': yassin.figure.body, '--accent': yassin.figure.accent } }, h('img', { src: portraitUrl('yassin'), alt: '' })),
           h('b', null, 'ياسين'), h('small', null, `${yassin.role} • ${yassin.home}`), h('p', null, yassin.appearance), h('blockquote', null, yassin.quote)),
         h('button', { class: `card${custom ? ' on' : ''}`, onclick: () => { a.kind = 'custom'; a.name = ''; this.go('create', this.back) } },
-          h('div', { class: 'portrait', style: { '--body': '#222', '--accent': a.accent ?? ACCENTS[0] } }, h('span', null, '؟')),
+          h('div', { class: 'portrait has-img', style: { '--body': '#222', '--accent': a.accent ?? ACCENTS[0] } }, custom ? h('img', { src: playerPortrait(a), alt: '' }) : h('span', null, '؟')),
           h('b', null, 'شخصية خاصة'), h('small', null, 'اسم ومظهر ومكان سكن من اختيارك'), h('p', null, 'محقّق جديد في أبيس… الماضي بتاعه بيتكتب مع كل خطوة.'))),
       custom && h('div', { class: 'form' },
         h('label', null, 'الاسم', name),
@@ -216,8 +220,7 @@ export class Shell {
           ACCENTS.map(c => h('button', { class: `swatch${a.accent === c ? ' on' : ''}`, style: { background: c }, 'aria-label': c, onclick: () => { a.accent = c; this.go('create', this.back) } }))),
         h('label', null, 'سكنك',
           h('select', { onchange: (e: Event) => { a.home = (e.target as HTMLSelectElement).value } }, HOMES.map(x => h('option', { value: x, selected: a.home === x }, x))))),
-      h('p', { class: 'note' }, `الجسم: ${a.gender === 'female' ? 'أنثى' : 'ذكر'} (${PLAYER_MODELS[a.gender === 'female' ? 'female' : 'male'].heightM} م)`),
-      h('div', { class: 'row end' },
+            h('div', { class: 'row end' },
         h('button', { class: 'btn ghost', onclick: () => this.go(this.s.profiles.list().length ? 'profiles' : 'title') }, 'رجوع'),
         h('button', { class: 'btn primary', onclick: () => { if (custom && !(a.name ?? '').trim()) { name.focus(); return } this.go('mode', 'create') } }, 'التالي')))
   }
@@ -245,12 +248,13 @@ export class Shell {
     this.screen = 'intro'
     this.el.hidden = false
     this.el.dataset.screen = 'intro'
-    const lines = CASE_01.intro.map(l => session.fill(l))
+    const file = session.caseFile
+    const lines = file.intro.map(l => session.fill(l))
     const body = h('div', { class: 'intro-lines' })
     const skip = h('button', { class: 'btn primary', onclick: () => this.act.startWorld() }, 'ابدأ التحقيق ◂')
     skip.hidden = true
     setChildren(this.el, h('section', { class: 'page intro' },
-      h('div', { class: 'stamp' }, 'ملف رقم ١'), h('h2', null, CASE_01.title), body, skip))
+      h('div', { class: 'stamp' }, `ملف رقم ${file.number}`), h('h2', null, file.title), body, skip))
     let i = 0
     const next = () => {
       if (i >= lines.length) {
@@ -271,23 +275,36 @@ export class Shell {
     this.el.hidden = false
     this.el.dataset.screen = 'ending'
     this.el.onclick = null
-    const grade = session.engine.grade()
+    const file = session.caseFile
+    const report = session.gradeReport()
     const st = session.progress.stats
     const found = session.state.evidence.size
+    const next = session.nextCaseId()
+    const stars = h('div', { class: 'stars', 'aria-label': `${report.stars} من ٥ نجوم` },
+      [1, 2, 3, 4, 5].map(i => h('span', { class: i <= report.stars ? 'on' : '', style: { '--d': `${i * 0.12}s` } }, '★')))
+    const missed = report.missed.map(id => file.evidence.find(e => e.id === id)).filter(e => e !== undefined)
     setChildren(this.el, h('section', { class: 'page ending' },
       h('div', { class: 'stamp solved' }, 'القضية اتقفلت'),
-      h('h2', null, CASE_01.title),
-      CASE_01.finale.ending.map(l => h('p', { class: 'end-line' }, session.fill(l))),
+      h('small', { class: 'ending-case' }, `القضية ${file.number}`),
+      h('h2', null, file.title),
+      file.finale.ending.map(l => h('p', { class: 'end-line' }, session.fill(l))),
+      h('div', { class: 'grade-card' },
+        h('div', { class: 'grade-head' }, h('small', null, 'تقديرك'), h('b', { class: 'grade-word' }, report.grade), stars),
+        h('ul', { class: 'breakdown' }, report.breakdown.map(b =>
+          h('li', { class: b.delta < 0 ? 'minus' : 'plus' }, h('span', null, b.label), h('b', null, `${b.delta > 0 ? '+' : b.delta < 0 ? '−' : ''}${arabicDigits(Math.abs(b.delta))}`))))),
       h('div', { class: 'report' },
-        h('div', null, h('small', null, 'التقدير'), h('b', { class: `grade g${grade}` }, grade)),
-        h('div', null, h('small', null, 'الأدلة'), h('b', null, `${arabicDigits(found)}/${arabicDigits(CASE_01.evidence.length)}`)),
+        h('div', null, h('small', null, 'الأدلة'), h('b', null, `${arabicDigits(found)} من ${arabicDigits(file.evidence.length)}`)),
         h('div', null, h('small', null, 'صور'), h('b', null, arabicDigits(st.photos))),
         h('div', null, h('small', null, 'تلميحات'), h('b', null, arabicDigits(st.hints))),
-        h('div', null, h('small', null, 'اتهامات خاطئة'), h('b', null, arabicDigits(st.wrongAccusations)))),
-      found < CASE_01.evidence.length && h('p', { class: 'note' }, 'لسه فيه أدلة إضافية ما لقيتهاش: جرّب الوضع الواقعي في مواعيد مختلفة (أيام الماتشات)، أو ارجع واكمل البحث.'),
+        h('div', null, h('small', null, 'اتهامات غلط'), h('b', null, arabicDigits(st.wrongAccusations)))),
+      missed.length > 0 && h('details', { class: 'missed' },
+        h('summary', null, `فاتك ${arabicDigits(missed.length)} دليل`),
+        h('ul', null, missed.map(e => h('li', null, h('b', null, e.title), h('small', null, ` • ${e.source}`)))),
+        h('p', { class: 'note' }, 'بعض الأدلة الإضافية بتظهر بس في الوضع الواقعي في مواعيد معيّنة.')),
       h('div', { class: 'row end' },
-        h('button', { class: 'btn', onclick: () => this.act.resume() }, 'كمّل اللعب'),
-        h('button', { class: 'btn primary', onclick: () => this.act.quit() }, 'القائمة الرئيسية'))))
+        h('button', { class: 'btn ghost', onclick: () => this.act.resume() }, 'ارجع للتحقيق'),
+        h('button', { class: `btn${next ? '' : ' primary'}`, onclick: () => this.act.quit() }, 'القائمة الرئيسية'),
+        next && h('button', { class: 'btn primary', onclick: () => this.act.nextCase() }, 'ابدأ القضية التانية'))))
   }
 
   private pause(): HTMLElement {
@@ -298,22 +315,26 @@ export class Shell {
         h('button', { class: 'btn', onclick: () => this.act.casefile() }, 'ملف القضية'),
         h('button', { class: 'btn', onclick: () => this.go('settings', 'pause') }, 'الإعدادات'),
         h('button', { class: 'btn ghost', onclick: () => this.act.quit() }, 'حفظ والخروج')),
-      h('p', { class: 'controls' }, 'اختار نقطة تحقيق أو شخصية من المشهد. من الخريطة انتقل بين مواقع المنطقة؛ الميكروباص يربط أبيس بالإسكندرية. ملف القضية: Tab • الخريطة: M • تلميح: H • إيقاف: Esc'))
+      h('p', { class: 'controls' }, 'اضغط على العلامات اللي على الصورة أو على الشخص اللي عاوز تكلّمه. من الخريطة اتنقّل بين أماكن المنطقة، والميكروباص بيوصّل أبيس بإسكندرية. ملف القضية: Tab • الخريطة: M • تلميح: H • القائمة: Esc'))
   }
 
   private settingsPage(): HTMLElement {
     const d = this.s.settings.data
     const slider = (label: string, key: 'musicVolume' | 'sfxVolume', min: number, max: number, step: number) =>
       h('label', { class: 'set' }, label, h('input', { type: 'range', min, max, step, value: d[key], oninput: (e: Event) => this.act.settings({ [key]: Number((e.target as HTMLInputElement).value) }) }))
-    const check = (label: string, key: 'muted' | 'reducedMotion') =>
+    const check = (label: string, key: 'muted' | 'reducedMotion' | 'highContrast') =>
       h('label', { class: 'set row' }, h('input', { type: 'checkbox', checked: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).checked }) }), label)
     const url = (label: string, key: 'hintEndpoint' | 'eventsUrl', ph: string) =>
       h('label', { class: 'set' }, label, h('input', { type: 'url', dir: 'ltr', placeholder: ph, value: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).value }) }))
     return h('section', { class: 'page settings' },
       h('h2', null, 'الإعدادات'),
       h('div', { class: 'grid' },
-        slider('صوت الأجواء', 'musicVolume', 0, 1, 0.05), slider('صوت المؤثرات', 'sfxVolume', 0, 1, 0.05),
-        check('كتم الصوت', 'muted'), check('تقليل الحركة', 'reducedMotion')),
+        slider('صوت المزيكا والأجواء', 'musicVolume', 0, 1, 0.05), slider('صوت المؤثرات', 'sfxVolume', 0, 1, 0.05),
+        check('كتم الصوت', 'muted'), check('تقليل الحركة', 'reducedMotion'),
+        h('div', { class: 'set' }, 'حجم الخط',
+          h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'حجم الخط' }, ([[0.9, 'صغير'], [1, 'عادي'], [1.15, 'كبير'], [1.3, 'كبير جداً']] as const).map(([v, label]) =>
+            h('button', { class: `chip${Math.abs(d.textScale - v) < 0.01 ? ' on' : ''}`, role: 'radio', 'aria-checked': String(Math.abs(d.textScale - v) < 0.01), onclick: () => { this.act.settings({ textScale: v }); this.go('settings', this.back) } }, label)))),
+        check('تباين عالي (أوضح في الشمس)', 'highContrast')),
       h('details', null, h('summary', null, 'الخدمات المتقدمة (اختياري)'),
         h('p', { class: 'note' }, 'روابط اختيارية. من غيرها تفضل القصة والتلميحات المحلية شغّالة أوفلاين.'),
         url('رابط التلميحات الذكية (ChatGPT)', 'hintEndpoint', 'https://your-proxy.example/hint'),
