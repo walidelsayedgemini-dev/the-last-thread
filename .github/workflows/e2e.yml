@@ -1,0 +1,71 @@
+name: E2E and quality gates
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install headless Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Production build and size budget
+        run: pnpm build
+
+      - name: Smoke playthrough
+        run: SHOTS_DIR=artifacts/smoke pnpm smoke
+
+      - name: Start preview server
+        run: |
+          pnpm exec vite preview --config scripts/manus-game-assets/vite.config.mjs --host 127.0.0.1 --port 4173 --strictPort > artifacts-preview.log 2>&1 &
+          echo $! > preview.pid
+          for i in $(seq 1 40); do curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          cat artifacts-preview.log
+          exit 1
+
+      - name: QA tour
+        run: mkdir -p artifacts/qa && BASE=http://127.0.0.1:4173/ node scripts/qa-tour.mjs artifacts/qa
+
+      - name: Upload screenshots and reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-screenshots-and-reports
+          path: |
+            artifacts/
+            artifacts-preview.log
+            preview.pid
+          if-no-files-found: warn
+          retention-days: 14

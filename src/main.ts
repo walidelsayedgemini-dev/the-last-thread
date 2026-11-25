@@ -17,6 +17,7 @@ import { HintService, RemoteChatProvider } from './services/hints'
 import { ProfileService, type Profile } from './services/profiles'
 import { LocalStorageAdapter, MemoryStorage } from './services/storage'
 import { achievementContext, evaluateAchievements } from './game/achievements'
+import { CrashReporter } from './services/crash'
 import { CaseFileView } from './ui/casefile'
 import { DialogueView } from './ui/dialogueView'
 import { Hud } from './ui/hud'
@@ -49,6 +50,7 @@ async function boot(): Promise<void> {
   const auto = new URLSearchParams(location.search).get('autostart')
   const storage = auto === 'story' || auto === 'realistic' ? new MemoryStorage() : new LocalStorageAdapter()
   const settings = new SettingsStore(storage)
+  const crash = new CrashReporter(storage, settings.data.crashReportsEnabled)
   const profiles = new ProfileService(storage)
   const now = nowFromQuery(location.search, () => cairoStamp(new Date()))
   const audio = new Audio()
@@ -122,6 +124,7 @@ async function boot(): Promise<void> {
     settings: patch => {
       settings.update(patch)
       applySettings(settings.data)
+      if ('crashReportsEnabled' in patch) crash.setEnabled(settings.data.crashReportsEnabled)
       if ('hintEndpoint' in patch) hints.setRemote(settings.data.hintEndpoint ? new RemoteChatProvider(settings.data.hintEndpoint) : undefined)
     },
     replayTutorial: () => {
@@ -237,6 +240,7 @@ async function boot(): Promise<void> {
   function pause(): void {
     if (!active || paused) return
     paused = true
+    hud.show(false)
     shell.go('pause')
     audio.play('ui')
   }
@@ -249,6 +253,7 @@ async function boot(): Promise<void> {
     if (!paused) return
     paused = false
     shell.go('none')
+    hud.show(true)
     loopRef?.resetAccumulator()
     investigation.refresh()
   }

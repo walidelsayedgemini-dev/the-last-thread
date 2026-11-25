@@ -1,5 +1,6 @@
-const CACHE_NAME = 'ltt-cache-v1'
-const ASSET_CACHE = /\/assets\/[^/]+-[A-Za-z0-9_-]{6,}\.[^/]+$/
+const CACHE_NAME = 'ltt-cache-v2'
+// Runtime cache only: scene and portrait bytes enter this cache when the player sees them.
+const ASSET_CACHE = /\/(?:assets\/[^/]+-[A-Za-z0-9_-]{6,}\.[^/]+|audio\/[^/]+\.(?:mp3|ogg)|fonts\/[^/]+\.woff2)$/
 
 self.addEventListener('install', event => {
   event.waitUntil(self.skipWaiting())

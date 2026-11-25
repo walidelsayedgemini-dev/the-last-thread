@@ -3,6 +3,7 @@ import { HintService, type HintProvider } from '../src/services/hints'
 import { MAX_PROFILES, PROGRESS_VERSION, ProfileService, migrate, newProgress } from '../src/services/profiles'
 import { MemoryStorage } from '../src/services/storage'
 import { parseSettings, SettingsStore } from '../src/engine/save'
+import { CrashReporter } from '../src/services/crash'
 
 describe('ProfileService', () => {
   it('creates, saves, lists and reloads profiles', () => {
@@ -86,5 +87,17 @@ describe('settings', () => {
     const store = new SettingsStore(st)
     store.update({ muted: true })
     expect(new SettingsStore(st).data.muted).toBe(true)
+  })
+})
+
+describe('CrashReporter', () => {
+  it('keeps a bounded local ring buffer and stays disabled by default', () => {
+    const storage = new MemoryStorage()
+    const reporter = new CrashReporter(storage)
+    for (let i = 0; i < 15; i++) reporter.capture({ kind: 'error', message: `error-${i}` })
+    expect(reporter.records).toHaveLength(12)
+    expect(reporter.records[0].message).toBe('error-3')
+    expect(reporter.records.at(-1)?.message).toBe('error-14')
+    reporter.dispose()
   })
 })
