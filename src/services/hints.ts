@@ -99,6 +99,16 @@ export class HintService {
     return { text: await this.local.hint(full), source: 'local', tier }
   }
 
+  /** Tier that the next request for an objective will use. */
+  nextTier(objectiveId: string): 1 | 2 | 3 {
+    return this.tiers.get(objectiveId) ?? 1
+  }
+
+  /** Forget one objective's escalation (normally useful when switching cases). */
+  resetObjective(objectiveId: string): void {
+    this.tiers.delete(objectiveId)
+  }
+
   /** Forget escalation (e.g. when the objective changes or a new case starts). */
   reset(): void {
     this.tiers.clear()

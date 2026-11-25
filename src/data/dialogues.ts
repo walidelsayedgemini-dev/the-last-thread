@@ -137,6 +137,8 @@ const hassan: Dialogue = {
       choices: [
         { text: 'احكيلي عن شوقي زمان.', next: 'h_history', when: { notFlags: ['hassan_history'] } },
         { text: 'مين شاف الكوبري غيرك؟', next: 'h_others' },
+        { text: 'واجهته بدفتر القهوة: سيّد كان عنده.', next: 'h_confront_right', when: { evidence: ['e_cafe_bill'], notFlags: ['hassan_confronted'] }, present: 'e_cafe_bill', confront: true },
+        { text: 'أوريك الصورة القديمة؟ يمكن تفتكر.', next: 'h_confront_wrong', when: { evidence: ['e_old_photo'], notFlags: ['hassan_confronted'] }, present: 'e_old_photo', confront: true },
         { text: 'شكراً يا عم حسن.', next: 'h_bye' },
       ],
     },
@@ -154,6 +156,8 @@ const hassan: Dialogue = {
       lines: [{ who: 'hassan', text: 'القهوة. رجب سامع وشايف كل حاجة… بس اسأله بعد الضهر، قبلها بيبقى مخنوق.' }],
       next: 'h_hub',
     },
+    h_confront_right: { id: 'h_confront_right', lines: [{ who: 'player', text: 'الفاتورة باسم سيّد الساعة ١١:٠٥… إنت قلت إنك ما شفتش حد.' }, { who: 'hassan', text: 'أنا ماكدبتش يا ابني… بس خفت أقول إن سيّد رجع وسأل عن الحجر. خد بالك: كان بيسأل عن ورقة في مكتب شوقي.' }], effects: [{ type: 'flag', id: 'hassan_confronted' }, { type: 'flag', id: 'hassan_secret' }], next: 'h_hub' },
+    h_confront_wrong: { id: 'h_confront_wrong', lines: [{ who: 'hassan', text: 'الصورة دي من زمان يا ابني. حلوة، بس مالهاش علاقة بليلة الترعة. سيبني أفتكر اللي شفته.' }], next: 'h_hub' },
     h_bye: { id: 'h_bye', lines: [{ who: 'hassan', text: 'الله معاك يا ابني. وخلّي عينك في الأرض.' }] },
     h_again: {
       id: 'h_again',
@@ -199,6 +203,8 @@ const ragab: Dialogue = {
       lines: [{ who: 'ragab', text: 'فاكر حاجة تانية يا باشا. اسألني.' }],
       choices: [
         { text: 'فاكر حاجة تانية من الليلة دي؟', next: 'r_more', when: { notEvidence: ['e_match_night_photo'] } },
+        { text: 'عم حسن شاف عربية شوقي. إنت عارف أكتر.', next: 'r_confront_right', when: { evidence: ['e_hassan_testimony'], notFlags: ['ragab_confronted'] }, present: 'e_hassan_testimony', confront: true },
+        { text: 'شوفت الصورة القديمة دي؟', next: 'r_confront_wrong', when: { evidence: ['e_old_photo'], notFlags: ['ragab_confronted'] }, present: 'e_old_photo', confront: true },
         { text: 'متشكر يا معلم.', next: 'r_bye' },
       ],
     },
@@ -222,6 +228,8 @@ const ragab: Dialogue = {
       id: 'r_nomatch',
       lines: [{ who: 'ragab', text: 'مش جاي لي حاجة دلوقتي… بس كلّمني يوم ماتش الاتحاد، الجمهور بيصحّي ذاكرتي.' }],
     },
+    r_confront_right: { id: 'r_confront_right', lines: [{ who: 'player', text: 'عم حسن شاف عربية شوقي عند الكوبري. إنت عارف أكتر من اللي قلته.' }, { who: 'ragab', text: 'يا ساتر… ماشي. سيّد ساب عندي مفتاح صغير وقال لي لو سأل حد أقول ماجاش. المفتاح كان رايح لمكتب شوقي.' }], effects: [{ type: 'flag', id: 'ragab_confronted' }, { type: 'flag', id: 'ragab_trust' }], next: 'r_again' },
+    r_confront_wrong: { id: 'r_confront_wrong', lines: [{ who: 'ragab', text: 'دي صورة قديمة يا باشا، وأنا مش ناقص ذكريات. لو عندك سؤال عن الليلة هاته واضح.' }], next: 'r_again' },
     r_bye: { id: 'r_bye', lines: [{ who: 'ragab', text: 'تحت أمرك يا باشا. القهوة مفتوحة.' }] },
   },
 }
@@ -240,6 +248,8 @@ const bahr: Dialogue = {
       choices: [
         { text: 'جاي أدوّر على خالي.', next: 'b_cold' },
         { text: 'الخيط ده تعرفه؟', next: 'b_thread', when: { evidence: ['e_thread_door'] } },
+        { text: 'الصورة دي فيها العشة… قول اللي تعرفه.', next: 'b_confront_right', when: { evidence: ['e_qaitbay_photo'], notFlags: ['bahr_confronted'] }, present: 'e_qaitbay_photo', confront: true },
+        { text: 'معايا دفتر قهوة… يمكن يهمك؟', next: 'b_confront_wrong', when: { evidence: ['e_cafe_bill'], notFlags: ['bahr_confronted'] }, present: 'e_cafe_bill', confront: true },
       ],
     },
     b_cold: { id: 'b_cold', lines: [{ who: 'bahr', text: 'ما أعرفش حد. الموج بيرمي كل يوم ناس… ويرجّعهم.' }], next: 'b_first' },
@@ -252,6 +262,8 @@ const bahr: Dialogue = {
       ],
       effects: [{ type: 'evidence', id: 'e_bahr_testimony' }, { type: 'flag', id: 'shed_known' }],
     },
+    b_confront_right: { id: 'b_confront_right', lines: [{ who: 'player', text: 'الخيط ظاهر على سلم العشة. مين كان مستني هنا؟' }, { who: 'bahr', text: 'محمود كان مستني حد يجيب له ورقة. ماشفتهوش يمشي معاه… بس شفت عربية سودا بعيد عن السور.' }], effects: [{ type: 'flag', id: 'bahr_confronted' }, { type: 'flag', id: 'bahr_secret' }], next: 'b_first' },
+    b_confront_wrong: { id: 'b_confront_wrong', lines: [{ who: 'bahr', text: 'ده حساب قهوة يا ريّس، والبحر مالهش في الحسابات دي. ورّيني حاجة فيها ملح أو حبل.' }], next: 'b_first' },
     b_again: {
       id: 'b_again',
       lines: [{ who: 'bahr', text: 'العشة تحت السور… صوّر القلعة وشوف الخيط. وبعدين افتح العشة بإيدك.' }],
@@ -280,6 +292,8 @@ const fathy: Dialogue = {
       choices: [
         { text: 'شوفت المعلم شوقي هنا؟', next: 'f_shawky' },
         { text: 'محمود زار المكان ده؟', next: 'f_mahmoud' },
+        { text: 'الصورة دي بتفكّرك بمحمود وشوقي؟', next: 'f_confront_right', when: { evidence: ['e_old_photo'], notFlags: ['fathy_confronted'] }, present: 'e_old_photo', confront: true },
+        { text: 'عندي خيط أحمر… تعرفه؟', next: 'f_confront_wrong', when: { evidence: ['e_thread_door'], notFlags: ['fathy_confronted'] }, present: 'e_thread_door', confront: true },
       ],
     },
     f_mahmoud: {
@@ -295,6 +309,8 @@ const fathy: Dialogue = {
       ],
       effects: [{ type: 'evidence', id: 'e_fathy_testimony' }],
     },
+    f_confront_right: { id: 'f_confront_right', lines: [{ who: 'player', text: 'إنت شفتهم زمان، وورقة شوقي كانت في إيدك. قول الحقيقة.' }, { who: 'fathy', text: 'أيوه… محمود كان بيحاول يحذّر شوقي، مش يشاركه. الورقة اتقطعت قدامي، والتوقيع المزوّر كان واضح.' }], effects: [{ type: 'flag', id: 'fathy_confronted' }, { type: 'flag', id: 'fathy_secret' }], next: 'f_first' },
+    f_confront_wrong: { id: 'f_confront_wrong', lines: [{ who: 'fathy', text: 'الخيط ده يخص محمود، يا ابني. أنا حارس حجر وورق، مش صياد عقد. اسألني عن اللي شوفته هنا.' }], next: 'f_first' },
     f_again: { id: 'f_again', lines: [{ who: 'fathy', text: 'لو احتجت شهادتي أنا موجود. الحق لازم يتقال.' }] },
   },
 }
@@ -348,10 +364,12 @@ const shawky: Dialogue = {
         { who: 'player', text: 'العقد اللي في درجك مزوّر. وده الدليل.' },
       ],
       choices: [
-        { text: 'افتح الدرج بنفسك.', next: 's_snap' },
-        { text: 'لو سلّمت نفسك دلوقتي هتنزل عقوبتك.', next: 's_snap' },
+        { text: 'افتح الدرج بنفسك.', next: 's_snap', present: 'e_library_envelope', confront: true },
+        { text: 'لو سلّمت نفسك دلوقتي هتنزل عقوبتك.', next: 's_snap', present: 'e_fathy_testimony', confront: true },
+        { text: 'أوريك صورة قديمة وخلاص؟', next: 's_dismiss', when: { evidence: ['e_old_photo'] }, present: 'e_old_photo', confront: true },
       ],
     },
+    s_dismiss: { id: 's_dismiss', lines: [{ who: 'shawky', text: 'صورة قديمة يا بشمهندس؟ دي ذكريات، مش دليل. لما يبقى معاك ورق اتكلم.' }], next: 's_confront' },
     s_snap: {
       id: 's_snap',
       lines: [
@@ -389,3 +407,50 @@ const mahmoud: Dialogue = {
 }
 
 export const DIALOGUES: Partial<Record<CharacterId, Dialogue>> = { zeinab, hassan, ragab, bahr, fathy, shawky, mahmoud }
+
+
+const salma: Dialogue = {
+  character: 'salma', entries: [{ node: 'sa_done', when: { flags: ['case02_solved'] } }, { node: 'sa_first' }],
+  nodes: {
+    sa_first: { id: 'sa_first', lines: [{ who: 'salma', text: 'إنت قريب محمود؟ شفت الظرف في إيدك… الورق ده مش جديد.' }], choices: [
+      { text: 'عاوز أعرف مين لعب في سجل الطريق.', next: 'sa_archive', when: { evidence: ['e02_red_receipt'] } },
+      { text: 'معايا بطاقة مخزن ٧.', next: 'sa_key', when: { evidence: ['e02_key_tag'] }, present: 'e02_key_tag', confront: true },
+    ] },
+    sa_archive: { id: 'sa_archive', lines: [{ who: 'player', text: 'الإيصال بيقول إن الدفع كمل بعد شوقي.' }, { who: 'salma', text: 'يبقى دور على صفحة الاستعارة. الملف اتسحب باسم مستعار، بس اللي كتبه كان مستعجل.' }], effects: [{ type: 'flag', id: 'salma_trust' }], next: 'sa_done' },
+    sa_key: { id: 'sa_key', lines: [{ who: 'salma', text: 'البطاقة دي من مخزن البلدية، مش من مكتب عقارات. حرف «أ» عليها مش صدفة.' }], effects: [{ type: 'flag', id: 'salma_pressed' }], next: 'sa_done' },
+    sa_done: { id: 'sa_done', lines: [{ who: 'salma', text: 'السجل وختمه عندك. متسيبش الورق يرجع يتبدل.' }] },
+  },
+}
+
+const nabil: Dialogue = {
+  character: 'nabil', entries: [{ node: 'n_done', when: { evidence: ['e02_recording'] } }, { node: 'n_first' }],
+  nodes: {
+    n_first: { id: 'n_first', lines: [{ who: 'nabil', text: 'بص يا باشا، أنا سواق مش شاهد… بس التسجيل ده فضل في موبايلي.' }], choices: [
+      { text: 'شغّل التسجيل.', next: 'n_record', when: { flags: ['visited_city'] } },
+      { text: 'الظرف ده تعرفه؟', next: 'n_dismiss', present: 'e02_black_envelope', confront: true, when: { evidence: ['e02_black_envelope'] } },
+    ] },
+    n_record: { id: 'n_record', lines: [{ who: 'nabil', text: 'الراكب قال: «على السور قبل الفجر… وخلي أدهم يستلم». أنا عملت نفسي مش سامع.' }], effects: [{ type: 'evidence', id: 'e02_recording' }, { type: 'flag', id: 'nabil_trust' }], next: 'n_done' },
+    n_dismiss: { id: 'n_dismiss', lines: [{ who: 'nabil', text: 'ظرف إيه يا باشا؟ أنا ماليش في الورق. لو عايز الحقيقة اسمع التسجيل.' }], next: 'n_first' },
+    n_done: { id: 'n_done', lines: [{ who: 'nabil', text: 'أنا قلت اللي سمعته. بعد كده الطريق هو اللي يكمّل.' }] },
+  },
+}
+
+const adham: Dialogue = {
+  character: 'adham', entries: [{ node: 'a_solved', when: { flags: ['case02_solved'] } }, { node: 'a_confront', when: { evidence: ['e02_corniche_photo', 'e02_recording'] } }, { node: 'a_first' }],
+  nodes: {
+    a_first: { id: 'a_first', lines: [{ who: 'adham', text: 'السور مقفول بعد نص الليل. امشي يا ابني.' }], choices: [
+      { text: 'الفانوس رقم ٧ ظهر في الصورة.', next: 'a_dismiss', present: 'e02_corniche_photo', confront: true, when: { evidence: ['e02_corniche_photo'] } },
+      { text: 'أنا بدوّر على محمود.', next: 'a_cold' },
+    ] },
+    a_dismiss: { id: 'a_dismiss', lines: [{ who: 'adham', text: 'الصورة ظلال يا ابني. البحر بيكبر كل حاجة.' }], next: 'a_first' },
+    a_cold: { id: 'a_cold', lines: [{ who: 'adham', text: 'محمود خلص قضيته. دي مش نوبتي.' }], next: 'a_first' },
+    a_confront: { id: 'a_confront', lines: [{ who: 'player', text: 'التسجيل نادى اسمك، والصورة حطتك عند الفانوس. الرسالة دي كانت ليك.' }, { who: 'adham', text: '…الليلة دي كنت محتاج فلوس. شوقي سلّمني الملف، وبعده ناس تانية كملت الدفع. خد الرسالة وسجّل اعترافي.' }], effects: [{ type: 'evidence', id: 'e02_messenger_note' }, { type: 'flag', id: 'case02_adham_tied' }, { type: 'flag', id: 'adham_confronted' }] },
+    a_solved: { id: 'a_solved', lines: [{ who: 'adham', text: 'الدفتر عند النيابة. أنا هواجه اللي عملته.' }] },
+  },
+}
+
+/** Case01 remains the default export for old callers; new callers select by case id. */
+export const DIALOGUES_BY_CASE: Record<string, Partial<Record<CharacterId, Dialogue>>> = {
+  case01: DIALOGUES,
+  case02: { salma, nabil, adham },
+}

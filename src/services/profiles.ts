@@ -13,7 +13,7 @@ import type { CaseSnapshot } from '../core/caseState'
 import type { StorageAdapter } from './storage'
 
 export const MAX_PROFILES = 3
-export const PROGRESS_VERSION = 2
+export const PROGRESS_VERSION = 3
 const INDEX_KEY = 'ltt.profiles.index'
 const profileKey = (id: string) => `ltt.profile.${id}`
 
@@ -34,12 +34,14 @@ export type Progress = {
   caseId: string
   mode: GameMode
   case: CaseSnapshot
+  /** Snapshots for completed/current cases; `case` remains the current-case compatibility alias. */
+  cases?: Record<string, CaseSnapshot>
   /** Where the player stands: zone + world position + yaw. */
   position: { zone: 'abis' | 'city'; x: number; z: number; yaw: number }
   storyMinutes: number
   playMs: number
   /** Bookkeeping for the end-of-case report. */
-  stats: { photos: number; hints: number; wrongAccusations: number }
+  stats: { photos: number; hints: number; wrongAccusations: number; hintTiers?: Partial<Record<1 | 2 | 3, number>> }
 }
 
 export type Profile = {
@@ -62,11 +64,12 @@ export type ProfileSummary = {
 export const HOMES = ['عزبة ١٥ – أبيس', 'العجمي', 'المنتزه', 'سيدي بشر', 'محرم بك'] as const
 
 export function newProgress(mode: GameMode, caseId = 'case01'): Progress {
+  const initial: CaseSnapshot = { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [] }
   return {
     v: PROGRESS_VERSION, caseId, mode,
-    case: { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [] },
+    case: initial, cases: { [caseId]: initial },
     position: { zone: 'abis', x: 30, z: 232, yaw: 0 },
-    storyMinutes: 0, playMs: 0, stats: { photos: 0, hints: 0, wrongAccusations: 0 },
+    storyMinutes: 0, playMs: 0, stats: { photos: 0, hints: 0, wrongAccusations: 0, hintTiers: {} },
   }
 }
 
@@ -88,15 +91,28 @@ export function migrate(raw: unknown, mode: GameMode = 'story'): Progress {
     out.stats = out.stats ?? { photos: 0, hints: 0, wrongAccusations: 0 }
     v = 2
   }
-  const base = newProgress((out.mode as GameMode) ?? mode, typeof out.caseId === 'string' ? out.caseId : 'case01')
+  const caseId = typeof out.caseId === 'string' ? out.caseId : 'case01'
+  const base = newProgress((out.mode as GameMode) ?? mode, caseId)
   const c = (out.case ?? {}) as Partial<CaseSnapshot>
+  const migratedCase = {
+    flags: strings(c.flags), deductions: strings(c.deductions) as CaseSnapshot['deductions'],
+    hotspots: strings(c.hotspots), seenChoices: strings(c.seenChoices),
+    evidence: Array.isArray(c.evidence) ? c.evidence.filter(e => e && typeof e.id === 'string').map(e => ({ id: e.id, at: Number(e.at) || 0 })) : [],
+    offended: Array.isArray(c.offended) ? c.offended.filter(x => x && typeof x.character === 'string').map(x => ({ character: x.character as never, untilEvidence: Number(x.untilEvidence) || 0, untilMinute: Number(x.untilMinute) || 0 })) : [],
+  } satisfies CaseSnapshot
+  const rawCases = out.cases && typeof out.cases === 'object' ? out.cases as Record<string, unknown> : {}
+  const cases: Record<string, CaseSnapshot> = { ...base.cases, [caseId]: migratedCase }
+  for (const [id, value] of Object.entries(rawCases)) {
+    if (id === caseId || !value || typeof value !== 'object') continue
+    const x = value as Partial<CaseSnapshot>
+    cases[id] = {
+      flags: strings(x.flags), deductions: strings(x.deductions) as CaseSnapshot['deductions'], hotspots: strings(x.hotspots), seenChoices: strings(x.seenChoices),
+      evidence: Array.isArray(x.evidence) ? x.evidence.filter(e => e && typeof e.id === 'string').map(e => ({ id: e.id, at: Number(e.at) || 0 })) : [], offended: [],
+    }
+  }
   return {
     ...base, ...(out as Partial<Progress>), v: PROGRESS_VERSION,
-    case: {
-      flags: strings(c.flags), deductions: strings(c.deductions) as CaseSnapshot['deductions'],
-      hotspots: strings(c.hotspots), seenChoices: strings(c.seenChoices),
-      evidence: Array.isArray(c.evidence) ? c.evidence.filter(e => e && typeof e.id === 'string').map(e => ({ id: e.id, at: Number(e.at) || 0 })) : [],
-    },
+    case: migratedCase, cases,
     position: { ...base.position, ...((out.position as object) ?? {}) },
     stats: { ...base.stats, ...((out.stats as object) ?? {}) },
   }

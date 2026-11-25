@@ -75,6 +75,7 @@ export type RealEvent = {
 
 export type CharacterId =
   | 'yassin' | 'zeinab' | 'hassan' | 'ragab' | 'mahmoud' | 'shawky' | 'bahr' | 'fathy'
+  | 'salma' | 'nabil' | 'adham'
 
 /** Deep character profile ("ملف تعريف"): drives the notebook, dialogue tone and the figure. */
 export type CharacterProfile = {
@@ -114,6 +115,9 @@ export type EvidenceId =
   | 'e_cafe_bill' | 'e_microbus_ticket' | 'e_bahr_testimony' | 'e_harbor_thread'
   | 'e_library_envelope' | 'e_forged_contract' | 'e_fathy_testimony'
   | 'e_library_photo' | 'e_qaitbay_photo' | 'e_pillar_photo' | 'e_match_night_photo'
+  | 'e02_black_envelope' | 'e02_burned_map' | 'e02_red_receipt' | 'e02_corniche_photo'
+  | 'e02_key_tag' | 'e02_ledger_page' | 'e02_messenger_note' | 'e02_sea_glass'
+  | 'e02_recording' | 'e02_archive_stamp'
 
 export type Evidence = {
   id: EvidenceId
@@ -130,7 +134,9 @@ export type Evidence = {
   gate?: Gate
 }
 
-export type DeductionId = 'd_trail' | 'd_markers' | 'd_alibi' | 'd_where' | 'd_forgery' | 'd_motive'
+export type DeductionId =
+  | 'd_trail' | 'd_markers' | 'd_alibi' | 'd_where' | 'd_forgery' | 'd_motive'
+  | 'd02_route' | 'd02_motive' | 'd02_forgery' | 'd02_betrayal'
 
 export type Deduction = {
   id: DeductionId
@@ -168,6 +174,12 @@ export type DialogueChoice = {
   effects?: Effect[]
   /** Hide after it was chosen once. */
   once?: boolean
+  /** Evidence card presented during this choice; the UI can render it beside the text. */
+  present?: EvidenceId
+  /** Narrative metadata for an evidence confrontation. */
+  confront?: boolean
+  /** Optional signal that this choice is an intentional lie/false claim. */
+  lie?: boolean
 }
 
 export type DialogueNode = {
