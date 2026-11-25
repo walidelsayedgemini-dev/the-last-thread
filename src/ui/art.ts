@@ -11,6 +11,8 @@ const PHONE = import.meta.glob('../assets/scenes/phone/*.webp', { eager: true, q
 const PHONE_DAY = import.meta.glob('../assets/scenes/phone/day/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 const PORTRAITS = import.meta.glob('../assets/portraits/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 const TITLE = import.meta.glob('../assets/title-bg.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+const EVIDENCE = import.meta.glob('../assets/evidence/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+const CINEMATICS = import.meta.glob('../assets/cinematics/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
 /** Which photograph belongs to each place (file stem in src/assets/scenes). */
 const SCENE_FILE: Record<string, string> = {
@@ -72,6 +74,16 @@ export function sceneNeighbors(placeId: string): string[] {
 
 export function titleArt(): string | undefined {
   return Object.values(TITLE)[0]
+}
+
+/** Close-up evidence art; absent IDs intentionally return undefined for future case streams. */
+export function evidenceUrl(id: string): string | undefined {
+  return byStem(EVIDENCE, id)
+}
+
+/** Widescreen intro/ending art, with a compact phone crop available for narrow screens. */
+export function cinematicUrl(id: string, variant: 'desktop' | 'phone' = 'desktop'): string | undefined {
+  return byStem(CINEMATICS, variant === 'phone' ? `${id}-phone` : id)
 }
 
 /** Portrait for an NPC id, or the player (Yassin / female investigator / custom). */
