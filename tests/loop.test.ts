@@ -89,7 +89,7 @@ describe('gamepad sampling before simulation', () => {
     const input = new Input({} as HTMLCanvasElement)
     const consumed: boolean[] = []
     const beforeFrame = vi.fn((dt: number) => input.update(dt))
-    const loop = new GameLoop({ beforeFrame, step: () => consumed.push(input.consume('jump')), render() {} })
+    const loop = new GameLoop({ beforeFrame, step: () => consumed.push(input.consume('confirm')), render() {} })
     loop.start()
     return { pad, input, loop, consumed, beforeFrame }
   }

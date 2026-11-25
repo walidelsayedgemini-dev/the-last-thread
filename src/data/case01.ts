@@ -131,7 +131,7 @@ export const CASE_01: CaseFile = {
     { id: 'hs_coat', label: 'المعطف على الشماعة', place: 'mahmoud_house', offset: { x: 6, z: 8 }, kind: 'inspect', consumable: true,
       when: { flags: ['has_key'] }, text: 'المعطف لسه ريحته ريحة بنزين وتراب. في الجيب تذكرة ميكروباص مكرمشة.',
       effects: [{ type: 'evidence', id: 'e_microbus_ticket' }] },
-    { id: 'hs_sewing', label: 'ماكينة الخياطة', place: 'zeinab_home', offset: { x: -6, z: 7 }, kind: 'inspect', consumable: true,
+    { id: 'hs_sewing', label: 'ماكينة الخياطة', place: 'zeinab_home', offset: { x: -6, z: -7 }, kind: 'inspect', consumable: true,
       when: { flags: ['machine_hint'] }, text: 'الماكينة السنجر الحديد… والدرج فيه صورة قديمة وخيوط حرير ملفوفة.',
       effects: [{ type: 'evidence', id: 'e_old_photo' }] },
     { id: 'hs_stone', label: 'الحجر الجنوبي', place: 'plot15', offset: { x: 14, z: 13 }, kind: 'inspect', consumable: true,

@@ -33,7 +33,7 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     voice: 'دافي وبطيء، بتنادي الكل «يا ضنايا».', quote: '«الخيط اللي يتقطع يتربط... بس العقدة بتفضل باينة.»',
     model: 'characters/zeinab', heightM: 1.55,
     figure: { body: '#151515', accent: '#5a5a5a', skin: '#b98a63', headwear: 'scarf' },
-    place: 'zeinab_home', offset: { x: 3, z: 4 },
+    place: 'zeinab_home', offset: { x: 5, z: -8 },
   },
   hassan: {
     id: 'hassan', name: 'عم حسن', nickname: 'الشيخ حسن', age: 70, role: 'فلاح عجوز – شاهد على أبيس القديمة', home: 'عزبة ١٥ – أبيس',
@@ -47,7 +47,7 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     voice: 'خشن ومتعرّج، بيبدأ كل حكاية بـ«زمان...».', quote: '«الأرض ما بتكدبش... الناس هي اللي بتكدب عليها.»',
     model: 'characters/hassan', heightM: 1.68,
     figure: { body: '#8d8d8d', accent: '#e9e2d0', skin: '#8b6240', headwear: 'turban' },
-    place: 'abis_mosque', offset: { x: 6, z: 10 },
+    place: 'abis_mosque', offset: { x: 8, z: -11 },
   },
   ragab: {
     id: 'ragab', name: 'المعلم رجب', age: 45, role: 'صاحب قهوة العزبة', home: 'عزبة ١٥ – أبيس',
@@ -59,7 +59,7 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     voice: 'مرح وسريع، بيبدأ بـ«أهلاً يا باشا!».', quote: '«القهوة بتسمع أكتر ما الحيطان بتسمع.»',
     model: 'characters/ragab', heightM: 1.72,
     figure: { body: '#1f3b2d', accent: '#e9e2d0', skin: '#a77a52', headwear: 'none' },
-    place: 'cafe_ragab', offset: { x: 0, z: 4 },
+    place: 'cafe_ragab', offset: { x: 0, z: 5.5 },
   },
   mahmoud: {
     id: 'mahmoud', name: 'محمود', nickname: 'خالك محمود', age: 48, role: 'مهندس مساحة – المفقود', home: 'عزبة ١٥ – أبيس',
@@ -74,7 +74,7 @@ export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
     voice: 'متأنّي وهادي، بيشرح بالأمثلة.', quote: '«الخط المستقيم بين نقطتين... مفيش حد يقدر يلوّيه.»',
     model: 'characters/mahmoud', heightM: 1.74,
     figure: { body: '#a58f6a', accent: '#b3121f', skin: '#b58a62', headwear: 'none' },
-    place: 'qaitbay', offset: { x: 14, z: 22 }, appearsWhen: 'found_mahmoud',
+    place: 'qaitbay', offset: { x: 17, z: 21 }, appearsWhen: 'found_mahmoud',
   },
   shawky: {
     id: 'shawky', name: 'المعلم شوقي', nickname: 'شوقي بيه', age: 50, role: 'سمسار أراضي ومستثمر عقاري', home: 'المنشية – الإسكندرية',
