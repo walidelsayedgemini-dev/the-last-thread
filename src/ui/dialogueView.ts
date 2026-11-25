@@ -10,7 +10,7 @@ import { voicePath } from '../data/voice'
 import type { CharacterProfile, DialogueLine, EvidenceId, EvidenceKind } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Avatar } from '../services/profiles'
-import { playerPortrait, portraitUrl } from './art'
+import { evidenceUrl, playerPortrait, portraitUrl } from './art'
 import { h, setChildren } from './dom'
 
 export type DialogueContext = {
@@ -181,7 +181,7 @@ export class DialogueView {
       h('span', { class: 'dlg-choice-text' },
         c.confront && h('small', null, c.lie ? 'كدبة' : 'مواجهة'),
         this.fill(c.text)),
-      ev && h('span', { class: `dlg-ev kind-${ev.kind}` }, h('small', null, `اعرض ${KIND_NAME[ev.kind]}`), h('b', null, ev.title)))
+      ev && h('span', { class: `dlg-ev kind-${ev.kind}` }, evidenceUrl(c.present!) && h('img', { src: evidenceUrl(c.present!), alt: '', loading: 'lazy', decoding: 'async' }), h('span', null, h('small', null, `اعرض ${KIND_NAME[ev.kind]}`), h('b', null, ev.title))))
   }
 
   next(): void {

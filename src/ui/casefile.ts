@@ -8,7 +8,7 @@ import type { Evidence, EvidenceId, EventKind } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
-import { portraitUrl } from './art'
+import { evidenceUrl, portraitUrl } from './art'
 import { h, setChildren, svg } from './dom'
 
 type Tab = 'evidence' | 'people' | 'objectives' | 'board' | 'calendar'
@@ -127,7 +127,9 @@ export class CaseFileView {
 
   private evidenceCard(s: Session, e: Evidence, full: boolean): HTMLElement {
     const at = s.state.evidence.get(e.id)
+    const art = evidenceUrl(e.id)
     return h('article', { class: `ev kind-${e.kind}` },
+      h('div', { class: 'ev-art', 'aria-hidden': true }, art && h('img', { src: art, alt: '', loading: 'lazy', decoding: 'async' })),
       h('div', { class: 'ev-tag' }, KIND_ICON[e.kind], ' ', KIND_LABEL[e.kind]),
       h('h3', null, e.title),
       h('p', { class: 'ev-sum' }, e.summary),
@@ -206,8 +208,9 @@ export class CaseFileView {
 
     const cards = found.map(e => {
       const p = this.pos.get(e.id)!
+      const art = evidenceUrl(e.id)
       const card = h('div', { class: `pin-card kind-${e.kind}${this.selected === e.id ? ' selected' : ''}`, style: { left: `${p.x}px`, top: `${p.y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }, tabindex: 0, role: 'button', 'aria-label': e.title, 'aria-pressed': String(this.selected === e.id) },
-        h('i', { class: 'pin' }), h('small', null, KIND_ICON[e.kind], ' ', KIND_LABEL[e.kind]), h('b', null, e.title))
+        h('i', { class: 'pin' }), h('div', { class: 'pin-art', 'aria-hidden': true }, art && h('img', { src: art, alt: '', loading: 'lazy', decoding: 'async' })), h('small', null, KIND_ICON[e.kind], ' ', KIND_LABEL[e.kind]), h('b', null, e.title))
       this.dragCard(card, e.id, lines, W, H)
       return card
     })

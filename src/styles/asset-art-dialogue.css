@@ -1,0 +1,6 @@
+.inv-fly-card { display: flex; align-items: center; gap: 10px; min-width: 210px; }
+.inv-fly-card img { width: 56px; height: 42px; flex: 0 0 56px; aspect-ratio: 4 / 3; border: 1px solid #ffffff2e; }
+.inv-fly-card > div { display: grid; gap: 2px; }
+.dlg-ev { display: inline-flex; align-items: center; gap: 8px; }
+.dlg-ev img { width: 42px; height: 32px; flex: 0 0 42px; aspect-ratio: 4 / 3; border: 1px solid #ffffff2e; }
+.dlg-ev > span { display: grid; gap: 2px; }

@@ -13,7 +13,7 @@ import { ACHIEVEMENTS, getAchievement } from '../game/achievements'
 import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
 import { HOMES, MAX_PROFILES, type Avatar, type ProfileService } from '../services/profiles'
-import { playerPortrait, portraitUrl, titleArt } from './art'
+import { cinematicUrl, playerPortrait, portraitUrl, titleArt } from './art'
 import { h, setChildren, svg } from './dom'
 
 export type ScreenId = 'boot' | 'title' | 'profiles' | 'create' | 'mode' | 'intro' | 'pause' | 'settings' | 'achievements' | 'ending' | 'none'
@@ -256,16 +256,22 @@ export class Shell {
     const file = session.caseFile
     const lines = file.intro.map(l => session.fill(l))
     const body = h('div', { class: 'intro-lines' })
+    const introImageId = (index: number) => file.id === 'case01'
+      ? ['case01-phone-call', 'case01-red-thread-door', 'case01-microbus-dawn'][Math.min(index, 2)]
+      : `${file.id}-intro`
+    const visual = h('div', { class: 'intro-visual', 'aria-hidden': true }, h('img', { src: cinematicUrl(introImageId(0)) ?? '', alt: '', decoding: 'async' }))
     const skip = h('button', { class: 'btn primary', onclick: () => this.act.startWorld() }, 'ابدأ التحقيق ◂')
     skip.hidden = true
     setChildren(this.el, h('section', { class: 'page intro' },
-      h('div', { class: 'stamp' }, `ملف رقم ${file.number}`), h('h2', null, file.title), body, skip))
+      visual, h('div', { class: 'intro-copy' }, h('div', { class: 'stamp' }, `ملف رقم ${file.number}`), h('h2', null, file.title), body, skip)))
     let i = 0
     const next = () => {
       if (i >= lines.length) {
         skip.hidden = false
         return
       }
+      const art = cinematicUrl(introImageId(i))
+      if (art) visual.querySelector('img')!.src = art
       const p = h('p')
       body.append(p)
       this.s.audio.play('paper')
@@ -289,11 +295,13 @@ export class Shell {
       [1, 2, 3, 4, 5].map(i => h('span', { class: i <= report.stars ? 'on' : '', style: { '--d': `${i * 0.12}s` } }, '★')))
     const missed = report.missed.map(id => file.evidence.find(e => e.id === id)).filter(e => e !== undefined)
     const epilogue = endingLines(file.id, report.grade, file.finale.ending)
+    const endingArt = cinematicUrl(`${file.id}-ending`)
     const unlocked = session.progress.achievements.map(id => getAchievement(id)).filter((a): a is NonNullable<typeof a> => Boolean(a))
     setChildren(this.el, h('section', { class: 'page ending' },
       h('div', { class: 'stamp solved' }, 'القضية اتقفلت'),
       h('small', { class: 'ending-case' }, `القضية ${file.number}`),
       h('h2', null, file.title),
+      endingArt && h('div', { class: 'ending-visual' }, h('img', { src: endingArt, alt: '', loading: 'eager', decoding: 'async' })),
       h('div', { class: 'epilogue' }, h('small', null, 'خاتمة على مقاس الخيط'), epilogue.map(l => h('p', { class: 'end-line' }, session.fill(l)))),
       h('div', { class: 'grade-card' },
         h('div', { class: 'grade-head' }, h('small', null, 'تقديرك'), h('b', { class: 'grade-word' }, report.grade), stars),

@@ -4,7 +4,7 @@ import { PLACES, PLACE_LIST } from '../data/places'
 import type { CharacterId, CharacterProfile, Evidence, Hotspot, Place, PlaceId } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Session } from '../game/session'
-import { PIN_POS, isDaytime, portraitUrl, sceneNeighbors, sceneSrcSet, sceneUrl } from './art'
+import { evidenceUrl, PIN_POS, isDaytime, portraitUrl, sceneNeighbors, sceneSrcSet, sceneUrl } from './art'
 import { h, setChildren, svg } from './dom'
 
 export type InvestigationTab = 'scene' | 'map'
@@ -137,8 +137,10 @@ export class InvestigationView {
       window.setTimeout(() => target?.classList.remove('bump'), 700)
       return
     }
+    const art = evidenceUrl(evidence.id)
     const card = h('div', { class: 'inv-fly-card', role: 'presentation' },
-      h('small', null, 'دليل جديد'), h('b', null, evidence.title))
+      art && h('img', { src: art, alt: '', loading: 'lazy', decoding: 'async' }),
+      h('div', null, h('small', null, 'دليل جديد'), h('b', null, evidence.title)))
     const from = this.el.querySelector<HTMLElement>('.inv-stage')?.getBoundingClientRect()
     card.style.left = `${from ? from.left + from.width / 2 : window.innerWidth / 2}px`
     card.style.top = `${from ? from.top + from.height / 2 : window.innerHeight / 2}px`
