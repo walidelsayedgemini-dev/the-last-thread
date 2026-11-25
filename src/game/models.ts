@@ -36,7 +36,10 @@ export class ModelLibrary {
   async load(ids: readonly ModelId[]): Promise<void> {
     await Promise.all(
       ids.filter(id => !this.entries.has(id)).map(async id => {
-        const gltf = await this.assets.gltf(MODEL_URL[id])
+        const url = import.meta.env.VITE_STATIC_MODEL_ASSETS === 'true'
+          ? `assets/models/${id}.glb`
+          : MODEL_URL[id]
+        const gltf = await this.assets.gltf(url)
         const scene = gltf.scene
         scene.updateMatrixWorld(true)
         const box = new THREE.Box3().setFromObject(scene)
