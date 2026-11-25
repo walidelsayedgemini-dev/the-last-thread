@@ -123,7 +123,9 @@
   border: 2px solid color-mix(in srgb, var(--accent, #c9aa78) 70%, #fff 0%); border-bottom: none;
   background: linear-gradient(170deg, var(--body, #223), #000); box-shadow: 0 -6px 26px #000b;
   transition: transform 0.2s;
+  transform-origin: 50% 100%; animation: inv-person-breathe 5.2s ease-in-out infinite;
 }
+@keyframes inv-person-breathe { 0%, 100% { transform: translateY(0) rotate(-0.35deg); } 50% { transform: translateY(-2px) rotate(0.35deg); } }
 .inv-person-art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; }
 .inv-person-initial { font-family: var(--display); font-size: 3rem; color: var(--accent); }
 .inv-person-copy {
@@ -291,8 +293,12 @@
   .inv-person { width: 104px; }
 }
 
-.reduced-motion .inv-stage.entering > *, .reduced-motion .inv-pin, .reduced-motion .inv-person { animation: none !important; }
+.reduced-motion .inv-stage.entering > *, .reduced-motion .inv-pin, .reduced-motion .inv-person, .reduced-motion .inv-person-art { animation: none !important; }
 .reduced-motion .inv-pin-dot::after, .reduced-motion .pin-goal { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .inv-stage.entering > *, .inv-pin, .inv-person, .inv-person-art, .inv-pin-dot::after, .pin-goal { animation: none !important; }
+}
 
 /* ==== Clock, toasts, narration, hint ======================================================================== */
 .inv-where small { display: flex; gap: 12px; align-items: center; }

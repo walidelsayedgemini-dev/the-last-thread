@@ -6,6 +6,7 @@
  */
 import type { DialogueSession, DialogueView as View } from '../core/dialogue'
 import { CHARACTERS } from '../data/characters'
+import { voicePath } from '../data/voice'
 import type { CharacterProfile, DialogueLine, EvidenceId, EvidenceKind } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Avatar } from '../services/profiles'
@@ -13,6 +14,8 @@ import { playerPortrait, portraitUrl } from './art'
 import { h, setChildren } from './dom'
 
 export type DialogueContext = {
+  /** Active case ID, used to keep identical node IDs across cases distinct. */
+  caseId?: string
   /** Scene photograph shown blurred behind the conversation. */
   backdrop?: string
   avatar?: Partial<Avatar>
@@ -120,13 +123,16 @@ export class DialogueView {
   private showLine(): void {
     const line = this.lines[this.lineIndex]
     const who = this.who!
+    const nodeId = this.session?.view()?.nodeId ?? ''
     const speaker = line.who === 'player' || line.who === 'narrator' ? undefined : CHARACTERS[line.who]
     const npc = speaker && speaker.id !== 'yassin' ? speaker : who
     const label = line.who === 'player' ? this.playerName : line.who === 'narrator' ? 'الراوي' : speaker?.nickname ?? speaker?.name ?? ''
-    this.art(this.npcArt, portraitUrl(npc.id, this.tense ? 'tense' : 'neutral'), initial(npc.name), npc.figure.accent)
-    this.art(this.playerArt, playerPortrait(this.ctx.avatar, this.tense ? 'tense' : 'neutral'), initial(this.playerName || 'ي'), '#c9aa78')
+    const tenseNode = /(?:confront|snap|lie|caught|pressed|dismiss)/i.test(nodeId)
+    const tenseArt = this.tense || tenseNode
+    this.art(this.npcArt, portraitUrl(npc.id, tenseArt ? 'tense' : 'neutral'), initial(npc.name), npc.figure.accent)
+    this.art(this.playerArt, playerPortrait(this.ctx.avatar, tenseArt ? 'tense' : 'neutral'), initial(this.playerName || 'ي'), '#c9aa78')
     this.el.dataset.who = line.who === 'player' ? 'player' : line.who === 'narrator' ? 'narrator' : 'npc'
-    this.el.classList.toggle('tense', this.tense)
+    this.el.classList.toggle('tense', tenseArt)
     this.nameEl.textContent = label
     this.roleEl.textContent = line.who === 'player' ? 'المحقّق' : line.who === 'narrator' ? '' : (speaker ?? npc).role
     this.full = this.fill(line.text)
@@ -135,6 +141,7 @@ export class DialogueView {
     setChildren(this.choicesEl)
     this.moreEl.hidden = true
     this.audio.play('paper')
+    this.audio.playVoice(voicePath(this.ctx.caseId ?? 'case01', nodeId, this.lineIndex) ?? null)
   }
 
   /** Advance the typewriter by real time; called every frame while open. */
@@ -179,6 +186,7 @@ export class DialogueView {
 
   next(): void {
     if (!this.open) return
+    this.audio.stopVoice()
     if (this.typing < this.full.length) return this.finishLine()
     if (this.lineIndex < this.lines.length - 1) {
       this.lineIndex++
@@ -191,13 +199,16 @@ export class DialogueView {
   }
 
   choose(index: number, meta?: { confront?: boolean; lie?: boolean; present?: EvidenceId }): void {
+    this.audio.stopVoice()
     if (meta?.confront || meta?.present) {
       this.tense = true
       this.audio.play(meta.lie ? 'lie' : 'confront')
       this.ctx.onConfront?.(Boolean(meta.lie))
       this.el.classList.remove('shake')
+      this.el.classList.remove('flash')
       void this.el.offsetWidth
       this.el.classList.add('shake')
+      this.el.classList.add('flash')
     } else this.audio.play('ui')
     this.session?.choose(index)
     this.loadNode()
@@ -225,6 +236,7 @@ export class DialogueView {
 
   close(): void {
     if (this.el.hidden) return
+    this.audio.stopVoice()
     this.el.hidden = true
     this.session?.end()
     this.flush?.()

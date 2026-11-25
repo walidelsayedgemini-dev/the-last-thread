@@ -65,7 +65,7 @@ async function boot(): Promise<void> {
   let endingTimer = 0
 
   const applySettings = (d: Settings) => {
-    audio.setVolumes(d.musicVolume, d.sfxVolume, d.muted)
+    audio.setVolumes(d.musicVolume, d.sfxVolume, d.muted, d.ambientVolume, d.voiceVolume, d.voiceEnabled)
     document.body.classList.toggle('reduced-motion', d.reducedMotion)
     document.body.classList.toggle('high-contrast', d.highContrast)
     document.documentElement.style.setProperty('--text-scale', String(d.textScale))
@@ -311,6 +311,7 @@ async function boot(): Promise<void> {
       () => { session?.save(); investigation.refresh() },
       () => session?.flushDialogue(dlg),
       {
+        caseId: s.caseId,
         backdrop: investigation.sceneImage,
         avatar: s.profile.avatar,
         evidence: eid => { const e = s.caseFile.evidence.find(x => x.id === eid); return e && { title: e.title, kind: e.kind } },

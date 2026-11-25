@@ -63,6 +63,7 @@ export class InvestigationView {
   /** Cheap per-frame clock update; re-renders only when day turns to night (or back). */
   tickClock(hour: number): void {
     if (this.el.hidden) return
+    this.d.audio.setClock(hour)
     const text = formatClock(hour)
     if (text !== this.lastClock) {
       this.lastClock = text
@@ -81,6 +82,7 @@ export class InvestigationView {
     this.placeId = placeId
     this.tab = 'scene'
     this.el.hidden = false
+    this.d.audio.setClock(session.clock.hour)
     this.d.audio.setPlace(placeId)
     this.render()
   }
