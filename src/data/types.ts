@@ -117,9 +117,15 @@ export type EvidenceId =
   | 'e02_black_envelope' | 'e02_burned_map' | 'e02_red_receipt' | 'e02_corniche_photo'
   | 'e02_key_tag' | 'e02_ledger_page' | 'e02_messenger_note' | 'e02_sea_glass'
   | 'e02_recording' | 'e02_archive_stamp' | 'e02_radio_log' | 'e02_stock_manifest'
+  | 'e02_market_rumor' | 'e02_bakery_ledger' | 'e02_school_copy' | 'e02_pump_note'
+  | 'e02_omda_visitors' | 'e02_guava_tag' | 'e02_crossing_log' | 'e02_cemetery_thread'
+  | 'e02_pigeon_scrap' | 'e02_mill_chalk' | 'e02_health_register' | 'e02_waterwheel_mark'
   | 'e03_mud_prints' | 'e03_coop_register' | 'e03_broken_lantern' | 'e03_bus_token'
   | 'e03_negative' | 'e03_river_note' | 'e03_red_staple' | 'e03_tide_chart'
   | 'e03_camera_roll' | 'e03_lock_key' | 'e03_false_permit' | 'e03_final_statement'
+  | 'e03_market_scale' | 'e03_bakery_ledger' | 'e03_school_notice' | 'e03_pump_log'
+  | 'e03_omda_visitors' | 'e03_guava_tracks' | 'e03_crossing_log' | 'e03_cemetery_mark'
+  | 'e03_pigeon_note' | 'e03_mill_calendar' | 'e03_health_register' | 'e03_waterwheel_trough'
 
 export type Evidence = {
   id: EvidenceId
@@ -142,7 +148,9 @@ export type DeductionId =
   | 'd_trail' | 'd_markers' | 'd_alibi' | 'd_where' | 'd_forgery' | 'd_motive'
   | 'd_vehicle' | 'd_water_pressure' | 'd_handwriting'
   | 'd02_route' | 'd02_motive' | 'd02_forgery' | 'd02_betrayal' | 'd02_chain' | 'd02_confrontation'
+  | 'd02_village_rumors' | 'd02_backroad' | 'd02_mahmoud_network'
   | 'd03_route' | 'd03_records' | 'd03_witness' | 'd03_motive' | 'd03_confrontation'
+  | 'd03_village_chain' | 'd03_pump_route' | 'd03_rail_witness' | 'd03_village_records' | 'd03_old_marks'
 
 export type Deduction = {
   id: DeductionId
