@@ -5,7 +5,7 @@
  * TypeScript with no DOM / three.js dependency so rules can be unit-tested and reused unchanged by
  * the AntiGravity phase.
  */
-import type { CaseFile, Condition, DeductionId, Effect, Evidence, EvidenceId, Hotspot, Objective } from '../data/types'
+import type { CaseFile, CharacterId, Condition, DeductionId, Effect, Evidence, EvidenceId, Hotspot, Objective } from '../data/types'
 import { evalGate, type GateContext } from './gates'
 
 /** Serializable progress snapshot (stored by ProfileService). */
@@ -18,6 +18,8 @@ export type CaseSnapshot = {
   hotspots: string[]
   /** `once` dialogue choices already taken (`character:node:index`). */
   seenChoices: string[]
+  /** Characters temporarily offended by a wrong accusation. Optional for old saves. */
+  offended?: { character: CharacterId; untilEvidence: number; untilMinute: number }[]
 }
 
 export class CaseState {
@@ -26,6 +28,7 @@ export class CaseState {
   readonly deductions = new Set<DeductionId>()
   readonly hotspots = new Set<string>()
   readonly seenChoices = new Set<string>()
+  readonly offended = new Map<CharacterId, { untilEvidence: number; untilMinute: number }>()
 
   snapshot(): CaseSnapshot {
     return {
@@ -34,6 +37,7 @@ export class CaseState {
       deductions: [...this.deductions],
       hotspots: [...this.hotspots],
       seenChoices: [...this.seenChoices],
+      offended: [...this.offended].map(([character, value]) => ({ character, ...value })),
     }
   }
 
@@ -44,6 +48,7 @@ export class CaseState {
     snapshot.deductions.forEach(d => s.deductions.add(d))
     snapshot.hotspots.forEach(h => s.hotspots.add(h))
     snapshot.seenChoices.forEach(c => s.seenChoices.add(c))
+    for (const item of snapshot.offended ?? []) s.offended.set(item.character, { untilEvidence: item.untilEvidence, untilMinute: item.untilMinute })
     return s
   }
 }
@@ -176,7 +181,8 @@ export class CaseEngine {
 
   /** Share of all evidence found, 0..1 (used for the final grade). */
   completeness(): number {
-    return this.state.evidence.size / this.file.evidence.length
+    const required = this.file.evidence.filter(e => !e.bonus)
+    return required.length ? required.filter(e => this.state.evidence.has(e.id)).length / required.length : 1
   }
 
   /** Can the player make the final accusation? */

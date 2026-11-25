@@ -10,7 +10,7 @@ import type { EventKind, Gate, GameMode } from '../data/types'
 import { hourInWindow, partsOf } from './clock'
 
 /** Hours around a match/event during which "event day" content is available. */
-export const EVENT_PADDING_HOURS = 3
+const EVENT_PADDING_HOURS = 3
 
 export type GateContext = {
   mode: GameMode

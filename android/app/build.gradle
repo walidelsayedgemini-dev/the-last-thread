@@ -1,5 +1,19 @@
 apply plugin: 'com.android.application'
 
+def envValue = { String name, String fallback ->
+    def value = System.getenv(name)
+    value != null && value.trim() ? value.trim() : fallback
+}
+def packageJson = new groovy.json.JsonSlurper().parse(new File(rootDir.parentFile, 'package.json'))
+def packageVersion = packageJson.version?.toString() ?: '0.1.0'
+def releaseSigning = [
+    path: System.getenv('ANDROID_KEYSTORE_PATH'),
+    storePassword: System.getenv('ANDROID_KEYSTORE_PASSWORD'),
+    alias: System.getenv('ANDROID_KEY_ALIAS'),
+    keyPassword: System.getenv('ANDROID_KEY_PASSWORD'),
+]
+def hasReleaseSigning = releaseSigning.values().every { it != null && it.toString().trim() }
+
 android {
     namespace = "com.walidelsayedgemini.thelastthread"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +21,8 @@ android {
         applicationId "com.walidelsayedgemini.thelastthread"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode envValue('ANDROID_VERSION_CODE', '1').toInteger()
+        versionName envValue('ANDROID_VERSION_NAME', packageVersion)
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +30,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseSigning.path)
+                storePassword releaseSigning.storePassword
+                keyAlias releaseSigning.alias
+                keyPassword releaseSigning.keyPassword
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) signingConfig signingConfigs.release
         }
     }
 }

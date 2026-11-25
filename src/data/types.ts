@@ -12,11 +12,11 @@ export type GameMode = 'realistic' | 'story'
 export type Vec2 = { x: number; z: number }
 
 /** Real-world anchor used by field photography (GPS verification). */
-export type GeoPoint = { lat: number; lng: number; radiusM: number }
 
 export type PlaceId =
   | 'zeinab_home' | 'mahmoud_house' | 'cafe_ragab' | 'abis_mosque' | 'canal_bridge' | 'plot15'
   | 'abis_stop' | 'raml_stop' | 'mansheya' | 'qaitbay' | 'bibliotheca' | 'pompey' | 'corniche'
+  | 'abis_market' | 'bakery' | 'old_school' | 'pump_station' | 'omda_house' | 'guava_orchard' | 'rail_crossing' | 'cemetery' | 'pigeon_tower' | 'mill' | 'health_unit' | 'waterwheel'
 
 export type Place = {
   id: PlaceId
@@ -27,8 +27,6 @@ export type Place = {
   /** Short label for the minimap. */
   short: string
   description: string
-  /** Real landmark coordinates when the player can photograph it in the real city. */
-  geo?: GeoPoint
   /** Landmarks that can be photographed (in-world camera or real photo). */
   photographable?: boolean
 }
@@ -75,6 +73,8 @@ export type RealEvent = {
 
 export type CharacterId =
   | 'yassin' | 'zeinab' | 'hassan' | 'ragab' | 'mahmoud' | 'shawky' | 'bahr' | 'fathy'
+  | 'salma' | 'nabil' | 'adham' | 'nadia' | 'farid' | 'omar' | 'hoda' | 'khaled'
+  | 'umm_saeed' | 'omda' | 'mounir' | 'abdo' | 'hamada' | 'hagga_fatma' | 'metwally' | 'dr_amal' | 'barakat' | 'saber'
 
 /** Deep character profile ("ملف تعريف"): drives the notebook, dialogue tone and the figure. */
 export type CharacterProfile = {
@@ -94,15 +94,11 @@ export type CharacterProfile = {
   relationToCase: string
   voice: string
   quote: string
-  /** Registered model id (see MODEL_URL) and the real-world height the model is scaled to. */
-  model: string
-  heightM: number
   /** Palette used for dossier portraits and the minimap marker. */
   figure: { body: string; accent: string; skin: string; headwear?: 'turban' | 'scarf' | 'cap' | 'none' }
   /** Where they stand; realistic mode may use the schedule instead. */
   place: PlaceId
-  offset: Vec2
-  schedule?: { hours: HourWindow; place: PlaceId; offset: Vec2 }[]
+  schedule?: { hours: HourWindow; place: PlaceId }[]
   /** Present only once this flag is set (e.g. Mahmoud appears after he is found). */
   appearsWhen?: string
 }
@@ -114,11 +110,29 @@ export type EvidenceId =
   | 'e_cafe_bill' | 'e_microbus_ticket' | 'e_bahr_testimony' | 'e_harbor_thread'
   | 'e_library_envelope' | 'e_forged_contract' | 'e_fathy_testimony'
   | 'e_library_photo' | 'e_qaitbay_photo' | 'e_pillar_photo' | 'e_match_night_photo'
+  | 'e_rail_log' | 'e_market_driver' | 'e_pump_log' | 'e_miller_promise' | 'e_handwriting'
+  | 'e_bakery_ration' | 'e_school_note' | 'e_pump_payment' | 'e_omda_guestbook' | 'e_guava_trace'
+  | 'e_rail_tracks' | 'e_cemetery_cache' | 'e_pigeon_note' | 'e_health_alias' | 'e_waterwheel_carving'
+  | 'e_market_crates' | 'e_mill_receipt'
+  | 'e02_black_envelope' | 'e02_burned_map' | 'e02_red_receipt' | 'e02_corniche_photo'
+  | 'e02_key_tag' | 'e02_ledger_page' | 'e02_messenger_note' | 'e02_sea_glass'
+  | 'e02_recording' | 'e02_archive_stamp' | 'e02_radio_log' | 'e02_stock_manifest'
+  | 'e02_market_rumor' | 'e02_bakery_ledger' | 'e02_school_copy' | 'e02_pump_note'
+  | 'e02_omda_visitors' | 'e02_guava_tag' | 'e02_crossing_log' | 'e02_cemetery_thread'
+  | 'e02_pigeon_scrap' | 'e02_mill_chalk' | 'e02_health_register' | 'e02_waterwheel_mark'
+  | 'e03_mud_prints' | 'e03_coop_register' | 'e03_broken_lantern' | 'e03_bus_token'
+  | 'e03_negative' | 'e03_river_note' | 'e03_red_staple' | 'e03_tide_chart'
+  | 'e03_camera_roll' | 'e03_lock_key' | 'e03_false_permit' | 'e03_final_statement'
+  | 'e03_market_scale' | 'e03_bakery_ledger' | 'e03_school_notice' | 'e03_pump_log'
+  | 'e03_omda_visitors' | 'e03_guava_tracks' | 'e03_crossing_log' | 'e03_cemetery_mark'
+  | 'e03_pigeon_note' | 'e03_mill_calendar' | 'e03_health_register' | 'e03_waterwheel_trough'
 
 export type Evidence = {
   id: EvidenceId
   title: string
   kind: EvidenceKind
+  /** Optional side-quest evidence; collectible for completeness achievements but not grade-critical. */
+  bonus?: boolean
   /** What the player sees in the notebook. */
   summary: string
   /** Close inspection text (the "magnifying glass" view). */
@@ -130,7 +144,13 @@ export type Evidence = {
   gate?: Gate
 }
 
-export type DeductionId = 'd_trail' | 'd_markers' | 'd_alibi' | 'd_where' | 'd_forgery' | 'd_motive'
+export type DeductionId =
+  | 'd_trail' | 'd_markers' | 'd_alibi' | 'd_where' | 'd_forgery' | 'd_motive'
+  | 'd_vehicle' | 'd_water_pressure' | 'd_handwriting'
+  | 'd02_route' | 'd02_motive' | 'd02_forgery' | 'd02_betrayal' | 'd02_chain' | 'd02_confrontation'
+  | 'd02_village_rumors' | 'd02_backroad' | 'd02_mahmoud_network'
+  | 'd03_route' | 'd03_records' | 'd03_witness' | 'd03_motive' | 'd03_confrontation'
+  | 'd03_village_chain' | 'd03_pump_route' | 'd03_rail_witness' | 'd03_village_records' | 'd03_old_marks'
 
 export type Deduction = {
   id: DeductionId
@@ -168,6 +188,12 @@ export type DialogueChoice = {
   effects?: Effect[]
   /** Hide after it was chosen once. */
   once?: boolean
+  /** Evidence card presented during this choice; the UI can render it beside the text. */
+  present?: EvidenceId
+  /** Narrative metadata for an evidence confrontation. */
+  confront?: boolean
+  /** Optional signal that this choice is an intentional lie/false claim. */
+  lie?: boolean
 }
 
 export type DialogueNode = {
@@ -198,8 +224,6 @@ export type Hotspot = {
   effects?: Effect[]
   /** Narration shown while inspecting. */
   text?: string
-  /** For photo hotspots: which landmark must be framed. */
-  landmark?: PlaceId
   /** For travel: destination stop. */
   to?: PlaceId
   /** Hide after the effects are collected. */

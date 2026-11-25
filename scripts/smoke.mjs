@@ -81,7 +81,7 @@ try {
   const page = await open(desktop, errors, '?autostart=story')
   await page.waitForFunction(() => window.__ltt.session && !window.__ltt.investigation.el.hidden, null, { timeout: 60_000 })
   assert((await snap(page)).place === 'zeinab_home', 'new story did not start at Zeinab’s house')
-  assert(await page.locator('.inv-scene-photo').evaluate(img => img.complete && img.naturalWidth > 0), '2D scene artwork did not load')
+  assert(await page.locator('.inv-photo').evaluate(img => img.complete && img.naturalWidth > 0), '2D scene artwork did not load')
   assert(await page.locator('.inv-nav-btn').count() === 2, 'scene and map navigation are missing')
   const guardedDebug = await page.evaluate(() => {
     window.__ltt.selectPlace('raml_stop')
@@ -89,10 +89,11 @@ try {
     return { place: window.__ltt.investigation.currentPlace, visited: window.__ltt.session.state.flags.has('visited_city') }
   })
   assert(guardedDebug.place === 'zeinab_home' && !guardedDebug.visited, 'test bridge bypassed district travel or hotspot availability')
+  await page.waitForTimeout(1400)
   await page.screenshot({ path: `${out}/02-scene-abis.png` })
 
   // ---- 2. Talk to a character, then use the map to reach the bus stop ----------------------------------------------
-  await page.locator('.inv-talk-btn').first().click()
+  await page.locator('.inv-person').first().click()
   await page.waitForSelector('.dialogue:not([hidden])', { timeout: 10_000 })
   await page.waitForTimeout(500)
   await page.screenshot({ path: `${out}/03-dialogue.png` })
@@ -100,39 +101,42 @@ try {
   await page.waitForFunction(() => document.querySelector('.dialogue')?.hidden)
 
   await openMap(page)
-  await page.locator('.inv-place-card').filter({ hasText: 'موقف ميكروباص أبيس' }).click()
+  await page.locator('.inv-map-card').filter({ hasText: 'موقف ميكروباص أبيس' }).click()
   await page.waitForFunction(() => window.__ltt.investigation.currentPlace === 'abis_stop')
   assert((await snap(page)).district === 'abis', 'map allowed the player to leave the current district')
-  await page.locator('.inv-interaction-card.travel').click()
+  await page.locator('.inv-pin.kind-travel').click()
   await page.waitForFunction(() => window.__ltt.investigation.currentPlace === 'raml_stop', null, { timeout: 10_000 })
   assert((await snap(page)).district === 'city', 'the bus did not move the 2D scene to Alexandria')
   assert(await page.evaluate(() => window.__ltt.session.state.flags.has('visited_city')), 'bus travel did not preserve the story flag')
   await page.waitForFunction(() => {
-    const img = document.querySelector('.inv-scene-photo')
+    const img = document.querySelector('.inv-photo')
     return img?.complete && img.naturalWidth > 0
   })
+  await page.waitForTimeout(1400)
   await page.screenshot({ path: `${out}/04-city.png` })
   console.log('smoke: travelled from Abis to Alexandria via the story bus')
 
   // ---- 3. Travel back, inspect evidence, and open the existing case board ------------------------------------------
   await openMap(page)
-  await page.locator('.inv-place-card').filter({ hasText: 'موقف محطة الرمل' }).click()
+  await page.locator('.inv-map-card').filter({ hasText: 'موقف محطة الرمل' }).click()
   await page.waitForFunction(() => window.__ltt.investigation.currentPlace === 'raml_stop')
-  await page.locator('.inv-interaction-card.travel').click()
+  await page.locator('.inv-pin.kind-travel').click()
   await page.waitForFunction(() => window.__ltt.investigation.currentPlace === 'abis_stop', null, { timeout: 10_000 })
 
   await openMap(page)
-  await page.locator('.inv-place-card').filter({ hasText: 'بيت خالك محمود' }).click()
+  await page.locator('.inv-map-card').filter({ hasText: 'بيت خالك محمود' }).click()
   await page.waitForFunction(() => window.__ltt.investigation.currentPlace === 'mahmoud_house')
-  await page.locator('.inv-interaction-card').filter({ hasText: 'الخيط على الباب' }).click()
+  await page.locator('.inv-pin').filter({ hasText: 'الخيط على الباب' }).click()
   await page.waitForFunction(() => window.__ltt.session.state.evidence.has('e_thread_door'), null, { timeout: 10_000 })
   assert((await snap(page)).evidence >= 1, 'the hotspot did not add evidence')
-  assert((await page.locator('.inv-recovered').textContent()).includes('خيط أحمر'), 'the scene did not show recovered evidence')
-  await page.locator('.inv-open-file').click()
+  assert((await page.locator('.inv-chips').textContent()).includes('خيط أحمر'), 'the scene did not show recovered evidence')
+  await page.locator('.inv-header .inv-file-btn').click()
   await page.waitForSelector('.casefile:not([hidden])', { timeout: 5_000 })
   assert((await page.locator('.cf-folder').textContent()).includes('خيط أحمر على الباب'), 'the evidence was not added to the case file')
   await page.screenshot({ path: `${out}/05-casefile.png` })
   await page.locator('.cf-close').click()
+  await page.waitForTimeout(800)
+  await page.screenshot({ path: `${out}/05b-scene-mahmoud.png` })
 
   // Pause copy must describe 2D controls, not movement/camera controls.
   await page.keyboard.press('Escape')
@@ -146,13 +150,17 @@ try {
   const ending = await page.evaluate(() => {
     const { session } = window.__ltt
     const e = session.engine
-    const evidence = ['e_thread_door', 'e_survey_book', 'e_microbus_ticket', 'e_boundary_stone', 'e_library_envelope',
-      'e_forged_contract', 'e_qaitbay_photo', 'e_hassan_testimony', 'e_bahr_testimony']
+    const evidence = ['e_thread_door', 'e_survey_book', 'e_microbus_ticket', 'e_boundary_stone', 'e_rail_log', 'e_market_driver',
+      'e_pump_log', 'e_miller_promise', 'e_handwriting', 'e_library_envelope', 'e_forged_contract', 'e_qaitbay_photo',
+      'e_hassan_testimony', 'e_bahr_testimony']
     e.apply(evidence.map(id => ({ type: 'evidence', id })))
     e.apply([{ type: 'flag', id: 'found_mahmoud' }])
     session.tie('e_boundary_stone', 'e_survey_book')
     session.tie('e_library_envelope', 'e_forged_contract')
     session.tie('e_thread_door', 'e_qaitbay_photo')
+    session.tie('e_rail_log', 'e_market_driver')
+    session.tie('e_pump_log', 'e_miller_promise')
+    session.tie('e_survey_book', 'e_handwriting')
     const wrong = session.accuse('hassan', 'm_road')
     const ok = session.accuse('shawky', 'm_road')
     return { wrong, ok, grade: e.grade() }
@@ -193,9 +201,18 @@ try {
   await mobile.waitForFunction(() => window.__ltt.session && !window.__ltt.investigation.el.hidden, null, { timeout: 60_000 })
   const mobileNav = await mobile.locator('.inv-mobile-nav').evaluate(el => getComputedStyle(el).display)
   assert(mobileNav === 'grid', 'mobile investigation navigation is not visible')
-  const horizontalOverflow = await mobile.locator('.inv-frame').evaluate(el => el.scrollWidth > el.clientWidth + 2)
+  const horizontalOverflow = await mobile.locator('.investigation').evaluate(el => el.scrollWidth > el.clientWidth + 2)
   assert(!horizontalOverflow, '2D investigation layout overflows horizontally on a phone')
-  await mobile.screenshot({ path: `${out}/07-phone.png`, fullPage: true })
+  await mobile.waitForTimeout(1200)
+  await mobile.screenshot({ path: `${out}/07-phone.png` })
+  await mobile.locator('.inv-person').first().click()
+  await mobile.waitForSelector('.dialogue:not([hidden])', { timeout: 10_000 })
+  await mobile.waitForTimeout(1500)
+  await mobile.screenshot({ path: `${out}/08-phone-dialogue.png` })
+  await mobile.keyboard.press('Escape')
+  await openMap(mobile)
+  await mobile.waitForTimeout(600)
+  await mobile.screenshot({ path: `${out}/09-phone-map.png` })
   await phone.close()
 
   assert(errors.length === 0, `console errors:\n  ${errors.join('\n  ')}`)

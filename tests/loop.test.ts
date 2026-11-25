@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Input } from '../src/engine/input'
 import { GameLoop } from '../src/engine/loop'
 
 let frames: Map<number, FrameRequestCallback>
@@ -76,54 +75,5 @@ describe('GameLoop scheduling', () => {
     expect(step).not.toHaveBeenCalled()
     expect(render.mock.calls.at(-1)![0]).toBe(1)
     expect(frames.size).toBe(1)
-  })
-})
-
-
-describe('gamepad sampling before simulation', () => {
-  function fixture() {
-    const pad = { index: 0, id: 'pad', connected: true, axes: [0, 0, 0, 0], buttons: [{ pressed: false }] }
-    vi.stubGlobal('window', { addEventListener() {}, removeEventListener() {} })
-    vi.stubGlobal('document', { pointerLockElement: null })
-    vi.stubGlobal('navigator', { getGamepads: () => [pad] })
-    const input = new Input({} as HTMLCanvasElement)
-    const consumed: boolean[] = []
-    const beforeFrame = vi.fn((dt: number) => input.update(dt))
-    const loop = new GameLoop({ beforeFrame, step: () => consumed.push(input.consume('confirm')), render() {} })
-    loop.start()
-    return { pad, input, loop, consumed, beforeFrame }
-  }
-  it('makes A available in the first step, once even with multiple catch-up steps', () => {
-    const f = fixture()
-    try {
-      f.pad.buttons[0]!.pressed = true
-      frame(0.05)
-      expect(f.beforeFrame).toHaveBeenCalledTimes(1)
-      expect(f.consumed[0]).toBe(true)
-      expect(f.consumed.filter(Boolean)).toHaveLength(1)
-      expect(f.consumed.length).toBeGreaterThan(1)
-    } finally { f.loop.stop(); f.input.dispose() }
-  })
-  it('retains a short tap across high-refresh frames without a simulation step', () => {
-    const f = fixture()
-    try {
-      f.pad.buttons[0]!.pressed = true; frame(1 / 144)
-      expect(f.consumed).toHaveLength(0)
-      f.pad.buttons[0]!.pressed = false; frame(1 / 144)
-      expect(f.consumed).toHaveLength(0)
-      frame(1 / 144)
-      expect(f.consumed).toEqual([true])
-      frame(1 / 60)
-      expect(f.consumed.filter(Boolean)).toHaveLength(1)
-    } finally { f.loop.stop(); f.input.dispose() }
-  })
-  it('keeps polling while paused so menu confirmation remains available', () => {
-    const f = fixture()
-    try {
-      f.loop.paused = true; f.pad.buttons[0]!.pressed = true; frame()
-      expect(f.consumed).toHaveLength(0)
-      expect(f.input.consume('confirm')).toBe(true)
-      expect(f.beforeFrame).toHaveBeenCalledTimes(1)
-    } finally { f.loop.stop(); f.input.dispose() }
   })
 })

@@ -4,10 +4,14 @@ import { DialogueSession, fillText } from '../src/core/dialogue'
 import { parseCairoLocal } from '../src/core/clock'
 import type { GateContext } from '../src/core/gates'
 import { CASE_01 } from '../src/data/case01'
+import { CASE_02 } from '../src/data/case02'
+import { CASE_03 } from '../src/data/case03'
+import { nextCaseId } from '../src/data/cases'
 import { CHARACTERS } from '../src/data/characters'
-import { DIALOGUES } from '../src/data/dialogues'
+import { DIALOGUES, DIALOGUES_BY_CASE } from '../src/data/dialogues'
 import { LOCAL_HINTS } from '../src/data/hints'
 import { PLACES } from '../src/data/places'
+import { PIN_POS } from '../src/ui/art'
 
 type Env = { mode: 'realistic' | 'story'; when: string; near: boolean }
 function make(env: Partial<Env> = {}) {
@@ -35,6 +39,22 @@ describe('case data integrity', () => {
     for (const o of CASE_01.objectives) if (o.place) expect(PLACES[o.place]).toBeDefined()
     for (const o of CASE_01.objectives) expect(LOCAL_HINTS[o.id], `hint ${o.id}`).toHaveLength(3)
     for (const c of Object.values(CHARACTERS)) expect(PLACES[c.place]).toBeDefined()
+    for (const id of ['umm_saeed', 'omda', 'mounir', 'abdo', 'hamada', 'hagga_fatma', 'metwally', 'dr_amal', 'barakat', 'saber'] as const) {
+      expect(DIALOGUES_BY_CASE.case01[id], `villager dialogue ${id}`).toBeDefined()
+    }
+  })
+  it('gives every new Abis place at least two object-keyed case01 hotspots', () => {
+    const expected: Record<string, string[]> = {
+      abis_market: ['scale', 'tricycle'], bakery: ['oven', 'bread_racks'], old_school: ['noticeboard', 'chalkboard'],
+      pump_station: ['engine', 'logbook'], omda_house: ['guestbook', 'car'], guava_orchard: ['ditch', 'hut'],
+      rail_crossing: ['booth', 'tracks'], cemetery: ['tomb_door', 'lantern'], pigeon_tower: ['coop_door', 'rings_box'],
+      mill: ['calendar', 'sacks'], health_unit: ['register', 'pharmacy_window'], waterwheel: ['trough', 'path'],
+    }
+    for (const [place, keys] of Object.entries(expected)) {
+      const spots = CASE_01.hotspots.filter(h => h.place === place)
+      expect(spots.length, place).toBeGreaterThanOrEqual(2)
+      for (const key of keys) expect(spots.some(h => h.id === `hs_${place}_${key}`), `${place}:${key}`).toBe(true)
+    }
   })
   it('dialogue nodes and effects are valid', () => {
     const ev = new Set(CASE_01.evidence.map(e => e.id))
@@ -48,7 +68,7 @@ describe('case data integrity', () => {
     }
   })
   it('critical-path evidence is never time-gated', () => {
-    const critical = ['e_thread_door', 'e_survey_book', 'e_boundary_stone', 'e_library_photo', 'e_library_envelope', 'e_bahr_testimony', 'e_qaitbay_photo', 'e_forged_contract']
+    const critical = ['e_thread_door', 'e_survey_book', 'e_boundary_stone', 'e_rail_log', 'e_market_driver', 'e_pump_log', 'e_miller_promise', 'e_handwriting', 'e_library_photo', 'e_library_envelope', 'e_bahr_testimony', 'e_qaitbay_photo', 'e_forged_contract']
     for (const id of critical) expect(CASE_01.evidence.find(e => e.id === id)!.gate, id).toBeUndefined()
   })
 })
@@ -98,6 +118,7 @@ describe('case engine', () => {
     hs('hs_door_thread'); hs('hs_desk'); hs('hs_coat')
     expect(['e_thread_door', 'e_survey_book', 'e_microbus_ticket'].every(id => engine.has(id as never))).toBe(true)
     hs('hs_stone')
+    hs('hs_rail_crossing_booth'); hs('hs_abis_market_tricycle'); hs('hs_pump_station_logbook'); hs('hs_mill_calendar'); hs('hs_old_school_chalkboard')
     // Hassan
     const h = talk(engine, 'hassan')
     h.choose(0)
@@ -123,6 +144,9 @@ describe('case engine', () => {
     engine.tie('e_boundary_stone', 'e_survey_book')
     engine.tie('e_library_envelope', 'e_forged_contract')
     engine.tie('e_thread_door', 'e_qaitbay_photo')
+    engine.tie('e_rail_log', 'e_market_driver')
+    engine.tie('e_pump_log', 'e_miller_promise')
+    engine.tie('e_survey_book', 'e_handwriting')
     expect(engine.canAccuse()).toBe(true)
     expect(engine.accuse('hassan', 'm_road')).toBe('wrong-culprit')
     expect(engine.accuse('shawky', 'm_theft')).toBe('wrong-motive')
@@ -130,6 +154,20 @@ describe('case engine', () => {
     expect(engine.state.flags.has('case_solved')).toBe(true)
     expect(engine.currentObjective()).toBeUndefined()
     expect(engine.grade()).toMatch(/[ABC]/)
+  })
+  it('solves without entering any optional villager errand', () => {
+    const { engine } = make()
+    engine.apply([
+      'e_thread_door', 'e_survey_book', 'e_microbus_ticket', 'e_boundary_stone', 'e_rail_log', 'e_market_driver',
+      'e_pump_log', 'e_miller_promise', 'e_handwriting', 'e_hassan_testimony', 'e_library_photo', 'e_library_envelope',
+      'e_bahr_testimony', 'e_qaitbay_photo', 'e_forged_contract',
+    ].map(id => ({ type: 'evidence', id }) as never))
+    engine.apply([{ type: 'flag', id: 'found_mahmoud' }])
+    for (const [a, b] of [['e_boundary_stone', 'e_survey_book'], ['e_library_envelope', 'e_forged_contract'], ['e_thread_door', 'e_qaitbay_photo'], ['e_rail_log', 'e_market_driver'], ['e_pump_log', 'e_miller_promise'], ['e_survey_book', 'e_handwriting']] as const) engine.tie(a, b)
+    expect(engine.canAccuse()).toBe(true)
+    expect(engine.accuse('shawky', 'm_road')).toBe('ok')
+    expect(engine.has('e_bakery_ration')).toBe(false)
+    expect(engine.has('e_pigeon_note')).toBe(false)
   })
 })
 
@@ -171,5 +209,98 @@ describe('dialogue session', () => {
   })
   it('fills placeholders', () => {
     expect(fillText('يا {player} من {home} {x}', { player: 'ياسين', home: 'أبيس' })).toBe('يا ياسين من أبيس {x}')
+  })
+})
+
+describe('expanded cases', () => {
+  const makeCase = (file: typeof CASE_02 | typeof CASE_03) => {
+    const state = new CaseState()
+    const engine = new CaseEngine(file, state, (): GateContext => ({ mode: 'story', stamp: parseCairoLocal('2026-11-25T21:00'), eventNear: () => false }))
+    return { state, engine }
+  }
+
+  it('registers case03 after case02 and keeps dialogue casts case-scoped', () => {
+    expect(nextCaseId('case02')).toBe('case03')
+    expect(Object.keys(DIALOGUES_BY_CASE.case02).sort()).toEqual(['abdo', 'adham', 'barakat', 'dr_amal', 'farid', 'hagga_fatma', 'hamada', 'metwally', 'mounir', 'nabil', 'nadia', 'omda', 'saber', 'salma', 'umm_saeed'])
+    expect(Object.keys(DIALOGUES_BY_CASE.case03).sort()).toEqual(['abdo', 'barakat', 'dr_amal', 'hagga_fatma', 'hamada', 'hoda', 'khaled', 'metwally', 'mounir', 'omar', 'omda', 'saber', 'umm_saeed'])
+    expect(DIALOGUES_BY_CASE.case02.hoda).toBeUndefined()
+    expect(DIALOGUES_BY_CASE.case03.adham).toBeUndefined()
+    for (const id of ['umm_saeed', 'omda', 'mounir', 'abdo', 'hamada', 'hagga_fatma', 'metwally', 'dr_amal', 'barakat', 'saber'] as const) {
+      expect(DIALOGUES_BY_CASE.case02[id]).toBeDefined()
+      expect(DIALOGUES_BY_CASE.case03[id]).toBeDefined()
+      expect(CHARACTERS[id]).toBeDefined()
+    }
+  })
+
+  it('gives every new place two object-key hotspots and a hand-placed pin in both cases', () => {
+    const places = ['abis_market', 'bakery', 'old_school', 'pump_station', 'omda_house', 'guava_orchard', 'rail_crossing', 'cemetery', 'pigeon_tower', 'mill', 'health_unit', 'waterwheel']
+    for (const place of places) {
+      for (const suffix of ['c2', 'c3']) {
+        const file = suffix === 'c2' ? CASE_02 : CASE_03
+        const hotspots = file.hotspots.filter(h => h.place === place && h.id.endsWith(`_${suffix}`))
+        expect(hotspots, `${place}:${suffix}`).toHaveLength(2)
+        for (const hotspot of hotspots) {
+          expect(hotspot.id).toMatch(new RegExp(`^hs_${place}_[a-z0-9_]+_${suffix}$`))
+          expect(PIN_POS[hotspot.id], hotspot.id).toMatchObject({ x: expect.any(Number), y: expect.any(Number) })
+        }
+      }
+    }
+  })
+
+  it('plays case02 evidence, board, and staged Adham confrontation to accusation', () => {
+    const { engine, state } = makeCase(CASE_02)
+    const hs = (id: string) => engine.useHotspot(CASE_02.hotspots.find(h => h.id === id)!)
+    hs('hs02_envelope'); hs('hs02_map'); hs('hs02_receipt'); hs('hs02_key'); hs('hs02_library')
+    hs('hs02_bus_city'); hs('hs02_nabil_recording'); hs('hs02_note'); hs('hs02_radio'); hs('hs02_manifest')
+    hs('hs02_corniche_photo'); hs('hs02_sea_glass')
+    for (const h of CASE_02.hotspots.filter(h => h.id.endsWith('_c2') && h.effects?.some(fx => fx.type === 'evidence'))) hs(h.id)
+    expect(state.evidence.size).toBe(CASE_02.evidence.length)
+    expect(engine.currentObjective()?.id).toBe('o02_adham')
+    expect(engine.tie('e02_burned_map', 'e02_recording').result).toMatchObject({ ok: true, deduction: 'd02_route' })
+    expect(engine.tie('e02_key_tag', 'e02_ledger_page').result).toMatchObject({ ok: true, deduction: 'd02_forgery' })
+    expect(engine.tie('e02_corniche_photo', 'e02_messenger_note').result).toMatchObject({ ok: true, deduction: 'd02_betrayal' })
+    expect(engine.tie('e02_key_tag', 'e02_stock_manifest').result).toMatchObject({ ok: true, deduction: 'd02_chain' })
+    expect(engine.tie('e02_radio_log', 'e02_stock_manifest').result).toMatchObject({ ok: true, deduction: 'd02_confrontation' })
+
+    const adham = new DialogueSession(DIALOGUES_BY_CASE.case02.adham!, engine)
+    expect(adham.start()).toBe(true)
+    expect(adham.view()!.nodeId).toBe('a_confront')
+    adham.choose(0); expect(adham.advance()).toBe(true) // recording pressure, back to the hub
+    adham.choose(1); expect(adham.advance()).toBe(true) // note pressure, back to the hub
+    adham.choose(2)
+    expect(state.flags.has('case02_final_confronted')).toBe(true)
+    expect(engine.canAccuse()).toBe(true)
+    expect(engine.accuse('adham', 'm02_money')).toBe('ok')
+    expect(state.flags.has('case_solved')).toBe(true)
+  })
+
+  it('plays case03 evidence, dialogue confession, deductions, and accusation', () => {
+    const { engine, state } = makeCase(CASE_03)
+    const hs = (id: string) => engine.useHotspot(CASE_03.hotspots.find(h => h.id === id)!)
+    hs('hs03_staple'); hs('hs03_mud'); hs('hs03_register'); hs('hs03_bus_city'); hs('hs03_lantern'); hs('hs03_note')
+    for (const h of CASE_03.hotspots.filter(h => h.id.endsWith('_c3') && h.effects?.some(fx => fx.type === 'evidence'))) hs(h.id)
+    hs('hs03_bus_city'); hs('hs03_lantern'); hs('hs03_note')
+    hs('hs03_negative'); hs('hs03_tide'); hs('hs03_lock'); hs('hs03_permit')
+    expect(state.evidence.size).toBe(23)
+    const hoda = new DialogueSession(DIALOGUES_BY_CASE.case03.hoda!, engine)
+    expect(hoda.start()).toBe(true)
+    expect(hoda.view()!.nodeId).toBe('h3_confront')
+    hoda.choose(0)
+    expect(state.evidence.has('e03_final_statement')).toBe(true)
+    expect(state.flags.has('case03_confronted')).toBe(true)
+    expect(state.evidence.size).toBe(CASE_03.evidence.length)
+    expect(engine.tie('e03_mud_prints', 'e03_bus_token').result).toMatchObject({ ok: true, deduction: 'd03_route' })
+    expect(engine.tie('e03_coop_register', 'e03_false_permit').result).toMatchObject({ ok: true, deduction: 'd03_records' })
+    expect(engine.tie('e03_negative', 'e03_camera_roll').result).toMatchObject({ ok: true, deduction: 'd03_witness' })
+    expect(engine.tie('e03_tide_chart', 'e03_false_permit').result).toMatchObject({ ok: true, deduction: 'd03_motive' })
+    expect(engine.tie('e03_final_statement', 'e03_false_permit').result).toMatchObject({ ok: true, deduction: 'd03_confrontation' })
+    expect(engine.tie('e03_market_scale', 'e03_omda_visitors').result).toMatchObject({ ok: true, deduction: 'd03_village_chain' })
+    expect(engine.tie('e03_pump_log', 'e03_waterwheel_trough').result).toMatchObject({ ok: true, deduction: 'd03_pump_route' })
+    expect(engine.tie('e03_guava_tracks', 'e03_crossing_log').result).toMatchObject({ ok: true, deduction: 'd03_rail_witness' })
+    expect(engine.tie('e03_school_notice', 'e03_health_register').result).toMatchObject({ ok: true, deduction: 'd03_village_records' })
+    expect(engine.tie('e03_cemetery_mark', 'e03_pigeon_note').result).toMatchObject({ ok: true, deduction: 'd03_old_marks' })
+    expect(engine.canAccuse()).toBe(true)
+    expect(engine.accuse('hoda', 'm03_water')).toBe('ok')
+    expect(state.flags.has('case_solved')).toBe(true)
   })
 })

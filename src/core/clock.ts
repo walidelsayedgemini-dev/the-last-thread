@@ -10,7 +10,7 @@ import type { GameMode } from '../data/types'
 
 export const MS_HOUR = 3_600_000
 export const MS_DAY = 86_400_000
-export const CAIRO_TZ = 'Africa/Cairo'
+const CAIRO_TZ = 'Africa/Cairo'
 
 export type CairoParts = {
   year: number
@@ -124,6 +124,7 @@ export class GameClock {
   private readonly now: () => number
   private storyMinutes = 0
   private evidenceCount = 0
+  private penaltyMs = 0
 
   constructor(opts: ClockOptions) {
     this.mode = opts.mode
@@ -143,18 +144,24 @@ export class GameClock {
   restore(storyMinutes: number): void {
     this.storyMinutes = Math.max(0, storyMinutes)
   }
+  /** Advance the investigation clock deliberately (for consequences such as a false accusation). */
+  advanceMinutes(minutes: number): void {
+    if (!Number.isFinite(minutes) || minutes <= 0) return
+    if (this.mode === 'realistic') this.penaltyMs += minutes * 60_000
+    else this.storyMinutes += minutes
+  }
   get elapsedStoryMinutes(): number {
     return this.storyMinutes
   }
 
   /** Current Cairo stamp (always the real calendar; story mode only uses it for display of dates). */
   get stamp(): number {
-    return this.now()
+    return this.now() + this.penaltyMs
   }
 
   /** Hour of the in-game day, 0–24. */
   get hour(): number {
-    if (this.mode === 'realistic') return partsOf(this.now()).hourFloat
+    if (this.mode === 'realistic') return partsOf(this.stamp).hourFloat
     const h = STORY.startHour + STORY.hoursPerMinute * this.storyMinutes + STORY.hoursPerEvidence * this.evidenceCount
     return ((h % 24) + 24) % 24
   }

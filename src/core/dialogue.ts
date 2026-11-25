@@ -11,7 +11,7 @@ export type DialogueView = {
   nodeId: string
   lines: DialogueLine[]
   /** Choices currently available (conditions and `once` filtering already applied). */
-  choices: { index: number; text: string }[]
+  choices: { index: number; text: string; present?: DialogueChoice['present']; confront?: boolean; lie?: boolean }[]
   /** Conversation has nothing further after this node. */
   finished: boolean
 }
@@ -55,7 +55,7 @@ export class DialogueSession {
     return {
       nodeId: this.node.id,
       lines: this.node.lines,
-      choices: choices.map(({ index, choice }) => ({ index, text: choice.text })),
+      choices: choices.map(({ index, choice }) => ({ index, text: choice.text, present: choice.present, confront: choice.confront, lie: choice.lie })),
       finished: choices.length === 0 && !this.node.next,
     }
   }

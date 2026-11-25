@@ -17,7 +17,7 @@ import type { EventKind, RealEvent } from '../data/types'
 import { MS_DAY, MS_HOUR, parseCairoLocal, parseHm, partsOf, startOfDay } from '../core/clock'
 import type { StorageAdapter } from './storage'
 
-export const EVENTS_SCHEMA_VERSION = 1
+const EVENTS_SCHEMA_VERSION = 1
 const CACHE_KEY = 'ltt.events.v1'
 const KINDS: readonly EventKind[] = ['match_ittihad', 'market_day', 'friday_prayer']
 /** Default duration when `endsAt` is missing. */
