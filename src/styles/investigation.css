@@ -13,7 +13,7 @@
   position: relative; z-index: 3;
 }
 .inv-where { display: grid; line-height: 1.25; min-width: 0; }
-.inv-where small { color: var(--gold); font-size: 0.82rem; font-weight: 700; }
+.inv-where small { color: var(--gold); font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inv-where b { font-family: var(--display); font-size: 1.45rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inv-actions { margin-inline-start: auto; display: flex; gap: 6px; flex-wrap: wrap; }
 .inv-act {
@@ -145,14 +145,21 @@
 
 /* ---- Map ---- */
 .inv-map { position: absolute; inset: 0; overflow: auto; padding: 18px 20px 28px; display: grid; gap: 14px; align-content: start;
+  /* max-content rows: a percentage-width SVG has a zero min-content height, so an overflowing grid would crush it under the cards. */
+  grid-auto-rows: max-content; grid-template-columns: minmax(0, 1fr);
   background: radial-gradient(ellipse at top, #10222b, #070d12 70%); }
 .inv-map-head h2 { margin: 0; font-family: var(--display); font-size: 1.6rem; }
 .inv-map-head p { margin: 4px 0 0; color: var(--muted); }
 .inv-map-svg { width: 100%; max-height: 300px; display: block; }
+.inv-map-svg.dense { max-height: min(560px, 70vh); }
+/* Label placement assumes 17px glyphs; keep it fixed so the tablet bump to 20px can't reintroduce overlaps. */
+.inv-map-svg.dense .inv-map-pin .pin-label { font-size: 17px; stroke-width: 4px; }
 .inv-map-bg { fill: #0c171d; stroke: var(--line); }
 .inv-map-sea { fill: #0f2e3d; }
 .inv-map-canal { fill: none; stroke: #2a6d7a; stroke-width: 10; opacity: 0.7; stroke-linecap: round; }
 .inv-map-route { fill: none; stroke: #c9aa7866; stroke-width: 2; stroke-dasharray: 6 8; }
+.inv-map-rail { fill: none; stroke: #5d6b70; stroke-width: 6; opacity: 0.55; }
+.inv-map-rail-ties { fill: none; stroke: #8b9aa0; stroke-width: 12; stroke-dasharray: 2 9; opacity: 0.45; }
 .inv-map-pin { cursor: pointer; }
 .inv-map-pin .pin-hit { fill: transparent; stroke: none; }
 .inv-map-pin .pin-halo { fill: #ef707822; stroke: var(--red-hot); stroke-width: 1.5; }
@@ -286,6 +293,15 @@
   .inv-mobile-nav button .ico { font-size: 1.2rem; }
   .inv-mobile-nav button.on { color: var(--bone); box-shadow: inset 0 3px 0 var(--red-hot); }
   .inv-mobile-nav .inv-badge { position: absolute; top: 3px; left: calc(50% + 6px); height: 18px; min-width: 18px; font-size: 0.7rem; }
+}
+
+/* Tablet / landscape phone: five labelled buttons + place name must stay on one row (they wrapped at ~820px). */
+@media (max-width: 1099px) and (min-width: 761px) {
+  .inv-header { gap: 10px; }
+  .inv-actions { flex-wrap: nowrap; gap: 5px; }
+  .inv-act { padding: 6px 11px; gap: 6px; }
+  .inv-act kbd { display: none; }
+  .inv-act.inv-pause-action .lbl { display: none; }
 }
 
 @media (max-height: 520px) and (min-width: 761px) {

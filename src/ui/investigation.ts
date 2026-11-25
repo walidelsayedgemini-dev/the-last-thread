@@ -391,7 +391,8 @@ export class InvestigationView {
 
   private mapSvg(places: Place[], current: Place, goal?: PlaceId): SVGSVGElement {
     const W = 760
-    const H = 280
+    // A crowded district (the village has ~19 places) gets a taller canvas so pins and labels breathe.
+    const H = places.length > 10 ? 470 : 280
     const xs = places.map(p => p.pos.x)
     const zs = places.map(p => p.pos.z)
     const minX = Math.min(...xs) - 35
@@ -399,26 +400,86 @@ export class InvestigationView {
     const minZ = Math.min(...zs) - 25
     const maxZ = Math.max(...zs) + 25
     const px = (x: number) => 42 + ((x - minX) / Math.max(1, maxX - minX)) * (W - 84)
-    const py = (z: number) => 40 + ((z - minZ) / Math.max(1, maxZ - minZ)) * (H - 75)
-    const root = svg('svg', { class: `inv-map-svg ${current.district}`, viewBox: `0 0 ${W} ${H}`, role: 'group', 'aria-label': 'الخريطة' })
+    const py = (z: number) => 44 + ((z - minZ) / Math.max(1, maxZ - minZ)) * (H - 80)
+    const root = svg('svg', { class: `inv-map-svg ${current.district}${places.length > 10 ? ' dense' : ''}`, viewBox: `0 0 ${W} ${H}`, role: 'group', 'aria-label': 'الخريطة' })
+    // Canal / railway strokes run edge to edge; clip them to the rounded card so they never poke out of it.
+    const clipId = `inv-map-clip-${current.district}`
+    const clip = svg('clipPath', { id: clipId })
+    clip.append(svg('rect', { x: 0, y: 0, width: W, height: H, rx: 12 }))
+    const defs = svg('defs', {})
+    defs.append(clip)
+    root.append(defs)
     root.append(svg('rect', { x: 0, y: 0, width: W, height: H, class: 'inv-map-bg', rx: 12 }))
+    const terrain = svg('g', { 'clip-path': `url(#${clipId})` })
+    root.append(terrain)
+    const byId = new Map(places.map(p => [p.id, p]))
     if (current.district === 'city') {
-      root.append(svg('path', { d: `M0 0 H${W} V${H * 0.18} C${W * 0.7} ${H * 0.26}, ${W * 0.4} ${H * 0.13}, 0 ${H * 0.22} Z`, class: 'inv-map-sea' }))
+      terrain.append(svg('path', { d: `M0 0 H${W} V${H * 0.18} C${W * 0.7} ${H * 0.26}, ${W * 0.4} ${H * 0.13}, 0 ${H * 0.22} Z`, class: 'inv-map-sea' }))
     } else {
-      root.append(svg('path', { d: `M0 ${H * 0.45} C${W * 0.22} ${H * 0.4}, ${W * 0.34} ${H * 0.49}, ${W * 0.57} ${H * 0.44} S${W * 0.82} ${H * 0.4}, ${W} ${H * 0.46}`, class: 'inv-map-canal' }))
+      // The canal runs through the places that sit on its bank (bridge, waterwheel, pump); the railway crosses it.
+      const bank = (['canal_bridge', 'waterwheel', 'pump_station'] as PlaceId[]).map(id => byId.get(id)).filter((p): p is Place => !!p)
+      const cy = bank.length ? bank.reduce((t, p) => t + py(p.pos.z), 0) / bank.length + 14 : H * 0.45
+      terrain.append(svg('path', { d: `M0 ${cy + 8} C${W * 0.22} ${cy - 10}, ${W * 0.34} ${cy + 14}, ${W * 0.57} ${cy + 2} S${W * 0.82} ${cy - 10}, ${W} ${cy + 6}`, class: 'inv-map-canal' }))
+      const rail = byId.get('rail_crossing')
+      if (rail) {
+        const rx = px(rail.pos.x)
+        const d = `M${rx + 46} 0 L${rx - 30} ${H}`
+        terrain.append(svg('path', { d, class: 'inv-map-rail' }))
+        terrain.append(svg('path', { d, class: 'inv-map-rail-ties' }))
+      }
     }
-    const ordered = [...places].sort((a, b) => a.pos.x - b.pos.x)
-    root.append(svg('path', { d: ordered.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.pos.x)} ${py(p.pos.z)}`).join(' '), class: 'inv-map-route' }))
+    // Roads: a minimum spanning tree over the pins reads like a village path network instead of a zig-zag.
+    const pts = places.map(p => ({ id: p.id, x: px(p.pos.x), y: py(p.pos.z) }))
+    const inTree = new Set([0])
+    const roads: string[] = []
+    while (inTree.size < pts.length) {
+      let best: [number, number, number] = [Infinity, -1, -1]
+      for (const i of inTree) {
+        for (let j = 0; j < pts.length; j++) {
+          if (inTree.has(j)) continue
+          const d = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y)
+          if (d < best[0]) best = [d, i, j]
+        }
+      }
+      inTree.add(best[2])
+      roads.push(`M${pts[best[1]].x} ${pts[best[1]].y} L${pts[best[2]].x} ${pts[best[2]].y}`)
+    }
+    root.append(svg('path', { d: roads.join(' '), class: 'inv-map-route' }))
+    // Labels: greedy placement (current + goal first) trying above/below/sides until nothing overlaps.
+    type Box = { x1: number, y1: number, x2: number, y2: number }
+    const taken: Box[] = pts.map(p => ({ x1: p.x - 12, y1: p.y - 12, x2: p.x + 12, y2: p.y + 12 }))
+    const hit = (b: Box) => b.x1 < 4 || b.x2 > W - 4 || b.y1 < 4 || b.y2 > H - 4 || taken.some(t => b.x1 < t.x2 && b.x2 > t.x1 && b.y1 < t.y2 && b.y2 > t.y1)
+    const labelFor = (p: Place) => p.id === current.id ? `${p.short} (انت هنا)` : p.short
+    const order = [...places].sort((a, b) => Number(b.id === current.id) - Number(a.id === current.id) || Number(b.id === goal) - Number(a.id === goal))
+    const placement = new Map<PlaceId, { dx: number, dy: number, anchor: string }>()
+    for (const p of order) {
+      const x = px(p.pos.x)
+      const y = py(p.pos.z)
+      const w = labelFor(p).length * 9.6 + 10
+      const hgt = 22
+      const options = [
+        { dx: 0, dy: -18, anchor: 'middle', box: { x1: x - w / 2, y1: y - 18 - hgt + 5, x2: x + w / 2, y2: y - 13 } },
+        { dx: 0, dy: 32, anchor: 'middle', box: { x1: x - w / 2, y1: y + 13, x2: x + w / 2, y2: y + 13 + hgt } },
+        { dx: 16, dy: 6, anchor: 'start', box: { x1: x + 14, y1: y - hgt / 2, x2: x + 14 + w, y2: y + hgt / 2 } },
+        { dx: -16, dy: 6, anchor: 'end', box: { x1: x - 14 - w, y1: y - hgt / 2, x2: x - 14, y2: y + hgt / 2 } },
+        { dx: 0, dy: -40, anchor: 'middle', box: { x1: x - w / 2, y1: y - 40 - hgt + 5, x2: x + w / 2, y2: y - 35 } },
+        { dx: 0, dy: 54, anchor: 'middle', box: { x1: x - w / 2, y1: y + 35, x2: x + w / 2, y2: y + 35 + hgt } },
+      ]
+      const pick = options.find(o => !hit(o.box)) ?? options[0]
+      taken.push(pick.box)
+      placement.set(p.id, pick)
+    }
     for (const p of places) {
       const cls = `inv-map-pin${p.id === current.id ? ' current' : ''}${p.id === goal ? ' goal' : ''}`
       const g = svg('g', { class: cls, transform: `translate(${px(p.pos.x)} ${py(p.pos.z)})`, tabindex: '0', role: 'button', 'aria-label': p.name })
       // Generous invisible hit area: the visible dot is small on phones once the SVG scales down.
-      g.append(svg('circle', { r: 42, class: 'pin-hit' }))
+      g.append(svg('circle', { r: places.length > 10 ? 26 : 42, class: 'pin-hit' }))
       if (p.id === goal) g.append(svg('circle', { r: 19, class: 'pin-goal' }))
       g.append(svg('circle', { r: p.id === current.id ? 12 : 9, class: 'pin-halo' }))
       g.append(svg('circle', { r: p.id === current.id ? 5 : 4, class: 'pin-dot' }))
-      const label = svg('text', { y: -18, 'text-anchor': 'middle', class: 'pin-label' })
-      label.textContent = p.id === current.id ? `${p.short} (انت هنا)` : p.short
+      const pl = placement.get(p.id)!
+      const label = svg('text', { x: pl.dx, y: pl.dy, 'text-anchor': pl.anchor, class: 'pin-label' })
+      label.textContent = labelFor(p)
       g.append(label)
       g.addEventListener('click', () => this.selectPlace(p.id))
       g.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -428,7 +489,6 @@ export class InvestigationView {
     }
     return root
   }
-
   // ---- Drawer ------------------------------------------------------------------------------------------------------
   private drawer(s: Session, place: Place): HTMLElement {
     const file = s.engine.file
