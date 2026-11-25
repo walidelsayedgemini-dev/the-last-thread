@@ -7,7 +7,7 @@ import { CASE_01 } from '../data/case01'
 import { CHARACTERS, PLAYER_MODELS } from '../data/characters'
 import type { GameMode } from '../data/types'
 import type { Audio } from '../engine/audio'
-import type { Quality, Settings, SettingsStore } from '../engine/save'
+import type { Settings, SettingsStore } from '../engine/save'
 import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
 import { HOMES, MAX_PROFILES, type Avatar, type ProfileService } from '../services/profiles'
@@ -144,7 +144,7 @@ export class Shell {
           h('div', { class: 'menu' },
             has && action('متابعة التحقيق', 'ارجع لآخر نقطة وصلت لها', '٠١', true, () => this.go('profiles', 'title')),
             action('تحقيق جديد', 'ابدأ قضية من أول الخيط', has ? '٠٢' : '٠١', !has, () => this.startCreate()),
-            action('الإعدادات', 'الصوت والحركة وجودة الرسوم', has ? '٠٣' : '٠٢', false, () => this.go('settings', 'title'))))),
+            action('الإعدادات', 'الصوت والحركة والمؤثرات البصرية', has ? '٠٣' : '٠٢', false, () => this.go('settings', 'title'))))),
       h('footer', null,
         h('span', null, 'لعبة تحقيق بأجواء نوار'),
         h('span', { class: 'title-footer-divider', 'aria-hidden': true }, '•'),
@@ -298,28 +298,25 @@ export class Shell {
         h('button', { class: 'btn', onclick: () => this.act.casefile() }, 'ملف القضية'),
         h('button', { class: 'btn', onclick: () => this.go('settings', 'pause') }, 'الإعدادات'),
         h('button', { class: 'btn ghost', onclick: () => this.act.quit() }, 'حفظ والخروج')),
-      h('p', { class: 'controls' }, 'التحرك: WASD / الأسهم • الجري: Shift • تفاعل: E • ملف القضية: Tab • كاميرا: C • تلميح: H • زاوية الكاميرا: V • الماوس للنظر'))
+      h('p', { class: 'controls' }, 'اختار نقطة تحقيق أو شخصية من المشهد. من الخريطة انتقل بين مواقع المنطقة؛ الميكروباص يربط أبيس بالإسكندرية. ملف القضية: Tab • الخريطة: M • تلميح: H • إيقاف: Esc'))
   }
 
   private settingsPage(): HTMLElement {
     const d = this.s.settings.data
-    const slider = (label: string, key: 'musicVolume' | 'sfxVolume' | 'sensitivity', min: number, max: number, step: number) =>
+    const slider = (label: string, key: 'musicVolume' | 'sfxVolume', min: number, max: number, step: number) =>
       h('label', { class: 'set' }, label, h('input', { type: 'range', min, max, step, value: d[key], oninput: (e: Event) => this.act.settings({ [key]: Number((e.target as HTMLInputElement).value) }) }))
-    const check = (label: string, key: 'muted' | 'invertY' | 'reducedMotion') =>
+    const check = (label: string, key: 'muted' | 'reducedMotion') =>
       h('label', { class: 'set row' }, h('input', { type: 'checkbox', checked: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).checked }) }), label)
-    const url = (label: string, key: 'hintEndpoint' | 'visionEndpoint' | 'eventsUrl', ph: string) =>
+    const url = (label: string, key: 'hintEndpoint' | 'eventsUrl', ph: string) =>
       h('label', { class: 'set' }, label, h('input', { type: 'url', dir: 'ltr', placeholder: ph, value: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).value }) }))
     return h('section', { class: 'page settings' },
       h('h2', null, 'الإعدادات'),
       h('div', { class: 'grid' },
-        slider('صوت الأجواء', 'musicVolume', 0, 1, 0.05), slider('صوت المؤثرات', 'sfxVolume', 0, 1, 0.05), slider('حساسية الماوس', 'sensitivity', 0.3, 2.5, 0.1),
-        h('label', { class: 'set' }, 'جودة الرسوم', h('select', { onchange: (e: Event) => this.act.settings({ quality: (e.target as HTMLSelectElement).value as Quality }) },
-          ([['low', 'منخفضة (للموبايل)'], ['medium', 'متوسطة'], ['high', 'عالية']] as const).map(([v, t]) => h('option', { value: v, selected: d.quality === v }, t)))),
-        check('كتم الصوت', 'muted'), check('عكس المحور الرأسي', 'invertY'), check('تقليل الحركة', 'reducedMotion')),
+        slider('صوت الأجواء', 'musicVolume', 0, 1, 0.05), slider('صوت المؤثرات', 'sfxVolume', 0, 1, 0.05),
+        check('كتم الصوت', 'muted'), check('تقليل الحركة', 'reducedMotion')),
       h('details', null, h('summary', null, 'الخدمات المتقدمة (اختياري)'),
-        h('p', { class: 'note' }, 'روابط خوادمك الخاصة. من غيرها اللعبة بتشتغل أوفلاين بالتلميحات والتحقق المحلي.'),
+        h('p', { class: 'note' }, 'روابط اختيارية. من غيرها تفضل القصة والتلميحات المحلية شغّالة أوفلاين.'),
         url('رابط التلميحات الذكية (ChatGPT)', 'hintEndpoint', 'https://your-proxy.example/hint'),
-        url('رابط تحليل الصور بالذكاء الاصطناعي', 'visionEndpoint', 'https://your-proxy.example/vision'),
         url('رابط قاعدة الأحداث الواقعية', 'eventsUrl', 'https://your-host.example/events.json')),
       h('button', { class: 'btn ghost back', onclick: () => this.go(this.back ?? 'title') }, 'رجوع'))
   }

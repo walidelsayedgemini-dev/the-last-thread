@@ -1,17 +1,18 @@
 # الخيط الأخير — The Last Thread
 
-لعبة تحقيق «نوار» عالم مفتوح في الإسكندرية وقراها، مركزها **أبيس / عزبة ١٥**. اللاعب هو «ياسين» (أو شخصية
-يصنعها بنفسه)، وخاله محمود اختفى وساب خيطًا أحمر على الباب. اللعبة بالعربي بالكامل (RTL) وبالعامية
-المصرية في الحوار، وتشتغل على الكمبيوتر والموبايل (لمس) من المتصفح.
+لعبة تحقيق «نوار» ثنائية الأبعاد بأسلوب النقر والاستكشاف، تدور في **أبيس / عزبة ١٥** والإسكندرية. اللاعب هو
+«ياسين» (أو شخصية يصنعها بنفسه)، وخاله محمود اختفى وساب خيطًا أحمر على الباب. اللعبة بالعربي بالكامل (RTL)
+وبالعامية المصرية في الحوار، وتشتغل على الكمبيوتر والموبايل من المتصفح. التنقّل داخل كل منطقة من خريطة
+تفاعلية، والميكروباص ينقل التحقيق بين أبيس والإسكندرية.
 
-> **المرحلة ١ (Manus):** كل شيء يعمل على جهاز اللاعب بلا خادم. **المرحلة ٢ (AntiGravity):** خادم/وكيل
-> للتلميحات الذكية (ChatGPT) وتحليل صور حقيقية، عبر واجهات جاهزة بالفعل — شوف «النقل إلى AntiGravity».
+تعمل القصة والحفظ المحلي والتلميحات دون خادم. تظل روابط التلميحات الذكية وقاعدة الأحداث الواقعية اختيارية.
 
 ```bash
 pnpm install
 pnpm dev        # تشغيل التطوير
 pnpm test       # اختبارات الوحدات (المنطق + الخدمات)
-pnpm build      # فحص أنواع + بناء + ميزانية الحجم
+pnpm build      # بناء الموقع الثابت المستخدم في GitHub Pages
+pnpm manus:build-source # نفس أمر البناء المباشر المستخدم في GitHub Actions
 pnpm smoke      # بعد البناء: لعب كامل في متصفح headless + لقطات في shots/
 ```
 
@@ -20,13 +21,12 @@ pnpm smoke      # بعد البناء: لعب كامل في متصفح headless 
 
 ## الهوية البصرية والجو العام
 
-أحمر وأسود. واجهة على شكل **ملف قضية** (ورق، ختم «سري»، لوحة أدلة بخيوط حمراء). إضاءة خافتة
-بتتغيّر بالساعة (غروب برتقالي ← ليل أزرق ونجوم)، ضباب، وحبيبات وفينييت على الشاشة. الصوت كله
-**يُولَّد برمجيًا** (`engine/audio.ts`): درون، رياح، نبض قلب يتصاعد مع التوتر، خطوات وستينجرز عند
-اكتشاف الأدلة — بلا ملفات صوت.
+اللغة البصرية مستلهمة من واجهات ملفات القضايا: أزرق ليلي وفحمي مع لمسات سيان وقرمزي وكهرماني، ختم
+«سرّي»، مشاهد فوتوغرافية أصلية، ولوحة أدلة بخيوط حمراء. اللعبة نفسها 2D؛ لا كاميرا حرة ولا تحريك WASD.
+الصوت **يُولَّد برمجيًا** (`engine/audio.ts`): درون ورياح ومؤثرات عند اكتشاف الأدلة.
 
-الفكرة الأساسية: **النص والبيانات هي اللعبة**. المجسّمات المسجّلة سابقًا (٢٤ ملف GLB) تُعاد استخدامها فقط؛ لا
-مجسّمات جديدة. كل الأماكن والشخصيات والأدلة والحوارات ملفات بيانات.
+الفكرة الأساسية: **النص والبيانات هي اللعبة**. قواعد القضية والحوار والأدلة منفصلة عن العرض، وتُعرض المواقع
+كمشاهد أصلية مضغوطة مع نقاط فحص قابلة للنقر. كل الأماكن والشخصيات والأدلة والحوارات ملفات بيانات.
 
 ## البنية (طبقات منفصلة، كل طبقة تعتمد على اللي تحتها فقط)
 
@@ -40,17 +40,17 @@ src/
                 storage      StorageAdapter: localStorage ← ذاكرة عند فشل الحصة (جاهز لمحوّل سحابي)
                 profiles     إدارة المستخدمين: ٣ خانات، نقل إصدارات، تصدير/استيراد
                 eventsDb     قاعدة الأحداث الواقعية: دمج طبقات، تكرار أسبوعي، مقابر حذف، near()
-                ar/          محرّك الواقع المعزّز: WorldCamera + GeoFence + RemoteVision اختياري
+                ar/          خدمة قديمة للتحقق من الصور؛ غير مستعملة في تدفق اللعب 2D الحالي
                 hints        HintService: تلميحات محلية ٣ مستويات + مزوّد دردشة بعيد اختياري
-  engine/     غلاف المنصّة: renderer, loop, input, audio, assets, save (الإعدادات)
-  game/       طبقة three.js: atmosphere, zoneKit, abis, city, actors, models, textures,
-              session (جلسة بلا رسم)، game (المتحكّم)، tuning (Tweak)
-  ui/         واجهة DOM آمنة (h() بلا innerHTML): shell, hud, dialogueView, casefile, cameraView, touch
-  main.ts     نقطة التجميع (composition root): توصيل الخدمات بالواجهة واللعبة
+  engine/     خدمات مشتركة: loop, audio, save (الإعدادات)؛ لا تُحمّل واجهة 2D عالم Three.js
+  game/       وحدات العالم القديم ثلاثي الأبعاد ما زالت في المستودع، لكنها غير مستوردة من نقطة التشغيل
+  ui/         واجهة DOM: investigation (مشاهد/خريطة 2D)، shell، hud، الحوار، ملف القضية ولوحة الأدلة
+  assets/     خمس لوحات مشهد أصلية بصيغة WebP ومهيأة للويب
+  main.ts     نقطة التجميع: توصيل الجلسة وقواعد القضية بواجهة التحقيق 2D
 ```
 
-قاعدة الحفاظ على الذاكرة: المدينة والقرية **تُبنيان عند الحاجة** (lazy)، النماذج تُستنسخ مع مشاركة
-المواد، والظلال بخريطة صغيرة تتبع اللاعب. حجم الحزمة: JS ≈ ٠٫٢ MB gzip (الميزانية ٢ MB).
+يُحمّل التطبيق صورة المشهد الحالي فقط، ومجموع صور المشاهد الأصلية أقل من 1 MB بعد التحويل إلى WebP.
+لم تعد ملفات GLB أو مكتبات عرض العالم ثلاثي الأبعاد جزءًا من صفحة اللعب النشطة.
 
 ## وضعا اللعب
 
@@ -88,19 +88,11 @@ src/
 
 > ⚠️ **مواعيد مباريات الاتحاد في الملف الحالي أمثلة مؤقتة (`provisional: true`)** ولازم تُستبدل بالجدول الرسمي.
 
-## محرّك الواقع المعزّز (`services/ar`)
+## التوثيق داخل مشاهد 2D
 
-كل المزوّدين ينفّذون `ArProvider { supports(capture); verify(target, capture) }`:
-
-| المزوّد | الحالة | ما يتحقق منه |
-|---|---|---|
-| `WorldCameraProvider` | يعمل الآن | هندسة الكادر داخل العالم الافتراضي (اتجاه + مسافة + FOV) |
-| `GeoFenceProvider` | يعمل الآن | **موقع GPS الحقيقي** داخل نطاق المَعلم + جودة الصورة. **لا يحلّل محتوى الصورة** |
-| `RemoteVisionProvider` | معطّل افتراضيًا | `POST multipart {landmark, image}` ← `{match, confidence}` — يحتاج خادمًا |
-
-**صراحةً:** تحليل الصور الحقيقية بالذكاء الاصطناعي يتطلب خادمًا/وكيلًا (مفتاح نموذج رؤية لا يجوز وضعه في
-المتصفح). حتى يُضاف في المرحلة ٢، الصورة الحقيقية تُقبل بالموقع فقط وتُوسَم `needsServer`، وتقول الرسالة
-للاعب ذلك صراحةً.
+التفاعل مع مشاهد المواقع ثابت ومصمم داخل اللعبة: «راجع الصورة» يعرض قرينة الموقع من بيانات القضية، ولا
+يفتح كاميرا الجهاز أو يطلب GPS. ملفات `services/ar` موجودة للتوافق مع وحدات Three.js القديمة فقط، وليست
+جزءًا من تدفق اللعب النشط.
 
 ## التلميحات الذكية (`services/hints`)
 
@@ -118,52 +110,26 @@ src/
 ## النقل إلى AntiGravity (المرحلة ٢)
 
 - استبدل `LocalStorageAdapter` بمحوّل سحابي (نفس واجهة `StorageAdapter`) لمزامنة الحفظ.
-- ركّب `RemoteVisionProvider` و`RemoteChatProvider` على خادم المرحلة ٢، واضبط عناوينهما من الإعدادات.
+- ركّب `RemoteChatProvider` على خادم المرحلة ٢؛ يتطلب إدخال الكاميرا و`RemoteVisionProvider` إعادة ميزة تصوير حقيقية أولاً.
 - مصدر الأحداث: خدمة JSON/REST تُنتج نفس `EventsDocument` (فيه `version` و`removed`).
 - `core/` و`data/` بلا أي اعتماد على المتصفح، فتُنقل كما هي.
 
 ## GitHub
 
-المستودع: `walidelsayedgemini-dev/the-last-thread` (خاص). `scripts/mirror-github.sh` يدفع كل تحديث مع
-مجسّمات `assets/models` (المستبعدة من مستودع Manus) إلى GitHub.
+المستودع: `walidelsayedgemini-dev/the-last-thread` على GitHub. إعداد الموقع الدائم يتم عبر
+`.github/workflows/pages.yml` بعد تفعيل GitHub Pages بمصدر GitHub Actions في إعدادات المستودع.
 
 ## ما ليس موجودًا بعد (بصراحة)
 
-مجسّمات/أصوات احترافية (الصوت مولّد برمجيًا)، قضايا إضافية، تحليل صور حقيقي بالـ AI، تلميحات ChatGPT
-الحيّة، ومواعيد المباريات الرسمية.
+قضايا إضافية، تلميحات ChatGPT الحيّة، ومواعيد المباريات الرسمية. لا تستخدم اللعبة الحالية كاميرا أو تحليل
+صور حقيقيًا؛ نقاط الصورة قرائن ثابتة ضمن مشاهد 2D.
 
 ## Credits
 
-Fonts: Cairo and Reem Kufi (SIL OFL 1.1, licenses in `public/fonts/`). Library: three.js (MIT).
+Fonts: Cairo and Reem Kufi (SIL OFL 1.1, licenses in `public/fonts/`). Three.js remains in the repository
+for the archived 3D modules but is not loaded by the active 2D page.
 
-## Preview Tweak
+## أدوات تطوير العالم القديم
 
-`src/game/tuning.ts` is this game's parameter manager. The Addon panel reads its
-catalog; `config.ts` owns source defaults and the active configuration used by gameplay.
-When adapting the game, keep only controls with actual gameplay consumers, and preserve
-stable IDs for unchanged parameters. Define ranges, units and the correct activation
-boundary. Register through `scripts/manus-tuning/adapter.js` only under `import.meta.env.DEV`.
-Keep the Vite plugin and `scripts/__manus__/` helpers intact; production builds exclude
-the browser adapter and never inject the bridge.
-
-Apply changes preview state only. `LIVE` parameters are read in the next game update;
-`NEXT_ACTION` parameters activate at the relevant jump/dash start; `NEXT_RUN` parameters
-activate in `Game.start`. Model/collider size and gravity are not exposed by this version.
-Do not mutate the source defaults or persist Apply to localStorage. Save with Manus
-checks the snapshot against the current catalog and edits `DEFAULT_CONFIG`, then uses
-the normal Three.js Web build/checkpoint workflow. Keep existing gameplay parameter
-managers when extending an older project; do not create a competing store.
-
-For server-authoritative multiplayer, expose local cosmetic controls only until gameplay
-parameters have explicit server-side development support. The descriptor's GAMEPLAY flag
-is a classification, not server authorization or ranked-score enforcement.
-
-The preview plugin reads the ignored `.manus-webdev/preview-identity.json` v1 projection
-written by the Runtime when initializing, attaching or restoring this project. It contains
-only the resource ID and canonical project directory; private Host bindings and starter
-receipts are not template dependencies. Missing identity disables the bridge.
-The manager latches `tuning.unranked` when non-default GAMEPLAY values become active and
-resets it only at the next run using that run's active values. `Game` snapshots this onto
-`RunState.unranked`; local results cannot save such runs. Preserve this guard when changing
-scoring. When adding online leaderboards, skip submissions for unranked runs and enforce
-eligibility in the authoritative server too; client flags are not proof of a fair score.
+بعض وحدات Three.js وإعدادات Tweak ما زالت محفوظة في المستودع لأغراض الرجوع، لكنها لا تُحمّلها نقطة تشغيل
+اللعبة 2D ولا تُعرض للاعب. إعدادات اللعب الحالية هي الصوت وتقليل الحركة؛ لا توجد حساسية كاميرا أو حركة WASD.

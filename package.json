@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/manus-game-assets/restore.mjs && vite --config scripts/manus-game-assets/vite.config.mjs",
-    "build": "node scripts/manus-game-assets/restore.mjs && node scripts/manus-game-sharing/build.mjs",
+    "dev": "vite --config scripts/manus-game-assets/vite.config.mjs",
+    "build": "pnpm manus:build-source",
     "preview": "vite preview --config scripts/manus-game-assets/vite.config.mjs --port 4173 --strictPort",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

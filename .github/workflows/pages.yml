@@ -40,15 +40,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Stage 3D models for static hosting
-        run: |
-          mkdir -p public/assets/models
-          cp -R assets/models/. public/assets/models/
-
       - name: Build game
         run: pnpm manus:build-source
-        env:
-          VITE_STATIC_MODEL_ASSETS: 'true'
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

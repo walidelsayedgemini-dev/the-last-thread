@@ -1,31 +1,25 @@
-/**
- * Application composition root: wires the services (profiles, real events, AR, hints), the UI and
- * the 3D game together. No game rules live here; see `game/session.ts` and `core/`.
- *
- * Dev shortcuts (query string): `?now=2026-11-27T19:30` pins Cairo time, `?autostart=story|realistic`
- * skips the menus with the default hero.
- */
 import './styles/main.css'
+import './styles/investigation.css'
 import { cairoStamp, nowFromQuery } from './core/clock'
+import type { CaseEvent } from './core/caseState'
 import { CASE_01 } from './data/case01'
+import { CHARACTER_LIST } from './data/characters'
+import { PLACE_LIST, PLACES } from './data/places'
+import type { CharacterId, Hotspot, PlaceId } from './data/types'
 import { Audio } from './engine/audio'
-import { Assets } from './engine/assets'
-import { Input } from './engine/input'
 import { GameLoop } from './engine/loop'
 import { SettingsStore, type Settings } from './engine/save'
-import type { Game } from './game/game'
 import { Session } from './game/session'
-import { ArEngine, createArEngine } from './services/ar'
+import { createArEngine, type ArEngine } from './services/ar'
 import { EventsDb, JsonUrlProvider, type EventsDocument } from './services/eventsDb'
 import { HintService, RemoteChatProvider } from './services/hints'
 import { ProfileService, type Profile } from './services/profiles'
 import { LocalStorageAdapter, MemoryStorage } from './services/storage'
-import { CameraView } from './ui/cameraView'
 import { CaseFileView } from './ui/casefile'
 import { DialogueView } from './ui/dialogueView'
 import { Hud } from './ui/hud'
+import { InvestigationView } from './ui/investigation'
 import { Shell } from './ui/shell'
-import { TouchControls } from './ui/touch'
 
 const SEED_FALLBACK: EventsDocument = { schemaVersion: 1, version: 0, events: [] }
 
@@ -39,8 +33,13 @@ async function loadSeed(): Promise<EventsDocument> {
   return SEED_FALLBACK
 }
 
+function nearestPlace(zone: 'abis' | 'city', x: number, z: number): PlaceId {
+  const candidates = PLACE_LIST.filter(place => place.district === zone)
+  const closest = candidates.sort((a, b) => Math.hypot(a.pos.x - x, a.pos.z - z) - Math.hypot(b.pos.x - x, b.pos.z - z))[0]
+  return closest?.id ?? (zone === 'city' ? 'raml_stop' : 'zeinab_home')
+}
+
 async function boot(): Promise<void> {
-  const canvas = document.querySelector<HTMLCanvasElement>('#game')!
   const ui = document.getElementById('ui')!
   const splash = document.getElementById('splash')
   // `?autostart` (tests/demos) runs on throwaway memory storage so it can never touch real saves.
@@ -50,118 +49,92 @@ async function boot(): Promise<void> {
   const profiles = new ProfileService(storage)
   const now = nowFromQuery(location.search, () => cairoStamp(new Date()))
   const audio = new Audio()
-  const input = new Input(canvas)
-  const assets = new Assets()
 
   // ---- Services -------------------------------------------------------------------------------------------------
   const events = new EventsDb(storage, settings.data.eventsUrl ? [new JsonUrlProvider('custom', settings.data.eventsUrl)] : [])
   const hints = new HintService(undefined, settings.data.hintEndpoint ? new RemoteChatProvider(settings.data.hintEndpoint) : undefined)
   let ar: ArEngine = createArEngine(settings.data.visionEndpoint || undefined)
 
-  let game: Game | undefined
   let session: Session | undefined
   let loopRef: GameLoop | undefined
+  let unsubscribeCase: (() => void) | undefined
+  let currentPlace: PlaceId = 'zeinab_home'
+  let active = false
+  let paused = false
+  let saveTimer = 0
   let endingTimer = 0
 
   const applySettings = (d: Settings) => {
-    input.sensitivity = d.sensitivity
-    input.invertY = d.invertY
     audio.setVolumes(d.musicVolume, d.sfxVolume, d.muted)
-    if (game) game.reducedMotion = d.reducedMotion
+    document.body.classList.toggle('reduced-motion', d.reducedMotion)
   }
 
-  // ---- UI pieces ------------------------------------------------------------------------------------------------------
-  const dialogue = new DialogueView(audio, t => session?.fill(t) ?? t)
+  // ---- 2D investigation UI -------------------------------------------------------------------------------------
+  const dialogue = new DialogueView(audio, text => session?.fill(text) ?? text)
   const hud = new Hud({
     casefile: () => openCaseFile(),
     hint: () => void askHint(),
-    camera: () => game?.tryCamera(),
+    camera: () => hud.toast('التوثيق هنا من خلال مشاهد القضية ثنائية الأبعاد.', 'info'),
     pause: () => pause(),
-    interact: () => game?.interact(),
-  })
-  const camera = new CameraView({
-    audio,
-    pose: () => game!.cameraPose(),
-    zoom: fov => game?.setZoom(fov),
-    enter: () => { game?.enterPhoto(); input.unlockPointer() },
-    exit: () => { game?.resumePlay() },
-    onEvents: () => undefined,
-    aiConfigured: () => !!settings.data.visionEndpoint,
+    interact: () => hud.toast('اختار نقطة فحص أو شخصية من المشهد.', 'info'),
   })
   const caseFile = new CaseFileView({
     audio, events,
-    where: () => ({ zone: game?.zone ?? 'abis', x: game?.player?.position.x ?? 0, z: game?.player?.position.z ?? 0 }),
-    onClose: () => { game?.resumePlay() },
-    onAccused: r => { if (r === 'ok') { caseFile.close(); scheduleEnding() } },
+    where: () => {
+      const pos = session?.progress.position ?? { zone: 'abis' as const, x: 30, z: 232, yaw: 0 }
+      return { zone: pos.zone, x: pos.x, z: pos.z }
+    },
+    onClose: () => undefined,
+    onAccused: result => { if (result === 'ok') { caseFile.close(); scheduleEnding() } },
   })
-  const touch = new TouchControls(canvas, input, () => game?.mode === 'playing')
+  const investigation = new InvestigationView({
+    audio,
+    onHotspot: hotspot => handleHotspot(hotspot),
+    onTalk: id => beginDialogue(id),
+    onPlaceChange: id => persistPlace(id),
+    onCaseFile: () => openCaseFile(),
+    onHint: () => void askHint(),
+    onPause: () => pause(),
+  })
 
-  const shell: Shell = new Shell({ settings, profiles, events, audio, now }, {
+  const shell = new Shell({ settings, profiles, events, audio, now }, {
     play: id => void beginProfile(profiles.select(id)),
     create: (avatar, mode) => void beginProfile(profiles.create(avatar, mode), 'force'),
     resume: () => resume(),
     quit: () => quit(),
     casefile: () => { shell.go('none'); openCaseFile() },
     settings: patch => {
-      const prev = settings.data
       settings.update(patch)
       applySettings(settings.data)
-      if (patch.quality && patch.quality !== prev.quality) { renderer?.applyQuality(patch.quality); game?.setQuality() }
       if ('hintEndpoint' in patch) hints.setRemote(settings.data.hintEndpoint ? new RemoteChatProvider(settings.data.hintEndpoint) : undefined)
       if ('visionEndpoint' in patch) ar = createArEngine(settings.data.visionEndpoint || undefined)
     },
     startWorld: () => startWorld(),
   })
-  ui.append(shell.el, hud.el, dialogue.el, caseFile.el, camera.el, touch.el, ...hud.layers)
-  document.body.classList.toggle('reduced-motion', settings.data.reducedMotion)
+  ui.append(shell.el, investigation.el, hud.el, dialogue.el, caseFile.el, ...hud.layers)
   applySettings(settings.data)
 
-  // ---- Heavy modules load behind the boot screen ------------------------------------------------------------------
+  // ---- Boot ----------------------------------------------------------------------------------------------------
   splash?.remove()
-  shell.setBootProgress(0.1)
+  shell.setBootProgress(0.12)
   const seedPromise = loadSeed()
-  const [{ Game: GameClass }, { Renderer, suggestQuality }] = await Promise.all([import('./game/game'), import('./engine/renderer')])
-  shell.setBootProgress(0.6)
   await document.fonts.ready
+  shell.setBootProgress(0.58)
   events.init(await seedPromise)
   void events.refresh()
-  if (settings.firstRun) settings.update({ quality: suggestQuality() })
-  const renderer = new Renderer(canvas, settings.data.quality)
-  game = new GameClass(renderer, input, audio, assets, {
-    prompt: (text, kind) => hud.prompt(text, kind),
-    narrate: text => hud.narrate(text),
-    toast: (text, kind) => hud.toast(text, kind),
-    openDialogue: (dlg, who) => {
-      input.unlockPointer()
-      dialogue.start(dlg, who, session!.profile.avatar.name, () => game?.resumePlay(), () => session!.flushDialogue(dlg))
-    },
-    openCamera: h => { camera.show(session!, h); input.unlockPointer() },
-    fade: change => hud.fade(change),
-    loading: text => hud.loading(text),
-    caseChanged: evts => {
-      game!.handleEvents(evts)
-      caseFile.refresh()
-      if (evts.some(e => e.type === 'flag' && e.id === 'case_solved')) scheduleEnding()
-    },
-  })
-  game.reducedMotion = settings.data.reducedMotion
-  if (import.meta.env.DEV) {
-    const [{ registerGameTuning }, { tuning }] = await Promise.all([import('../scripts/manus-tuning/adapter.js'), import('./game/tuning')])
-    await registerGameTuning(tuning)
-  }
   shell.setBootProgress(1)
 
-  // ---- Flow --------------------------------------------------------------------------------------------------------------
+  // ---- Flow ----------------------------------------------------------------------------------------------------
   const deps = () => ({ events, profiles, hints, ar, now })
 
   async function beginProfile(profile: Profile | undefined, intro: 'auto' | 'force' | 'skip' = 'auto'): Promise<void> {
-    if (!profile || !game) return
+    if (!profile) return
     audio.unlock()
     shell.go('none')
-    hud.loading('جارٍ تحضير مسرح القضية…')
+    unsubscribeCase?.()
     session = new Session(profile, deps())
-    await game.begin(session)
-    hud.loading(null)
+    currentPlace = nearestPlace(session.progress.position.zone, session.progress.position.x, session.progress.position.z)
+    unsubscribeCase = session.onCase(handleCaseEvents)
     audio.startAmbience()
     const fresh = intro === 'force' || (intro === 'auto' && session.state.evidence.size === 0 && session.progress.playMs < 1000)
     if (fresh) shell.showIntro(session)
@@ -169,48 +142,69 @@ async function boot(): Promise<void> {
   }
 
   function startWorld(): void {
+    if (!session) return
     shell.el.onclick = null
     shell.go('none')
+    paused = false
+    active = true
+    investigation.show(session, currentPlace)
     hud.show(true)
-    game?.resumePlay()
     loopRef?.resetAccumulator()
-    input.lockPointer()
-    hud.narrate('اضغط E للتفاعل • Tab لملف القضية • H لتلميح')
+    hud.toast('ابدأ التحقيق من الخريطة.', 'info')
+  }
+
+  function persistPlace(id: PlaceId): void {
+    if (!session) return
+    const place = PLACES[id]
+    currentPlace = id
+    session.setPosition(place.district, place.pos.x, place.pos.z, 0)
+    session.save()
   }
 
   function openCaseFile(): void {
-    if (!game || !session || (game.mode !== 'playing' && game.mode !== 'paused')) return
-    if (game.mode === 'paused') { game.resume(); shell.go('none') }
-    game.enterUi()
-    input.unlockPointer()
+    if (!session || !active) return
+    if (paused) {
+      paused = false
+      shell.go('none')
+      loopRef?.resetAccumulator()
+    }
     caseFile.show(session)
   }
 
   function pause(): void {
-    if (game?.mode !== 'playing') return
-    game.pause()
+    if (!active || paused) return
+    paused = true
     shell.go('pause')
-    input.unlockPointer()
+    audio.play('ui')
   }
 
   function resume(): void {
-    if (game?.mode !== 'paused') return
-    game.resume()
+    if (shell.screen === 'ending') {
+      startWorld()
+      return
+    }
+    if (!paused) return
+    paused = false
     shell.go('none')
     loopRef?.resetAccumulator()
-    input.lockPointer()
+    investigation.refresh()
   }
 
   function quit(): void {
     window.clearTimeout(endingTimer)
-    game?.endSession()
+    if (dialogue.open) dialogue.close()
+    caseFile.el.hidden = true
+    session?.save()
+    unsubscribeCase?.()
+    unsubscribeCase = undefined
     audio.stopAmbience()
     hud.show(false)
-    caseFile.el.hidden = true
+    investigation.hide()
+    active = false
+    paused = false
     session = undefined
     shell.el.onclick = null
     shell.go('title')
-    input.unlockPointer()
   }
 
   function scheduleEnding(): void {
@@ -218,72 +212,140 @@ async function boot(): Promise<void> {
     endingTimer = window.setTimeout(() => {
       if (!session) return
       audio.play('solved')
-      game?.enterUi()
+      active = false
+      paused = false
+      caseFile.el.hidden = true
       hud.show(false)
-      input.unlockPointer()
+      investigation.hide()
       shell.showEnding(session)
-    }, 1500)
+    }, 900)
+  }
+
+  function handleCaseEvents(changes: CaseEvent[]): void {
+    for (const change of changes) {
+      if (change.type === 'evidence') {
+        audio.play('evidence')
+        hud.toast(`دليل جديد: ${change.evidence.title}`, 'evidence')
+      } else if (change.type === 'evidence-gated') {
+        hud.toast(change.reason ?? 'الدليل ده لسه ماظهرش… ارجع في وقت تاني.', 'warn')
+      } else if (change.type === 'deduction') {
+        audio.play('deduction')
+        hud.toast('ربطت خيطاً جديداً!', 'deduction')
+      }
+    }
+    caseFile.refresh()
+    investigation.refresh()
+    if (changes.some(change => change.type === 'flag' && change.id === 'case_solved')) scheduleEnding()
+  }
+
+  function handleHotspot(hotspot: Hotspot): void {
+    if (!session || !active || paused) return
+    audio.play('ui')
+    if (hotspot.text) hud.narrate(session.fill(hotspot.text))
+    if (hotspot.kind === 'travel' && hotspot.to) {
+      session.useHotspot(hotspot)
+      investigation.setPlace(hotspot.to)
+      return
+    }
+    if (hotspot.kind === 'photo') {
+      const changes = session.useHotspot(hotspot)
+      if (changes.some(change => change.type === 'evidence')) {
+        session.progress.stats.photos++
+        session.save()
+        hud.toast('تمت إضافة سجل الصورة إلى ملف القضية.', 'info')
+      }
+      return
+    }
+    session.useHotspot(hotspot)
+    investigation.refresh()
+  }
+
+  function beginDialogue(id: CharacterId): void {
+    if (!session || !active || paused) return
+    const person = CHARACTER_LIST.find(c => c.id === id)
+    if (!person) return
+    const dlg = session.talk(id)
+    if (!dlg) {
+      hud.toast(`${person.name} مش عاوز يتكلم دلوقتي.`, 'info')
+      return
+    }
+    dialogue.start(dlg, person, session.profile.avatar.name,
+      () => { session?.save(); investigation.refresh() },
+      () => session?.flushDialogue(dlg),
+    )
   }
 
   async function askHint(): Promise<void> {
-    if (!session || game?.mode !== 'playing') return
-    const r = await session.hint()
-    if (!r) hud.toast('القضية اتقفلت… مفيش تلميحات.', 'info')
-    else if ('wait' in r) hud.toast(`استنى ${r.wait} ثانية قبل التلميح الجاي.`, 'info')
-    else hud.hint(r.text, r.tier, r.source)
+    if (!session || !active || paused) return
+    const result = await session.hint()
+    if (!result) hud.toast('القضية اتقفلت… مفيش تلميحات.', 'info')
+    else if ('wait' in result) hud.toast(`استنى ${result.wait} ثانية قبل التلميح الجاي.`, 'info')
+    else hud.hint(result.text, result.tier, result.source)
+    session.save()
   }
 
-  // ---- Input routing -------------------------------------------------------------------------------------------------------
-  window.addEventListener('keydown', e => {
-    const handled = dialogue.key(e) || camera.key(e) || caseFile.key(e) || shell.key(e)
+  // ---- Input and timing ----------------------------------------------------------------------------------------
+  window.addEventListener('keydown', event => {
+    const handled = dialogue.key(event) || caseFile.key(event) || shell.key(event)
     if (handled) {
-      e.preventDefault()
-      input.endFrame()
+      event.preventDefault()
+      return
     }
+    if (!active || paused) return
+    if (event.code === 'Escape') { event.preventDefault(); pause() }
+    else if (event.code === 'Tab') { event.preventDefault(); openCaseFile() }
+    else if (event.code === 'KeyH') { event.preventDefault(); void askHint() }
+    else if (event.code === 'KeyM') { event.preventDefault(); investigation.setTab('map') }
+    else if (event.code === 'KeyJ') { event.preventDefault(); caseFile.show(session!, 'objectives') }
   })
-  document.addEventListener('pointerlockchange', () => {
-    if (!document.pointerLockElement && game?.mode === 'playing' && input.method === 'keyboard') pause()
-  })
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) pause()
-  })
-  canvas.addEventListener('click', () => {
-    if (game?.mode === 'playing') input.lockPointer()
-  })
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause() })
   window.addEventListener('pagehide', () => session?.save())
 
-  const g = game
   const loop = new GameLoop({
-    beforeFrame: dt => input.update(dt),
-    step: dt => g.step(dt),
-    render: (alpha, dt) => {
-      if (g.mode === 'playing') {
-        if (input.consume('interact')) g.interact()
-        else if (input.consume('camera')) g.tryCamera()
-        if (input.consume('casefile')) openCaseFile()
-        if (input.consume('hint')) void askHint()
-        if (input.consume('view')) g.toggleView()
-        if (input.consume('pause')) pause()
-      } else if (g.mode === 'paused' && input.consume('pause')) resume()
-      loop.paused = g.mode === 'paused'
-      g.render(alpha, dt)
+    step: dt => {
+      if (!session || !active || paused) return
+      session.tick(dt)
+      saveTimer += dt
+      if (saveTimer >= 20) {
+        saveTimer = 0
+        session.save()
+      }
+    },
+    render: (_alpha, dt) => {
       shell.frame(dt)
       dialogue.frame(dt)
-      if (session && (g.mode === 'playing' || g.mode === 'ui' || g.mode === 'photo')) {
+      if (session && active && !paused) {
         hud.frame({
-          hour: session.clock.hour, mode: session.mode, objective: session.engine.currentObjective(), arrow: g.objectiveArrow(),
-          evidence: session.state.evidence.size, total: CASE_01.evidence.length, photoNearby: g.photoNearby,
+          hour: session.clock.hour,
+          mode: session.mode,
+          objective: session.engine.currentObjective(),
+          evidence: session.state.evidence.size,
+          total: CASE_01.evidence.length,
+          photoNearby: false,
         })
       }
-      input.endFrame()
     },
   })
   loopRef = loop
   loop.start()
 
-  // Debug/test hook (read-only use): smoke tests inspect game state through it.
-  ;(window as unknown as { __ltt: unknown }).__ltt = {
-    get game() { return g }, get session() { return session }, shell, hud, input, events, profiles, settings,
+  // Debug/test hook: omit it from ordinary production sessions.
+  if (import.meta.env.DEV || auto === 'story' || auto === 'realistic') {
+    ;(window as unknown as { __ltt: unknown }).__ltt = {
+      get session() { return session },
+      shell, hud, caseFile, investigation, events, profiles, settings,
+      selectPlace: (id: PlaceId) => {
+        if (PLACES[id]?.district === PLACES[investigation.currentPlace]?.district) investigation.setPlace(id)
+      },
+      useHotspot: (id: string) => {
+        const hotspot = session?.engine.activeHotspots().find(item => item.id === id && item.place === investigation.currentPlace)
+        if (hotspot) handleHotspot(hotspot)
+      },
+      talk: (id: CharacterId) => beginDialogue(id),
+      openCaseFile: () => openCaseFile(),
+      pause: () => pause(),
+      resume: () => resume(),
+    }
   }
 
   window.setTimeout(() => {
