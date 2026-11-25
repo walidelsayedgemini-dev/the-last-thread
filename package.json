@@ -10,12 +10,20 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
-    "manus:build-source": "tsc --noEmit && vite build && node scripts/check-size.mjs"
+    "manus:build-source": "tsc --noEmit && vite build && node scripts/check-size.mjs",
+    "android:add": "cap add android",
+    "android:assets": "capacitor-assets generate --android --assetPath assets --iconBackgroundColor '#0a0807' --splashBackgroundColor '#0a0807'",
+    "android:sync": "cap sync android",
+    "android:apk": "pnpm build && pnpm android:assets && pnpm android:sync && cd android && ./gradlew --no-daemon assembleDebug"
   },
   "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2",
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@capacitor/assets": "4.0.0",
+    "@capacitor/cli": "8.6.2",
     "@types/three": "^0.186.0",
     "playwright": "^1.63.0",
     "typescript": "^5.9.3",
