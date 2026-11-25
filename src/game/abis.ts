@@ -22,7 +22,7 @@ export function buildAbis(lib: ModelLibrary): Zone {
   k.collision.bounds = { minX: -110, maxX: 230, minZ: 118, maxZ: 318 }
 
   // ---- Ground, fields and roads -------------------------------------------------------------
-  const earth = k.mat('#6a5a48', { map: noiseTexture('#6a5a48', 0.35, 40, 3), rough: 1 })
+  const earth = k.mat('#85715a', { map: noiseTexture('#85715a', 0.35, 40, 3), rough: 1 })
   const road = k.mat('#4a4036', { map: noiseTexture('#4a4036', 0.5, 14, 5), rough: 1 })
   const grass = k.mat('#4d5a3a', { map: rowsTexture('#46532f', '#3a4728', 10, 8), rough: 1 })
   const crop = k.mat('#59663f', { map: rowsTexture('#52603a', '#3d4a2b', 8, 6), rough: 1 })

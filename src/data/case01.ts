@@ -160,7 +160,7 @@ export const CASE_01: CaseFile = {
       effects: [{ type: 'evidence', id: 'e_forged_contract' }] },
   ],
   finale: {
-    requires: { deductions: ['d_markers', 'd_forgery', 'd_trail'] },
+    requires: { deductions: ['d_markers', 'd_forgery', 'd_trail'], flags: ['found_mahmoud'] },
     culprit: 'shawky',
     motives: [
       { id: 'm_road', text: 'تعويضات الطريق الجديد: زحزح الحدود وزوّر العقد علشان يستولي على تعويض القطعة ١٥.', correct: true },

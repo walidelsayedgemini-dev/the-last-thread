@@ -1,66 +1,140 @@
-# game-3d starter (three.js + Rapier)
+# الخيط الأخير — The Last Thread
 
-A complete, small 3D game — **Sky Cores**: run, jump and dash across floating islands to collect
-every energy core before the clock runs out, avoiding patrol drones. It exists to be *changed*:
-the engine layer is fixed scaffolding, the game layer is the part you rewrite.
+لعبة تحقيق «نوار» عالم مفتوح في الإسكندرية وقراها، مركزها **أبيس / عزبة ١٥**. اللاعب هو «ياسين» (أو شخصية
+يصنعها بنفسه)، وخاله محمود اختفى وساب خيطًا أحمر على الباب. اللعبة بالعربي بالكامل (RTL) وبالعامية
+المصرية في الحوار، وتشتغل على الكمبيوتر والموبايل (لمس) من المتصفح.
+
+> **المرحلة ١ (Manus):** كل شيء يعمل على جهاز اللاعب بلا خادم. **المرحلة ٢ (AntiGravity):** خادم/وكيل
+> للتلميحات الذكية (ChatGPT) وتحليل صور حقيقية، عبر واجهات جاهزة بالفعل — شوف «النقل إلى AntiGravity».
 
 ```bash
 pnpm install
-pnpm dev      # http://localhost:5173
-pnpm build    # typecheck + production build + JS/font budgets + total-size report
-pnpm test     # unit tests (rules, save, i18n, level)
-pnpm smoke    # after build: headless browser playthrough + screenshots in shots/
+pnpm dev        # تشغيل التطوير
+pnpm test       # اختبارات الوحدات (المنطق + الخدمات)
+pnpm build      # فحص أنواع + بناء + ميزانية الحجم
+pnpm smoke      # بعد البناء: لعب كامل في متصفح headless + لقطات في shots/
 ```
 
-## Layout
+روابط تجريبية للمطوّر: `?autostart=story|realistic` يبدأ بلا قوائم وعلى **ذاكرة مؤقتة** (لا يلمس حفظ اللاعب)،
+و`?now=2026-11-27T19:30` يثبّت توقيت القاهرة لتجربة الوضع الواقعي.
 
-| Path | Role | Change it? |
-| --- | --- | --- |
-| `src/engine/loop.ts` | Fixed 60 Hz simulation + interpolated rendering | Rarely |
-| `src/engine/input.ts` | Keyboard/mouse, gamepad, touch → one action state | Add actions here |
-| `src/engine/physics.ts` | Rapier world, collider helpers, render interpolation | Rarely |
-| `src/engine/renderer.ts` | WebGL renderer, quality presets, bloom | Rarely |
-| `src/engine/audio.ts` | Music/SFX buses, synthesized SFX, `load()` for files | Add sounds |
-| `src/engine/save.ts` | Versioned localStorage save + leaderboard | Add fields + parsing |
-| `src/engine/i18n.ts` | en / zh-CN, browser detection, saved choice wins | Rarely |
-| `src/engine/assets.ts` | Cached GLTF/texture loading with progress | Use it for models |
-| `src/game/config.ts` | Source defaults and active gameplay configuration | Yes |
-| `src/game/tuning.ts` | Tweak catalog, atomic validation and activation boundaries | Yes |
-| `src/game/rules.ts` | Pure score/lives/clock/win rules (unit tested) | Yes |
-| `src/game/world.ts` | Level layout, sky, lights, islands, stones, lifts | Yes |
-| `src/game/player.ts` | Character controller + game feel + procedural model | Yes |
-| `src/game/*.ts` | Camera, cores, drones, particles, scene orchestration | Yes |
-| `src/ui/`, `src/styles/main.css` | HTML/CSS title, HUD, pause, settings, results | Yes |
-| `src/i18n/*.json` | All player-facing text (both files, same keys) | Yes |
+## الهوية البصرية والجو العام
 
-## Rules for changes
+أحمر وأسود. واجهة على شكل **ملف قضية** (ورق، ختم «سري»، لوحة أدلة بخيوط حمراء). إضاءة خافتة
+بتتغيّر بالساعة (غروب برتقالي ← ليل أزرق ونجوم)، ضباب، وحبيبات وفينييت على الشاشة. الصوت كله
+**يُولَّد برمجيًا** (`engine/audio.ts`): درون، رياح، نبض قلب يتصاعد مع التوتر، خطوات وستينجرز عند
+اكتشاف الأدلة — بلا ملفات صوت.
 
-- **Simulation in `step()`, visuals in `render()`/`animate()`.** Gameplay state only changes in
-  fixed steps; read presses there with `input.consume(action)`, never `pressed()`.
-- **Rules stay pure.** Scoring, win/lose and progression go in `rules.ts` with tests; scene code
-  reports events and reads state.
-- **Every visible string is an i18n key** in both `en.json` and `zh-CN.json` (a test enforces
-  matching keys and placeholders). English and Chinese use the bundled Manus CC0 fonts in `public/fonts/`;
-  if you add new Chinese text, check it renders (missing glyphs fall back to system fonts).
-- **UI is HTML/CSS**, not canvas. Keep the game look: display font, outlined text, hard offset
-  shadows, skewed buttons, notched panels. Menus must stay keyboard/gamepad navigable
-  (`data-nav` on focusable controls).
-- **Colliders come from the helpers** in `physics.ts` with the same sizes as the meshes.
-- Keep `npm run build` within the JS/font budgets (`scripts/check-size.mjs`) and `npm run smoke` green.
-  Total game asset size is reported without a hard limit.
+الفكرة الأساسية: **النص والبيانات هي اللعبة**. المجسّمات المسجّلة سابقًا (٢٤ ملف GLB) تُعاد استخدامها فقط؛ لا
+مجسّمات جديدة. كل الأماكن والشخصيات والأدلة والحوارات ملفات بيانات.
 
-## Controls
+## البنية (طبقات منفصلة، كل طبقة تعتمد على اللي تحتها فقط)
 
-Keyboard/mouse: WASD move, mouse look (click to capture), Space jump (hold = higher), Shift
-sprint, F or left click dash, Esc pause. Gamepad: left stick, right stick, A jump, X/RB dash,
-LB sprint, Start pause. Touch: left-side stick, right-side drag to look, JUMP / DASH buttons.
+```
+src/
+  data/       محتوى خالص (بلا منطق): types, places, characters, case01, dialogues, hints
+  core/       قواعد اللعبة النقية (بلا DOM ولا three) ومغطّاة بالاختبارات
+                clock (توقيت القاهرة)، gates (بوابات الوقت/الأحداث)، caseState (CaseEngine)،
+                dialogue (شجرة الحوار)، collision (تصادم ثنائي الأبعاد)
+  services/   خدمات مستقلة خلف واجهات صغيرة (قابلة للاستبدال)
+                storage      StorageAdapter: localStorage ← ذاكرة عند فشل الحصة (جاهز لمحوّل سحابي)
+                profiles     إدارة المستخدمين: ٣ خانات، نقل إصدارات، تصدير/استيراد
+                eventsDb     قاعدة الأحداث الواقعية: دمج طبقات، تكرار أسبوعي، مقابر حذف، near()
+                ar/          محرّك الواقع المعزّز: WorldCamera + GeoFence + RemoteVision اختياري
+                hints        HintService: تلميحات محلية ٣ مستويات + مزوّد دردشة بعيد اختياري
+  engine/     غلاف المنصّة: renderer, loop, input, audio, assets, save (الإعدادات)
+  game/       طبقة three.js: atmosphere, zoneKit, abis, city, actors, models, textures,
+              session (جلسة بلا رسم)، game (المتحكّم)، tuning (Tweak)
+  ui/         واجهة DOM آمنة (h() بلا innerHTML): shell, hud, dialogueView, casefile, cameraView, touch
+  main.ts     نقطة التجميع (composition root): توصيل الخدمات بالواجهة واللعبة
+```
+
+قاعدة الحفاظ على الذاكرة: المدينة والقرية **تُبنيان عند الحاجة** (lazy)، النماذج تُستنسخ مع مشاركة
+المواد، والظلال بخريطة صغيرة تتبع اللاعب. حجم الحزمة: JS ≈ ٠٫٢ MB gzip (الميزانية ٢ MB).
+
+## وضعا اللعب
+
+- **طور القصة:** الوقت يمرّ داخل اللعبة وكل الأدلة متاحة دائمًا.
+- **الطور الواقعي:** يستخدم الساعة الحقيقية بتوقيت القاهرة وقاعدة الأحداث. **الأدلة الأساسية لا تُحجب
+  أبدًا**؛ المحجوب فقط أدلة إضافية ترفع التقدير (مثلًا: القهوة مقفولة بالنهار، صورة العمود بالنهار فقط،
+  ذاكرة رجب لا تصحو إلا يوم ماتش الاتحاد).
+
+## القضية الأولى «خيط القطعة ١٥»
+
+١٦ دليلًا، ٦ استنتاجات (ربط دليلين على اللوحة)، ١٢ هدفًا متسلسلًا، ١٤ نقطة تفاعل، ٨ ملفات شخصيات
+بماضٍ يُكشف تدريجيًا، ونهاية بالاتهام. بوابة الاتهام: ٣ استنتاجات **و** العثور على محمود (`found_mahmoud`).
+ملفات الشخصيات تظهر في الملف بعد التحدّث معها (علم `met_<id>`).
+
+### إضافة قضية جديدة
+1. أنشئ `src/data/case02.ts` بنوع `CaseFile` (انظر `data/types.ts`)؛ أي أماكن جديدة تُضاف في `places.ts`.
+2. أضف حوارات الشخصيات في `dialogues.ts` وتلميحات الأهداف في `hints.ts`.
+3. أضف اختبار تكامل شبيه بـ «plays the whole case end-to-end» في `tests/case.test.ts`.
+
+لا حاجة لتعديل `core/` أو `ui/`: كلها تقرأ البيانات.
+
+## قاعدة الأحداث الواقعية (`public/data/events.json`)
+
+```jsonc
+{ "schemaVersion": 1, "version": 1,
+  "events": [{ "id": "...", "kind": "match_ittihad|market_day|friday_prayer", "title": "...",
+               "at": "2026-11-27T19:30",            // توقيت القاهرة
+               "endsAt": "…", "recurring": { "weekday": 5, "from": "11:30", "to": "13:30" },
+               "provisional": true, "updatedAt": 3 }],
+  "removed": ["id-to-delete"] }                      // مقابر حذف تُحفظ وتمنع عودة الحدث من البذرة
+```
+
+الدمج: البذرة المدمجة ← النسخة المخزّنة ← المزوّدون عن بُعد (الأحدث `updatedAt` يفوز). لتحديث المواعيد بلا
+إصدار جديد، اضبط رابط JSON في إعدادات اللعبة (`eventsUrl`) أو ركّب `EventsProvider` جديد (REST/Firestore/CMS).
+
+> ⚠️ **مواعيد مباريات الاتحاد في الملف الحالي أمثلة مؤقتة (`provisional: true`)** ولازم تُستبدل بالجدول الرسمي.
+
+## محرّك الواقع المعزّز (`services/ar`)
+
+كل المزوّدين ينفّذون `ArProvider { supports(capture); verify(target, capture) }`:
+
+| المزوّد | الحالة | ما يتحقق منه |
+|---|---|---|
+| `WorldCameraProvider` | يعمل الآن | هندسة الكادر داخل العالم الافتراضي (اتجاه + مسافة + FOV) |
+| `GeoFenceProvider` | يعمل الآن | **موقع GPS الحقيقي** داخل نطاق المَعلم + جودة الصورة. **لا يحلّل محتوى الصورة** |
+| `RemoteVisionProvider` | معطّل افتراضيًا | `POST multipart {landmark, image}` ← `{match, confidence}` — يحتاج خادمًا |
+
+**صراحةً:** تحليل الصور الحقيقية بالذكاء الاصطناعي يتطلب خادمًا/وكيلًا (مفتاح نموذج رؤية لا يجوز وضعه في
+المتصفح). حتى يُضاف في المرحلة ٢، الصورة الحقيقية تُقبل بالموقع فقط وتُوسَم `needsServer`، وتقول الرسالة
+للاعب ذلك صراحةً.
+
+## التلميحات الذكية (`services/hints`)
+
+`HintProvider { hint(ctx) → Promise<string> }`. المحلي ثلاثة مستويات (غمزة ← اتجاه ← حل) لكل هدف ويعمل
+دائمًا بلا إنترنت. `RemoteChatProvider` يرسل `POST {game, locale:'ar', dialect:'egyptian', ...HintContext}`
+ويتوقع `{hint: string}`؛ عند أي فشل أو مهلة (٧ ثوانٍ) يرجع للمحلي تلقائيًا. نقطة النهاية تُضبط من الإعدادات
+(`hintEndpoint`) — الوكيل الذي يستدعي ChatGPT يكون في المرحلة ٢.
+
+## إدارة المستخدمين (`services/profiles`)
+
+٣ خانات حفظ محلية (اسم، مظهر، طور اللعب، تقدّم القضية، إحصاءات)، نقل تلقائي بين إصدارات المخطط، وتصدير/
+استيراد JSON يدويًا. لا حسابات ولا مزامنة سحابية. لو امتلأ `localStorage` يتحوّل المحوّل للذاكرة ويعلن
+`isDegraded`، فلا تُرجع القراءات بيانات قديمة.
+
+## النقل إلى AntiGravity (المرحلة ٢)
+
+- استبدل `LocalStorageAdapter` بمحوّل سحابي (نفس واجهة `StorageAdapter`) لمزامنة الحفظ.
+- ركّب `RemoteVisionProvider` و`RemoteChatProvider` على خادم المرحلة ٢، واضبط عناوينهما من الإعدادات.
+- مصدر الأحداث: خدمة JSON/REST تُنتج نفس `EventsDocument` (فيه `version` و`removed`).
+- `core/` و`data/` بلا أي اعتماد على المتصفح، فتُنقل كما هي.
+
+## GitHub
+
+المستودع: `walidelsayedgemini-dev/the-last-thread` (خاص). `scripts/mirror-github.sh` يدفع كل تحديث مع
+مجسّمات `assets/models` (المستبعدة من مستودع Manus) إلى GitHub.
+
+## ما ليس موجودًا بعد (بصراحة)
+
+مجسّمات/أصوات احترافية (الصوت مولّد برمجيًا)، قضايا إضافية، تحليل صور حقيقي بالـ AI، تلميحات ChatGPT
+الحيّة، ومواعيد المباريات الرسمية.
 
 ## Credits
 
-Fonts: ManusCC0 (regular, medium, bold) and ManusCC0 Sans CJK SC — CC0 1.0.
-The bundled Chinese font preserves its 6,547-codepoint repertoire; no font download is required.
-See `public/fonts/ManusCC0-LICENSE.txt`.
-Libraries: three.js (MIT), Rapier (Apache-2.0).
+Fonts: Cairo and Reem Kufi (SIL OFL 1.1, licenses in `public/fonts/`). Library: three.js (MIT).
 
 ## Preview Tweak
 

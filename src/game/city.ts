@@ -23,10 +23,10 @@ export function buildCity(lib: ModelLibrary): Zone {
   k.collision.bounds = { minX: -400, maxX: 250, minZ: -390, maxZ: -70 }
 
   // ---- Ground, sea, promenade ---------------------------------------------------------------------------
-  const stone = k.mat('#4a4a4c', { map: noiseTexture('#4a4a4c', 0.35, 60, 7), rough: 1 })
-  const asphalt = k.mat('#222225', { map: noiseTexture('#222225', 0.3, 30, 2), rough: 0.95 })
+  const stone = k.mat('#6a6a6c', { map: noiseTexture('#6a6a6c', 0.35, 60, 7), rough: 1 })
+  const asphalt = k.mat('#38383d', { map: noiseTexture('#38383d', 0.3, 30, 2), rough: 0.95 })
   const promenade = k.mat('#6a655c', { map: noiseTexture('#6a655c', 0.3, 40, 4), rough: 1 })
-  const dust = k.mat('#6d5e4b', { map: noiseTexture('#6d5e4b', 0.4, 20, 8), rough: 1 })
+  const dust = k.mat('#85735c', { map: noiseTexture('#85735c', 0.4, 20, 8), rough: 1 })
   const sea = k.mat('#0b2233', { rough: 0.2, metal: 0.3 })
   k.plane(-75, -185, 700, 230, stone)
   k.plane(-325, -340, 150, 100, dust, 0.01) // Qaitbay spit

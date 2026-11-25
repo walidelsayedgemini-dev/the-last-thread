@@ -4,6 +4,10 @@
     "models": {
       "name": "Models",
       "order": 10
+    },
+    "share": {
+      "name": "Share",
+      "order": 20
     }
   },
   "bundles": {},
@@ -175,6 +179,13 @@
       "size": 314568,
       "assetType": "model",
       "groupId": "models"
+    },
+    "assets/share/favicon.png": {
+      "path": "/manus-storage/game/sha256/74517e8c909c50e19508575a3d9381ef522b49bff40156f07daf4116658085db.png",
+      "sha256": "sha256:74517e8c909c50e19508575a3d9381ef522b49bff40156f07daf4116658085db",
+      "size": 6495,
+      "assetType": "image",
+      "groupId": "share"
     }
   }
 }

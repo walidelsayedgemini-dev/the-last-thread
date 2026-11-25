@@ -12,13 +12,17 @@
     <style>
       /* First paint: dark background and the title, before the stylesheet and scripts arrive. */
       html, body { margin: 0; background: #090909; color: #e9e2d0; }
-      #splash { position: fixed; inset: 0; display: grid; place-items: center; font: 700 2.4rem/1 sans-serif; color: #b3121f; letter-spacing: 0.04em; }
+      #splash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; font: 700 2.4rem/1 sans-serif; color: #b3121f; letter-spacing: 0.04em; }
+      #splash img { width: 84px; height: 84px; }
+      #splash .bar { width: min(260px, 60vw); height: 3px; background: #2a1d1a; overflow: hidden; }
+      #splash .bar i { display: block; height: 100%; width: 35%; background: #b3121f; animation: splash-run 1.2s ease-in-out infinite; }
+      @keyframes splash-run { from { transform: translateX(120%); } to { transform: translateX(-300%); } }
     </style>
   </head>
   <body>
     <canvas id="game"></canvas>
     <div id="ui"></div>
-    <div id="splash">الخيط الأخير</div>
+    <div id="splash" role="status" aria-label="جارٍ التحميل"><img src="./favicon.svg" alt="" /><span>الخيط الأخير</span><div class="bar"><i></i></div></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

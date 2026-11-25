@@ -122,7 +122,7 @@ export class CaseFileView {
   // ---- People -------------------------------------------------------------------------------------------------------
 
   private people(s: Session): HTMLElement {
-    const cards = s.knownCharacters().filter(c => s.present(c) || s.state.flags.has(`met_${c.id}`) || true).map(c => {
+    const cards = s.knownCharacters().map(c => {
       const unlockedPast = c.past.filter(p => !p.unlock || s.state.flags.has(p.unlock))
       const secret = c.secret && s.state.flags.has(c.secret.unlock) ? c.secret.text : undefined
       const hidden = c.id === 'mahmoud' && !s.state.flags.has('found_mahmoud')

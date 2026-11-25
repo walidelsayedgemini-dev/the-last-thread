@@ -22,16 +22,16 @@ export type Palette = {
 
 /** Keyframes by hour of day; the list wraps from 24 back to 0. */
 export const KEYS: { h: number; p: Palette }[] = [
-  { h: 0, p: { skyTop: '#02040a', skyHorizon: '#0b1122', fog: '#0a0f1a', fogDensity: 0.013, sun: '#6b7fb0', sunIntensity: 0.35, hemiSky: '#1b2640', hemiGround: '#0a0806', hemiIntensity: 0.55 } },
-  { h: 5, p: { skyTop: '#05091a', skyHorizon: '#1a1d30', fog: '#12141f', fogDensity: 0.013, sun: '#6b7fb0', sunIntensity: 0.3, hemiSky: '#1b2640', hemiGround: '#0a0806', hemiIntensity: 0.55 } },
+  { h: 0, p: { skyTop: '#02040a', skyHorizon: '#0b1122', fog: '#0a0f1a', fogDensity: 0.013, sun: '#6b7fb0', sunIntensity: 0.35, hemiSky: '#1b2640', hemiGround: '#1a1512', hemiIntensity: 0.55 } },
+  { h: 5, p: { skyTop: '#05091a', skyHorizon: '#1a1d30', fog: '#12141f', fogDensity: 0.013, sun: '#6b7fb0', sunIntensity: 0.3, hemiSky: '#1b2640', hemiGround: '#1a1512', hemiIntensity: 0.55 } },
   { h: 6.5, p: { skyTop: '#2a2d4a', skyHorizon: '#9a4f3a', fog: '#4a3430', fogDensity: 0.011, sun: '#ff9a5a', sunIntensity: 0.9, hemiSky: '#53506a', hemiGround: '#1c1612', hemiIntensity: 0.7 } },
   { h: 9, p: { skyTop: '#3d566f', skyHorizon: '#8c9aa2', fog: '#6b757a', fogDensity: 0.007, sun: '#fff0d8', sunIntensity: 1.5, hemiSky: '#8296a8', hemiGround: '#2a241d', hemiIntensity: 0.85 } },
   { h: 12.5, p: { skyTop: '#46607d', skyHorizon: '#9eaab0', fog: '#7a868a', fogDensity: 0.006, sun: '#fff4e0', sunIntensity: 1.8, hemiSky: '#93a6b6', hemiGround: '#2d261e', hemiIntensity: 0.9 } },
   { h: 16, p: { skyTop: '#44566f', skyHorizon: '#b09474', fog: '#80725f', fogDensity: 0.007, sun: '#ffd49a', sunIntensity: 1.5, hemiSky: '#8a8f9b', hemiGround: '#2a2119', hemiIntensity: 0.8 } },
-  { h: 17.8, p: { skyTop: '#3a3350', skyHorizon: '#dd6f33', fog: '#5a3a30', fogDensity: 0.009, sun: '#ff7a30', sunIntensity: 1.1, hemiSky: '#6b5a66', hemiGround: '#241713', hemiIntensity: 0.65 } },
-  { h: 19, p: { skyTop: '#1a1830', skyHorizon: '#7a3a3a', fog: '#2a1a22', fogDensity: 0.011, sun: '#a84a40', sunIntensity: 0.45, hemiSky: '#3b3555', hemiGround: '#140e0d', hemiIntensity: 0.55 } },
-  { h: 20.5, p: { skyTop: '#080a1c', skyHorizon: '#1e1826', fog: '#141420', fogDensity: 0.013, sun: '#6b7fb0', sunIntensity: 0.32, hemiSky: '#1d2842', hemiGround: '#0a0806', hemiIntensity: 0.55 } },
-  { h: 24, p: { skyTop: '#02040a', skyHorizon: '#0b1122', fog: '#0a0f1a', fogDensity: 0.013, sun: '#6b7fb0', sunIntensity: 0.35, hemiSky: '#1b2640', hemiGround: '#0a0806', hemiIntensity: 0.55 } },
+  { h: 17.8, p: { skyTop: '#3a3350', skyHorizon: '#dd6f33', fog: '#5a3a30', fogDensity: 0.009, sun: '#ff7a30', sunIntensity: 1.1, hemiSky: '#6b5a66', hemiGround: '#3a2a22', hemiIntensity: 0.65 } },
+  { h: 19, p: { skyTop: '#1a1830', skyHorizon: '#7a3a3a', fog: '#2a1a22', fogDensity: 0.011, sun: '#a84a40', sunIntensity: 0.45, hemiSky: '#3b3555', hemiGround: '#2a1d1a', hemiIntensity: 0.55 } },
+  { h: 20.5, p: { skyTop: '#080a1c', skyHorizon: '#1e1826', fog: '#141420', fogDensity: 0.013, sun: '#6b7fb0', sunIntensity: 0.32, hemiSky: '#1d2842', hemiGround: '#1a1512', hemiIntensity: 0.55 } },
+  { h: 24, p: { skyTop: '#02040a', skyHorizon: '#0b1122', fog: '#0a0f1a', fogDensity: 0.013, sun: '#6b7fb0', sunIntensity: 0.35, hemiSky: '#1b2640', hemiGround: '#1a1512', hemiIntensity: 0.55 } },
 ]
 
 const COLOR_KEYS = ['skyTop', 'skyHorizon', 'fog', 'sun', 'hemiSky', 'hemiGround'] as const
@@ -124,7 +124,7 @@ export class Atmosphere {
     this.fog.density = p.fogDensity * CONFIG.atmosphere.fog
     this.hemi.color.copy(p.hemiSky)
     this.hemi.groundColor.copy(p.hemiGround)
-    this.hemi.intensity = p.hemiIntensity * 2.1
+    this.hemi.intensity = p.hemiIntensity * 2.9
     this.sun.color.copy(p.sun)
     this.sun.intensity = p.sunIntensity
     // Sun by day (east → west), moon by night from the opposite side and higher up.

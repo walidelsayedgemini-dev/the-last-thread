@@ -77,6 +77,8 @@ export function sanitizeEvent(raw: unknown, source: string): RealEvent | undefin
 export class EventsDb {
   private events = new Map<string, RealEvent>()
   private version = 0
+  /** Ids deleted by a remote document; persisted so a bundled seed cannot resurrect them. */
+  private readonly removed = new Set<string>()
 
   constructor(private readonly storage: StorageAdapter, private readonly providers: EventsProvider[] = []) {}
 
@@ -118,7 +120,11 @@ export class EventsDb {
         changed++
       }
     }
-    for (const id of doc.removed ?? []) if (this.events.delete(id)) changed++
+    for (const id of doc.removed ?? []) {
+      if (typeof id !== 'string') continue
+      this.removed.add(id)
+      if (this.events.delete(id)) changed++
+    }
     this.version = Math.max(this.version, doc.version ?? 0)
     return changed
   }
@@ -133,7 +139,7 @@ export class EventsDb {
   }
 
   private persist(): void {
-    const doc: EventsDocument = { schemaVersion: EVENTS_SCHEMA_VERSION, version: this.version, events: [...this.events.values()] }
+    const doc: EventsDocument = { schemaVersion: EVENTS_SCHEMA_VERSION, version: this.version, events: [...this.events.values()], removed: [...this.removed] }
     try {
       this.storage.set(CACHE_KEY, JSON.stringify(doc))
     } catch {

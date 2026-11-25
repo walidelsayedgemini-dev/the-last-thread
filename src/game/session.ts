@@ -101,7 +101,9 @@ export class Session {
     const d = DIALOGUES[id]
     if (!d) return undefined
     const s = new DialogueSession(d, this.engine)
-    return s.start() ? s : undefined
+    if (!s.start()) return undefined
+    if (!this.state.flags.has(`met_${id}`)) this.emit(this.engine.apply([{ type: 'flag', id: `met_${id}` }]))
+    return s
   }
 
   flushDialogue(s: DialogueSession): void {
@@ -163,8 +165,11 @@ export class Session {
     this.deps.profiles.save(this.progress)
   }
 
-  /** Characters with their profile for the dossier tab (only people the player met or heard of). */
+  /**
+   * Characters for the dossier tab: the missing uncle and grandmother are known from the start,
+   * everyone else only after the player has talked to them (`met_<id>` flag set by `talk`).
+   */
   knownCharacters(): CharacterProfile[] {
-    return Object.values(CHARACTERS).filter(c => c.id !== 'yassin' && (c.id !== 'mahmoud' || true))
+    return Object.values(CHARACTERS).filter(c => c.id === 'mahmoud' || c.id === 'zeinab' || this.state.flags.has(`met_${c.id}`))
   }
 }

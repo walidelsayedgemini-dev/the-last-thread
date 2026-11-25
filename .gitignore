@@ -28,3 +28,5 @@ shots/
 /assets/models/vehicles/tuktuk.glb
 # Assets restored from assets.lock.json
 /assets/models/characters/mahmoud.glb
+# Assets restored from assets.lock.json
+/assets/share/favicon.png

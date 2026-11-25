@@ -19,7 +19,7 @@ import { ArEngine, createArEngine } from './services/ar'
 import { EventsDb, JsonUrlProvider, type EventsDocument } from './services/eventsDb'
 import { HintService, RemoteChatProvider } from './services/hints'
 import { ProfileService, type Profile } from './services/profiles'
-import { LocalStorageAdapter } from './services/storage'
+import { LocalStorageAdapter, MemoryStorage } from './services/storage'
 import { CameraView } from './ui/cameraView'
 import { CaseFileView } from './ui/casefile'
 import { DialogueView } from './ui/dialogueView'
@@ -43,7 +43,9 @@ async function boot(): Promise<void> {
   const canvas = document.querySelector<HTMLCanvasElement>('#game')!
   const ui = document.getElementById('ui')!
   const splash = document.getElementById('splash')
-  const storage = new LocalStorageAdapter()
+  // `?autostart` (tests/demos) runs on throwaway memory storage so it can never touch real saves.
+  const auto = new URLSearchParams(location.search).get('autostart')
+  const storage = auto === 'story' || auto === 'realistic' ? new MemoryStorage() : new LocalStorageAdapter()
   const settings = new SettingsStore(storage)
   const profiles = new ProfileService(storage)
   const now = nowFromQuery(location.search, () => cairoStamp(new Date()))
@@ -284,10 +286,8 @@ async function boot(): Promise<void> {
     get game() { return g }, get session() { return session }, shell, hud, input, events, profiles, settings,
   }
 
-  const auto = new URLSearchParams(location.search).get('autostart')
   window.setTimeout(() => {
     if (auto === 'story' || auto === 'realistic') {
-      for (const p of profiles.list()) profiles.delete(p.id)
       void beginProfile(profiles.create({ kind: 'yassin' }, auto), 'skip')
     } else shell.go('title')
   }, 250)

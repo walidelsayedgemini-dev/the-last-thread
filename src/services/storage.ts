@@ -21,10 +21,19 @@ export class MemoryStorage implements StorageAdapter {
   }
 }
 
-/** `localStorage` with graceful degradation (private mode / quota errors fall back to memory). */
+/**
+ * `localStorage` with graceful degradation. After the first failed write (quota full, private mode)
+ * the adapter switches to memory for good, so reads never return stale data behind a newer save.
+ */
 export class LocalStorageAdapter implements StorageAdapter {
   private readonly fallback = new MemoryStorage()
+  private degraded = false
+  /** True once the browser storage refused a write; the UI may warn that progress is session-only. */
+  get isDegraded(): boolean {
+    return this.degraded
+  }
   get(key: string): string | null {
+    if (this.degraded) return this.fallback.get(key)
     try {
       return localStorage.getItem(key)
     } catch {
@@ -32,17 +41,35 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
   }
   set(key: string, value: string): void {
-    try {
-      localStorage.setItem(key, value)
-    } catch {
-      this.fallback.set(key, value)
+    if (!this.degraded) {
+      try {
+        localStorage.setItem(key, value)
+        return
+      } catch {
+        this.degrade()
+      }
     }
+    this.fallback.set(key, value)
   }
   remove(key: string): void {
+    this.fallback.remove(key)
+    if (this.degraded) return
     try {
       localStorage.removeItem(key)
     } catch {
-      this.fallback.remove(key)
+      // ignore: nothing to remove
     }
+  }
+  /** Copy what is readable into memory, then stop touching localStorage. */
+  private degrade(): void {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (k) this.fallback.set(k, localStorage.getItem(k) ?? '')
+      }
+    } catch {
+      // unreadable as well: start empty
+    }
+    this.degraded = true
   }
 }

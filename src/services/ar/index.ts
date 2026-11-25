@@ -112,7 +112,7 @@ export class GeoFenceProvider implements ArProvider {
     }
     return {
       ok: true, confidence: Math.max(0.55, 1 - d / (target.geo.radiusM * 2)), provider: this.name, needsServer: true,
-      message: `تم التحقق من موقعك الحقيقي قدام ${target.label}.`,
+      message: `تم التحقق من موقعك الحقيقي قدام ${target.label} (تحقق بالموقع فقط — محتوى الصورة نفسه بيتحلل لما يتفعّل خادم التحليل).`,
     }
   }
 }
