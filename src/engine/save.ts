@@ -5,6 +5,7 @@
 import type { StorageAdapter } from '../services/storage'
 
 
+export type TextSize = 'normal' | 'large' | 'xlarge'
 export type Settings = {
   version: 1
   musicVolume: number
@@ -14,25 +15,43 @@ export type Settings = {
   voiceEnabled: boolean
   muted: boolean
   reducedMotion: boolean
-  /** Optional URL of your hint proxy that talks to ChatGPT (see services/hints.ts). Empty = offline hints. */
-  hintEndpoint: string
-  /** Optional URL of a remote real-events JSON document (see services/eventsDb.ts). */
-  eventsUrl: string
+  /** Reading comfort: UI text size and a plainer, more legible heading font. */
+  textSize: TextSize
+  clearFont: boolean
+  /** Simple mode: fewer tabs, bigger buttons and plainer screens (on by default). */
+  simpleMode: boolean
   /** Reading size multiplier for dialogue, narration and hints (accessibility). */
   textScale: number
   /** Stronger borders/brighter text for low-vision players and bright sunlight. */
   highContrast: boolean
   /** Opt-in local crash capture and transmission when a build endpoint is configured. */
   crashReportsEnabled: boolean
+  helpSeen: boolean
+  hintEndpoint: string
+  eventsUrl: string
 }
 
 const SETTINGS_KEY = 'ltt.settings.v1'
 
 function defaultSettings(): Settings {
   return {
-    version: 1, musicVolume: 0.7, ambientVolume: 0.65, sfxVolume: 0.8, voiceVolume: 0.85, voiceEnabled: true, muted: false,
-    reducedMotion: false, hintEndpoint: '', eventsUrl: '',
-    textScale: 1, highContrast: false, crashReportsEnabled: false,
+    version: 1,
+    musicVolume: 0.7,
+    ambientVolume: 0.65,
+    sfxVolume: 0.8,
+    voiceVolume: 0.85,
+    voiceEnabled: true,
+    muted: false,
+    reducedMotion: false,
+    textSize: 'normal',
+    clearFont: true,
+    simpleMode: true,
+    highContrast: false,
+    helpSeen: false,
+    hintEndpoint: '',
+    eventsUrl: '',
+    textScale: 1,
+    crashReportsEnabled: false,
   }
 }
 
@@ -61,10 +80,14 @@ export function parseSettings(raw: string | null): Settings {
     voiceEnabled: d.voiceEnabled !== false,
     muted: d.muted === true,
     reducedMotion: d.reducedMotion === true,
+    textSize: d.textSize === 'large' || d.textSize === 'xlarge' ? d.textSize : 'normal',
+    clearFont: d.clearFont !== false,
+    simpleMode: d.simpleMode !== false,
+    highContrast: d.highContrast === true,
+    helpSeen: d.helpSeen === true,
     hintEndpoint: url(d.hintEndpoint),
     eventsUrl: url(d.eventsUrl),
     textScale: num(d.textScale, base.textScale, 0.85, 1.4),
-    highContrast: d.highContrast === true,
     crashReportsEnabled: d.crashReportsEnabled === true,
   }
 }

@@ -6,6 +6,7 @@ import { arabicDigits, formatDateTime } from '../core/clock'
 import { CASE_01 } from '../data/case01'
 import { CHARACTERS } from '../data/characters'
 import { endingLines } from '../data/endings'
+import { PATHS, dominantPath } from '../data/life'
 import type { GameMode } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Settings, SettingsStore } from '../engine/save'
@@ -15,10 +16,12 @@ import type { EventsDb } from '../services/eventsDb'
 import { HOMES, MAX_PROFILES, type Avatar, type ProfileService } from '../services/profiles'
 import { cinematicUrl, playerPortrait, portraitUrl, titleArt } from './art'
 import { h, setChildren, svg } from './dom'
+import { CHARACTER_ART, SCENE_ART } from './visualAssets'
 
 export type ScreenId = 'boot' | 'title' | 'profiles' | 'create' | 'mode' | 'intro' | 'pause' | 'settings' | 'achievements' | 'ending' | 'none'
 
 export type ShellActions = {
+  help: () => void
   /** Start playing an existing profile. */
   play(profileId: string): void
   /** Create a profile and start its intro. */
@@ -132,7 +135,10 @@ export class Shell {
         h('span', { class: 'title-action-number', 'aria-hidden': true }, number),
         h('span', { class: 'title-action-copy' }, h('b', null, label), h('small', null, hint)),
         h('span', { class: 'title-action-arrow', 'aria-hidden': true }, '←'))
+    const slides = (['qaitbay', 'bibliotheca', 'corniche', 'canal_bridge'] as const).map((id, i) =>
+      h('img', { class: 'title-slide', style: { animationDelay: `${i * 7}s` }, src: SCENE_ART[id]?.mobileSrc ?? SCENE_ART[id]?.src ?? '', alt: '', decoding: 'async', draggable: 'false' }))
     return h('section', { class: 'page title' },
+      h('div', { class: 'title-backdrop', 'aria-hidden': true }, slides, h('i', { class: 'title-thread' })),
       h('div', { class: 'title-atmosphere', 'aria-hidden': true },
         titleArt() && h('img', { class: 'title-bg', src: titleArt(), alt: '', draggable: 'false' }),
         h('div', { class: 'title-glow' }),
@@ -212,7 +218,8 @@ export class Shell {
       h('h2', null, 'اختار شخصيتك'),
       h('div', { class: 'cards' },
         h('button', { class: `card${!custom ? ' on' : ''}`, onclick: () => { a.kind = 'yassin'; a.name = 'ياسين'; a.gender = 'male'; this.go('create', this.back) } },
-          h('div', { class: 'portrait has-img', style: { '--body': yassin.figure.body, '--accent': yassin.figure.accent } }, h('img', { src: portraitUrl('yassin'), alt: '' })),
+          h('div', { class: 'portrait has-img', style: { '--body': yassin.figure.body, '--accent': yassin.figure.accent } },
+            h('img', { class: 'character-portrait-image', src: CHARACTER_ART.yassin?.src ?? portraitUrl('yassin'), alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' })),
           h('b', null, 'ياسين'), h('small', null, `${yassin.role} • ${yassin.home}`), h('p', null, yassin.appearance), h('blockquote', null, yassin.quote)),
         h('button', { class: `card${custom ? ' on' : ''}`, onclick: () => { a.kind = 'custom'; a.name = ''; this.go('create', this.back) } },
           h('div', { class: 'portrait has-img', style: { '--body': '#222', '--accent': a.accent ?? ACCENTS[0] } }, custom ? h('img', { src: playerPortrait(a), alt: '' }) : h('span', null, '؟')),
@@ -308,6 +315,7 @@ export class Shell {
         h('ul', { class: 'breakdown' }, report.breakdown.map(b =>
           h('li', { class: b.delta < 0 ? 'minus' : 'plus' }, h('span', null, b.label), h('b', null, `${b.delta > 0 ? '+' : b.delta < 0 ? '−' : ''}${arabicDigits(Math.abs(b.delta))}`))))),
       h('div', { class: 'report' },
+        h('div', null, h('small', null, 'طريقك'), h('b', { class: 'path-name' }, dominantPath(session.state.flags) ? PATHS[dominantPath(session.state.flags)!].short : 'لسه')),
         h('div', null, h('small', null, 'الأدلة'), h('b', null, `${arabicDigits(found)} من ${arabicDigits(file.evidence.length)}`)),
         h('div', null, h('small', null, 'صور'), h('b', null, arabicDigits(st.photos))),
         h('div', null, h('small', null, 'تلميحات'), h('b', null, arabicDigits(st.hints))),
@@ -331,6 +339,7 @@ export class Shell {
       h('div', { class: 'menu' },
         h('button', { class: 'btn primary', onclick: () => this.act.resume() }, 'كمّل'),
         h('button', { class: 'btn', onclick: () => this.act.casefile() }, 'ملف القضية'),
+        h('button', { class: 'btn', onclick: () => this.act.help() }, 'إزاي ألعب؟'),
         h('button', { class: 'btn', onclick: () => this.go('achievements', 'pause') }, 'الإنجازات'),
         h('button', { class: 'btn', onclick: () => this.go('settings', 'pause') }, 'الإعدادات'),
         h('button', { class: 'btn ghost', onclick: () => this.act.quit() }, 'حفظ والخروج')),
@@ -341,7 +350,13 @@ export class Shell {
     const d = this.s.settings.data
     const slider = (label: string, key: 'musicVolume' | 'ambientVolume' | 'sfxVolume' | 'voiceVolume', min: number, max: number, step: number) =>
       h('label', { class: 'set' }, label, h('input', { type: 'range', min, max, step, value: d[key], oninput: (e: Event) => this.act.settings({ [key]: Number((e.target as HTMLInputElement).value) }) }))
-    const check = (label: string, key: 'muted' | 'voiceEnabled' | 'reducedMotion' | 'highContrast' | 'crashReportsEnabled') =>
+    const sizes: [Settings['textSize'], string][] = [['normal', 'عادي'], ['large', 'كبير'], ['xlarge', 'كبير جدًا']]
+    const textSize = h('div', { class: 'set size-set', role: 'radiogroup', 'aria-label': 'حجم الخط' },
+      h('span', null, 'حجم الخط'),
+      h('div', { class: 'size-options' }, sizes.map(([id, label]) =>
+        h('button', { class: `size-opt${d.textSize === id ? ' on' : ''}`, role: 'radio', 'aria-checked': String(d.textSize === id), 'data-size': id,
+          onclick: () => { this.act.settings({ textSize: id }); this.go('settings', this.back) } }, h('b', null, 'أ'), label))))
+    const check = (label: string, key: 'muted' | 'voiceEnabled' | 'reducedMotion' | 'clearFont' | 'simpleMode' | 'highContrast' | 'crashReportsEnabled') =>
       h('label', { class: 'set row' }, h('input', { type: 'checkbox', checked: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).checked }) }), label)
     const url = (label: string, key: 'hintEndpoint' | 'eventsUrl', ph: string) =>
       h('label', { class: 'set' }, label, h('input', { type: 'url', dir: 'ltr', placeholder: ph, value: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).value }) }))
@@ -351,11 +366,9 @@ export class Shell {
         slider('صوت المزيكا', 'musicVolume', 0, 1, 0.05), slider('صوت الأجواء', 'ambientVolume', 0, 1, 0.05),
         slider('صوت المؤثرات', 'sfxVolume', 0, 1, 0.05), slider('صوت الحوار', 'voiceVolume', 0, 1, 0.05),
         check('الصوت المنطوق', 'voiceEnabled'), check('كتم الصوت', 'muted'), check('تقليل الحركة', 'reducedMotion'),
-        h('div', { class: 'set' }, 'حجم الخط',
-          h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'حجم الخط' }, ([[0.9, 'صغير'], [1, 'عادي'], [1.15, 'كبير'], [1.3, 'كبير جداً']] as const).map(([v, label]) =>
-            h('button', { class: `chip${Math.abs(d.textScale - v) < 0.01 ? ' on' : ''}`, role: 'radio', 'aria-checked': String(Math.abs(d.textScale - v) < 0.01), onclick: () => { this.act.settings({ textScale: v }); this.go('settings', this.back) } }, label)))),
-        check('تباين عالي (أوضح في الشمس)', 'highContrast'),
-        check('مشاركة تقارير الأعطال (اختياري)', 'crashReportsEnabled')),
+        check('خط واضح للعناوين (أسهل في القراءة)', 'clearFont'), check('وضع مبسّط لكل الأعمار (تبويبات أقل وأزرار أكبر)', 'simpleMode'),
+        check('تباين عالي (أوضح في الشمس)', 'highContrast'), check('مشاركة تقارير الأعطال (اختياري)', 'crashReportsEnabled'),
+        textSize),
       h('div', { class: 'settings-tutorial' },
         h('b', null, 'شرح البداية'), h('p', { class: 'note' }, 'عايز تفتكر خطوات التحقيق؟ شغّل العلامات الإرشادية تاني.'),
         h('button', { class: 'btn ghost', onclick: this.act.replayTutorial }, 'اعرض الشرح تاني')),

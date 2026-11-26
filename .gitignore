@@ -30,3 +30,6 @@ shots/
 /assets/models/characters/mahmoud.glb
 # Assets restored from assets.lock.json
 /assets/share/favicon.png
+
+# High-resolution local generation masters; the optimized WebP game assets are tracked.
+/src/assets/generated/

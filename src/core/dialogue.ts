@@ -5,13 +5,14 @@
  * condition checks and one-shot choices live here so they can be tested without a DOM.
  */
 import type { CaseEngine, CaseEvent } from './caseState'
+import { LIFE_CHOICES } from '../data/life'
 import type { Dialogue, DialogueChoice, DialogueLine, DialogueNode } from '../data/types'
 
 export type DialogueView = {
   nodeId: string
   lines: DialogueLine[]
   /** Choices currently available (conditions and `once` filtering already applied). */
-  choices: { index: number; text: string; present?: DialogueChoice['present']; confront?: boolean; lie?: boolean }[]
+  choices: { index: number; text: string; present?: DialogueChoice['present']; confront?: boolean; lie?: boolean; path?: string }[]
   /** Conversation has nothing further after this node. */
   finished: boolean
 }
@@ -49,13 +50,23 @@ export class DialogueSession {
       .filter(({ choice, index }) => this.caseEngine.matches(choice.when) && !(choice.once && this.caseEngine.state.seenChoices.has(this.choiceKey(index))))
   }
 
+  /** Moral path a choice leads to (its own effects, or those of the node it opens). */
+  private pathOf(choice: DialogueChoice): string | undefined {
+    const effects = [...(choice.effects ?? []), ...(this.dialogue.nodes[choice.next]?.effects ?? [])]
+    for (const ef of effects) {
+      if (ef.type !== 'flag') continue
+      const hit = LIFE_CHOICES.find(l => l.flag === ef.id)
+      if (hit) return hit.path
+    }
+    return undefined
+  }
   view(): DialogueView | undefined {
     if (!this.node) return undefined
     const choices = this.visibleChoices()
     return {
       nodeId: this.node.id,
       lines: this.node.lines,
-      choices: choices.map(({ index, choice }) => ({ index, text: choice.text, present: choice.present, confront: choice.confront, lie: choice.lie })),
+      choices: choices.map(({ index, choice }) => ({ index, text: choice.text, present: choice.present, confront: choice.confront, lie: choice.lie, path: this.pathOf(choice) })),
       finished: choices.length === 0 && !this.node.next,
     }
   }

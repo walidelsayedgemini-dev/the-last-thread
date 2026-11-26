@@ -4,9 +4,19 @@ import './styles/dialogue.css'
 import './styles/overhaul.css'
 import './styles/asset-art.css'
 import './styles/asset-art-dialogue.css'
+import './styles/scene-atmosphere.css'
+import './styles/evidence-visuals.css'
+import './styles/board-visuals.css'
+import './styles/story-visuals.css'
+import './styles/organizer-visuals.css'
+import './styles/world-visuals.css'
+import './styles/polish-visuals.css'
+import './styles/juice-visuals.css'
 import { arabicDigits, cairoStamp, nowFromQuery } from './core/clock'
 import type { CaseEvent } from './core/caseState'
 import { CHARACTER_LIST } from './data/characters'
+import { CASE_01 } from './data/case01'
+import { PATHS } from './data/life'
 import { PLACE_LIST, PLACES } from './data/places'
 import type { CharacterId, Hotspot, PlaceId } from './data/types'
 import { Audio } from './engine/audio'
@@ -22,9 +32,15 @@ import { achievementContext, evaluateAchievements } from './game/achievements'
 import { CrashReporter } from './services/crash'
 import { CaseFileView } from './ui/casefile'
 import { DialogueView } from './ui/dialogueView'
+import { HelpView } from './ui/helpView'
 import { Hud } from './ui/hud'
+import { LetterView } from './ui/letterView'
+import { ArrivalCard } from './ui/worldFx'
+import { FlashFx, LensView, RecapView, SaveChip, TravelView, buzz } from './ui/extras'
+import { EVIDENCE_ART } from './ui/visualAssets'
 import { InvestigationView } from './ui/investigation'
 import { Shell } from './ui/shell'
+import { StoryDirector } from './ui/storyView'
 import { Tutorial } from './ui/tutorial'
 
 const SEED_FALLBACK: EventsDocument = { schemaVersion: 1, version: 0, events: [] }
@@ -53,6 +69,7 @@ async function boot(): Promise<void> {
   const storage = auto === 'story' || auto === 'realistic' ? new MemoryStorage() : new LocalStorageAdapter()
   const settings = new SettingsStore(storage)
   const crash = new CrashReporter(storage, settings.data.crashReportsEnabled)
+  if (auto === 'story' || auto === 'realistic') settings.update({ helpSeen: true })
   const profiles = new ProfileService(storage)
   const now = nowFromQuery(location.search, () => cairoStamp(new Date()))
   const audio = new Audio()
@@ -68,12 +85,16 @@ async function boot(): Promise<void> {
   let active = false
   let paused = false
   let saveTimer = 0
+  let recapShown = false
   let endingTimer = 0
 
   const applySettings = (d: Settings) => {
     audio.setVolumes(d.musicVolume, d.sfxVolume, d.muted, d.ambientVolume, d.voiceVolume, d.voiceEnabled)
     document.body.classList.toggle('reduced-motion', d.reducedMotion)
+    document.body.classList.toggle('clear-font', d.clearFont)
+    document.body.classList.toggle('simple', d.simpleMode)
     document.body.classList.toggle('high-contrast', d.highContrast)
+    document.documentElement.dataset.textSize = d.textSize
     document.documentElement.style.setProperty('--text-scale', String(d.textScale))
     document.documentElement.style.fontSize = `${Math.round(16 * Math.min(1.2, d.textScale))}px`
   }
@@ -85,6 +106,15 @@ async function boot(): Promise<void> {
   const musicFor = (id: PlaceId) => (PLACES[id]?.district === 'city' ? MUSIC.city : MUSIC.abis)
 
   // ---- 2D investigation UI -------------------------------------------------------------------------------------
+  const story = new StoryDirector(audio)
+  const letters = new LetterView(audio)
+  const help = new HelpView()
+  const arrival = new ArrivalCard()
+  const lens = new LensView()
+  const travel = new TravelView()
+  const recap = new RecapView()
+  const saveChip = new SaveChip()
+  const fx = new FlashFx()
   const dialogue = new DialogueView(audio, text => session?.fill(text) ?? text)
   const hud = new Hud()
   const tutorial = new Tutorial({
@@ -95,10 +125,24 @@ async function boot(): Promise<void> {
     },
   })
   const caseFile = new CaseFileView({
-    audio, events,
-    onClose: () => undefined,
+    audio,
+    events,
+    story,
+    letters,
+    lens,
+    simple: () => settings.data.simpleMode,
+    where: () => {
+      const pos = session?.progress.position ?? { zone: 'abis' as const, x: 30, z: 232, yaw: 0 }
+      return { zone: pos.zone, x: pos.x, z: pos.z }
+    },
+    onClose: () => window.setTimeout(storyCheck, 350),
     onAccused: result => {
-      if (result === 'ok') { haptic('success'); caseFile.close(); scheduleEnding(); return }
+      if (result === 'ok') {
+        haptic('success')
+        caseFile.close()
+        scheduleEnding()
+        return
+      }
       if (result === 'wrong-culprit' || result === 'wrong-motive') {
         audio.play('wrong')
         haptic('error')
@@ -106,6 +150,7 @@ async function boot(): Promise<void> {
         investigation.refresh()
       }
     },
+    onEvidenceReviewed: id => investigation.markEvidenceReviewed(id),
   })
   const investigation = new InvestigationView({
     audio,
@@ -115,6 +160,13 @@ async function boot(): Promise<void> {
     onCaseFile: () => openCaseFile(),
     onHint: () => void askHint(),
     onPause: () => pause(),
+    onMail: () => { if (session && active && !paused) caseFile.show(session, 'letters') },
+    onHelp: () => showHelp(),
+    onFarPlace: (id: PlaceId) => hud.toast(`${PLACES[id].name} في ${PLACES[id].district === 'city' ? 'الإسكندرية' : 'أبيس'}… اركب الميكروباص من الموقف.`, 'info'),
+    onMute: () => { settings.update({ muted: !settings.data.muted }); applySettings(settings.data); investigation.refresh() },
+    onTextSize: () => { const order = ['normal', 'large', 'xlarge'] as const; settings.update({ textSize: order[(order.indexOf(settings.data.textSize) + 1) % 3] }); applySettings(settings.data); hud.toast('حجم الخط: ' + ({ normal: 'عادي', large: 'كبير', xlarge: 'كبير جدًا' })[settings.data.textSize], 'info') },
+    isMuted: () => settings.data.muted,
+    mailCount: () => (session ? letters.unreadCount(session) : 0),
   })
 
   const shell = new Shell({ settings, profiles, events, audio, now }, {
@@ -148,8 +200,10 @@ async function boot(): Promise<void> {
     },
     startWorld: () => startWorld(),
     nextCase: () => startNextCase(),
+    help: () => showHelp(),
   })
-  ui.append(shell.el, investigation.el, hud.el, dialogue.el, caseFile.el, tutorial.el)
+  ui.append(shell.el, investigation.el, hud.el, story.el, arrival.el, dialogue.el, caseFile.el, letters.el, lens.el, help.el, recap.el, travel.el, saveChip.el, fx.el, tutorial.el)
+  letters.onChange = () => { investigation.refresh(); caseFile.refresh() }
   applySettings(settings.data)
 
   // ---- Boot ----------------------------------------------------------------------------------------------------
@@ -182,6 +236,7 @@ async function boot(): Promise<void> {
     currentPlace = nearestPlace(session.progress.position.zone, session.progress.position.x, session.progress.position.z)
     unsubscribeCase = session.onCase(handleCaseEvents)
     audio.startAmbience()
+    audio.setArea(currentPlace)
     const fresh = intro === 'force' || (intro === 'auto' && session.state.evidence.size === 0 && session.progress.playMs < 1000)
     if (fresh) shell.showIntro(session)
     else startWorld()
@@ -194,9 +249,15 @@ async function boot(): Promise<void> {
     paused = false
     active = true
     investigation.show(session, currentPlace)
+    if (session.state.flags.has(`ch_seen_${story.current(session).id}`)) arrival.show(PLACES[currentPlace])
     hud.show(true)
     audio.playMusic(musicFor(currentPlace), { loop: true })
+    audio.setArea(currentPlace)
+    audio.setScene(PLACES[currentPlace].district, 0.4, 0.2)
+    if (!settings.data.helpSeen) window.setTimeout(() => showHelp(), 900)
+    else maybeRecap()
     loopRef?.resetAccumulator()
+    window.setTimeout(storyCheck, 700)
     if (session.caseId === 'case01' && !session.progress.tutorial.completed && new URLSearchParams(location.search).get('tutorial') !== '0') tutorial.start(session)
   }
 
@@ -216,13 +277,71 @@ async function boot(): Promise<void> {
     shell.showIntro(session)
   }
 
+  /** Chapter banner + journal notice; waits while a dialogue, file or pause screen is open. */
+  function storyCheck(): void {
+    if (!session || !active || paused || dialogue.open || caseFile.open || letters.open || help.open || recap.open || travel.open || lens.open) return
+    if (story.checkChapter(session)) {
+      window.setTimeout(storyCheck, 6800)
+      return
+    }
+    const choices = story.collectChoices(session)
+    if (choices.length) {
+      const choice = choices[choices.length - 1]
+      audio.play('ui')
+      hud.toast(`اخترت: ${choice.title} · ${PATHS[choice.path].short} ‎+${choice.points}`, 'info')
+    }
+    const done = story.collectQuests(session)
+    if (done.length) {
+      audio.play('solved')
+      hud.toast(`اكتملت حكاية جانبية: ${done[done.length - 1].title}`, 'deduction')
+    }
+    const mail = letters.collect(session, currentPlace)
+    if (mail.length) {
+      letters.announce(session, mail[mail.length - 1], mail.length - 1)
+      investigation.refresh()
+    }
+    const pages = story.collectJournal(session)
+    if (pages.length) {
+      audio.play('paper')
+      hud.toast(`صفحة جديدة في يومياتك: ${pages[pages.length - 1].title}`, 'info')
+    }
+    if (done.length || pages.length || choices.length) investigation.refresh()
+  }
+
+  /** "Last time" card when the player comes back to a save that already has progress. */
+  function maybeRecap(): void {
+    if (!session || recapShown) return
+    recapShown = true
+    const s = session
+    if (s.state.evidence.size === 0 && letters.unreadCount(s) === 0) return
+    const chapter = story.current(s)
+    const delivered = letters.delivered(s)
+    const next = s.engine.currentObjective()
+    recap.show({
+      chapter: chapter.title, kicker: chapter.kicker, evidence: s.state.evidence.size, total: CASE_01.evidence.length,
+      letters: delivered.length, lastLetter: delivered[delivered.length - 1]?.title, next: next?.title, nextDetail: next?.detail,
+    }, () => window.setTimeout(storyCheck, 300))
+  }
+
+  function showHelp(): void {
+    if (!session || !active) return
+    settings.update({ helpSeen: true })
+    help.show()
+  }
+
   function persistPlace(id: PlaceId): void {
     if (!session) return
     const place = PLACES[id]
     const before = PLACES[currentPlace]?.district
+    if (place.id !== currentPlace) arrival.show(place)
+    audio.setArea(place.id)
+    audio.setScene(place.district, 0.4, 0.2)
+    investigation.updateWorldTime()
+    window.setTimeout(storyCheck, 1200)
     currentPlace = id
     session.setPosition(place.district, place.pos.x, place.pos.z, 0)
     session.save()
+    saveChip.flash()
     if (before !== place.district) audio.playMusic(musicFor(id), { loop: true })
     if (before !== place.district) tutorial.action('travel')
     hud.hideNarration()
@@ -235,6 +354,7 @@ async function boot(): Promise<void> {
       shell.go('none')
       loopRef?.resetAccumulator()
     }
+    letters.hideNotice()
     caseFile.show(session)
     tutorial.action('casefile')
   }
@@ -243,6 +363,8 @@ async function boot(): Promise<void> {
     if (!active || paused) return
     paused = true
     hud.show(false)
+    letters.hideNotice()
+    story.hide()
     shell.go('pause')
     audio.play('ui')
   }
@@ -258,6 +380,7 @@ async function boot(): Promise<void> {
     hud.show(true)
     loopRef?.resetAccumulator()
     investigation.refresh()
+    window.setTimeout(storyCheck, 300)
   }
 
   function quit(): void {
@@ -265,6 +388,12 @@ async function boot(): Promise<void> {
     tutorial.stop()
     if (dialogue.open) dialogue.close()
     caseFile.el.hidden = true
+    story.hide()
+    letters.hide()
+    arrival.hide()
+    lens.hide()
+    recap.hide()
+    recapShown = false
     session?.save()
     unsubscribeCase?.()
     unsubscribeCase = undefined
@@ -290,6 +419,7 @@ async function boot(): Promise<void> {
       active = false
       paused = false
       caseFile.el.hidden = true
+      story.hide()
       hud.show(false)
       investigation.hide()
       shell.showEnding(session)
@@ -301,14 +431,17 @@ async function boot(): Promise<void> {
       if (change.type === 'evidence') {
         audio.play('found')
         haptic('medium')
+        buzz(30)
         investigation.celebrate(change.evidence)
         hud.toast(`دليل جديد: ${change.evidence.title}`, 'evidence')
+        fx.evidence(change.evidence.title, EVIDENCE_ART[change.evidence.id])
       } else if (change.type === 'evidence-gated') {
         hud.toast(change.reason ?? 'الدليل ده لسه ماظهرش… ارجع في وقت تاني.', 'warn')
       } else if (change.type === 'deduction') {
         audio.play('deduction')
         haptic('success')
-        hud.toast('ربطت خيط جديد!', 'deduction')
+        hud.toast('ربطت خيطاً جديداً!', 'deduction')
+        fx.thread()
         tutorial.action('thread')
       }
     }
@@ -316,6 +449,7 @@ async function boot(): Promise<void> {
     investigation.refresh()
     checkAchievements()
     if (changes.some(change => change.type === 'flag' && change.id === 'case_solved')) scheduleEnding()
+    else window.setTimeout(storyCheck, 900)
   }
 
   function handleHotspot(hotspot: Hotspot): void {
@@ -326,10 +460,12 @@ async function boot(): Promise<void> {
     if (hotspot.text) hud.narrate(session.fill(hotspot.text))
     if (hotspot.kind === 'travel' && hotspot.to) {
       session.useHotspot(hotspot)
-      investigation.setPlace(hotspot.to)
+      const to = hotspot.to
+      travel.play(PLACES[currentPlace].district, PLACES[to].district, () => investigation.setPlace(to))
       return
     }
     if (hotspot.kind === 'photo') {
+      fx.shutter()
       const changes = session.useHotspot(hotspot)
       if (changes.some(change => change.type === 'evidence')) {
         session.progress.stats.photos++
@@ -356,7 +492,13 @@ async function boot(): Promise<void> {
     hud.hideNarration()
     const s = session
     dialogue.start(dlg, person, s.profile.avatar.name,
-      () => { tutorial.action('talk'); session?.save(); investigation.refresh(); checkAchievements() },
+      () => {
+        tutorial.action('talk')
+        session?.save()
+        investigation.refresh()
+        checkAchievements()
+        window.setTimeout(storyCheck, 400)
+      },
       () => session?.flushDialogue(dlg),
       {
         caseId: s.caseId,
@@ -422,7 +564,7 @@ async function boot(): Promise<void> {
 
   // ---- Input and timing ----------------------------------------------------------------------------------------
   window.addEventListener('keydown', event => {
-    const handled = dialogue.key(event) || caseFile.key(event) || shell.key(event)
+    const handled = travel.key(event) || recap.key(event) || lens.key(event) || help.key(event) || letters.key(event) || dialogue.key(event) || caseFile.key(event) || shell.key(event)
     if (handled) {
       event.preventDefault()
       return
@@ -455,6 +597,7 @@ async function boot(): Promise<void> {
       if (saveTimer >= 20) {
         saveTimer = 0
         session.save()
+        saveChip.flash()
       }
     },
     render: (_alpha, dt) => {
@@ -467,12 +610,13 @@ async function boot(): Promise<void> {
   })
   loopRef = loop
   loop.start()
+  window.setInterval(() => { if (active && !paused) investigation.updateWorldTime() }, 8000)
 
   // Debug/test hook: omit it from ordinary production sessions.
   if (import.meta.env.DEV || auto === 'story' || auto === 'realistic') {
     ;(window as unknown as { __ltt: unknown }).__ltt = {
       get session() { return session },
-      shell, hud, caseFile, investigation, events, profiles, settings,
+      shell, hud, caseFile, investigation, events, profiles, settings, story, letters, help, arrival, lens, travel, recap, tutorial,
       /** QA helpers: every place id, and the characters that have a dialogue in the running case. */
       places: PLACE_LIST.map(p => p.id),
       cast: () => CHARACTER_LIST.filter(c => c.id !== 'yassin' && session?.inCase(c)).map(c => c.id),

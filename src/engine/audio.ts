@@ -60,6 +60,40 @@ export function ambientSelection(placeId: string, hour: number): readonly Ambien
   }
 }
 
+type AreaEvent = 'gull' | 'dice' | 'honk' | 'pages' | 'sew' | 'dove' | 'frog' | 'type' | 'wind' | 'none'
+const AREA_SOUND: Record<string, { type: BiquadFilterType; f: number; q: number; g: number; ev: AreaEvent }> = {
+  zeinab_home: { type: 'lowpass', f: 300, q: 0.4, g: 0.02, ev: 'sew' },
+  mahmoud_house: { type: 'lowpass', f: 220, q: 0.4, g: 0.015, ev: 'wind' },
+  cafe_ragab: { type: 'bandpass', f: 900, q: 0.6, g: 0.07, ev: 'dice' },
+  abis_mosque: { type: 'lowpass', f: 260, q: 0.4, g: 0.02, ev: 'dove' },
+  canal_bridge: { type: 'bandpass', f: 500, q: 0.8, g: 0.08, ev: 'frog' },
+  plot15: { type: 'bandpass', f: 380, q: 0.5, g: 0.09, ev: 'wind' },
+  abis_stop: { type: 'bandpass', f: 1100, q: 0.5, g: 0.07, ev: 'honk' },
+  raml_stop: { type: 'bandpass', f: 1000, q: 0.5, g: 0.1, ev: 'honk' },
+  mansheya: { type: 'lowpass', f: 180, q: 0.5, g: 0.04, ev: 'type' },
+  qaitbay: { type: 'lowpass', f: 420, q: 0.6, g: 0.16, ev: 'gull' },
+  bibliotheca: { type: 'lowpass', f: 160, q: 0.4, g: 0.01, ev: 'pages' },
+  pompey: { type: 'bandpass', f: 420, q: 0.5, g: 0.07, ev: 'dove' },
+  corniche: { type: 'lowpass', f: 480, q: 0.6, g: 0.15, ev: 'gull' },
+}
+const HIJAZ = [0, 1, 4, 5, 7, 8, 11, 12]
+const MINOR_PENT = [0, 3, 5, 7, 10, 12]
+const pick = (scale: number[], idx: number[]) => idx.map(i => scale[i % scale.length])
+const AREA_MOTIF: Record<string, { root: number; notes: number[]; step: number; wave: OscillatorType }> = {
+  zeinab_home: { root: 220, notes: pick(MINOR_PENT, [2, 3, 1, 0]), step: 0.7, wave: 'triangle' },
+  mahmoud_house: { root: 196, notes: pick(MINOR_PENT, [0, 2, 1, 0]), step: 0.9, wave: 'sine' },
+  cafe_ragab: { root: 247, notes: pick(HIJAZ, [0, 1, 2, 1]), step: 0.45, wave: 'triangle' },
+  abis_mosque: { root: 262, notes: pick(MINOR_PENT, [4, 3, 2, 0]), step: 0.8, wave: 'sine' },
+  canal_bridge: { root: 175, notes: pick(MINOR_PENT, [1, 0, 2, 0]), step: 1.0, wave: 'sine' },
+  plot15: { root: 196, notes: pick(MINOR_PENT, [0, 1, 3, 4]), step: 0.9, wave: 'triangle' },
+  abis_stop: { root: 294, notes: pick(HIJAZ, [2, 3, 2, 0]), step: 0.4, wave: 'triangle' },
+  raml_stop: { root: 330, notes: pick(HIJAZ, [0, 2, 3, 4]), step: 0.45, wave: 'triangle' },
+  mansheya: { root: 220, notes: pick(HIJAZ, [0, 1, 0, 3]), step: 0.8, wave: 'sine' },
+  qaitbay: { root: 247, notes: pick(HIJAZ, [4, 3, 2, 0]), step: 0.9, wave: 'sine' },
+  bibliotheca: { root: 392, notes: pick(MINOR_PENT, [0, 2, 4, 5]), step: 0.7, wave: 'sine' },
+  pompey: { root: 220, notes: pick(HIJAZ, [0, 4, 3, 1]), step: 1.0, wave: 'sine' },
+  corniche: { root: 262, notes: pick(HIJAZ, [2, 4, 5, 4]), step: 0.6, wave: 'triangle' },
+}
 export class Audio {
   readonly ctx: AudioContext
   private readonly master: GainNode
@@ -87,6 +121,9 @@ export class Audio {
   private districtFilter?: BiquadFilterNode
   private music?: MusicTrack
   private voice?: VoiceTrack
+  private areaGain?: GainNode
+  private areaFilter?: BiquadFilterNode
+  private area = 'zeinab_home'
   private volume = { music: 0.7, ambient: 0.65, sfx: 0.8, voice: 0.85, voiceEnabled: true, muted: false }
   private lastTypewriterAt = -Infinity
 
@@ -161,6 +198,7 @@ export class Audio {
     this.switchPlace(this.placeId)
     this.scheduleHeartbeat()
     this.scheduleDistrictEvent()
+    this.scheduleAreaEvent()
   }
 
   /** Build the permanent oscillator/noise graph once. */
@@ -211,6 +249,10 @@ export class Audio {
     const bed = this.loopNoise('lowpass', 500, 0.5, 0.0, this.ambience)
     this.districtGain = bed.gain
     this.districtFilter = bed.filter
+    const area = this.loopNoise('bandpass', 600, 0.7, 0.0, this.ambience)
+    this.areaGain = area.gain
+    this.areaFilter = area.filter
+    this.applyArea()
   }
 
   /** Fade the bed out and cancel scheduled events (pause / back to title). */
@@ -259,11 +301,60 @@ export class Audio {
    * simply receive the district bed. The transition is approximately 1.5 s.
    */
   setPlace(placeId: string): void {
+    this.setArea(placeId)
     if (this.placeId === placeId && (this.placeLayer || !this.running)) return
     this.placeId = placeId
     if (this.running && this.started) this.switchPlace(placeId)
   }
 
+  /** Each place has its own soundscape layer on top of the district bed. */
+  setArea(id: string): void {
+    this.area = id
+    this.applyArea()
+  }
+  private applyArea(): void {
+    if (!this.started) return
+    const s = AREA_SOUND[this.area] ?? AREA_SOUND.zeinab_home
+    const t = this.ctx.currentTime
+    if (this.areaFilter) {
+      this.areaFilter.type = s.type
+      this.areaFilter.frequency.setTargetAtTime(s.f, t, 0.6)
+      this.areaFilter.Q.setTargetAtTime(s.q, t, 0.6)
+    }
+    this.areaGain?.gain.setTargetAtTime(s.g, t, 1.2)
+  }
+  private scheduleAreaEvent(): void {
+    const tick = () => {
+      if (this.ctx.state === 'running') this.areaEvent(AREA_SOUND[this.area]?.ev ?? 'none')
+      if (this.ctx.state === 'running' && Math.random() < 0.45) this.motif()
+      this.later(3200 + Math.random() * 5200, tick)
+    }
+    this.later(2500, tick)
+  }
+  /** A soft 4-note phrase in the place's own mode (hijaz-flavoured in the city, minor pentatonic in Abis). */
+  private motif(): void {
+    const m = AREA_MOTIF[this.area] ?? AREA_MOTIF.zeinab_home
+    const t0 = 0.4 + Math.random() * 0.6
+    m.notes.forEach((semi, i) => {
+      const f = m.root * Math.pow(2, semi / 12)
+      this.tone(f, f * 0.995, 1.1, m.wave, 0.008 + this.night * 0.004, t0 + i * (m.step), this.ambience)
+    })
+  }
+  private areaEvent(ev: AreaEvent): void {
+    const a = this.ambience
+    switch (ev) {
+      case 'gull': this.tone(1500, 1100, 0.2, 'sine', 0.014, 0, a); this.tone(1450, 1000, 0.25, 'sine', 0.012, 0.28, a); break
+      case 'dice': for (let i = 0; i < 4; i++) this.burst(2600, 3, 0.05, 0.05, i * 0.07, a); break
+      case 'honk': this.tone(410, 390, 0.28, 'sawtooth', 0.012, 0, a); if (Math.random() > 0.5) this.tone(330, 320, 0.22, 'sawtooth', 0.01, 0.4, a); break
+      case 'pages': this.burst(3600, 1, 0.14, 0.035, 0, a); break
+      case 'sew': for (let i = 0; i < 8; i++) this.burst(1900, 2, 0.03, 0.03, i * 0.055, a); break
+      case 'dove': this.tone(330, 290, 0.35, 'sine', 0.018, 0, a); this.tone(310, 270, 0.4, 'sine', 0.016, 0.45, a); break
+      case 'frog': for (let i = 0; i < 3; i++) this.tone(190, 150, 0.1, 'square', 0.006, i * 0.16, a); break
+      case 'type': for (let i = 0; i < 5; i++) this.burst(2200, 4, 0.02, 0.03, i * 0.11 + Math.random() * 0.05, a); break
+      case 'wind': this.tone(140, 110, 1.6, 'sine', 0.006, 0, a); break
+      case 'none': break
+    }
+  }
   private later(ms: number, fn: () => void): void {
     this.timers.push(window.setTimeout(() => this.running && fn(), ms))
     if (this.timers.length > 40) this.timers.splice(0, 20)

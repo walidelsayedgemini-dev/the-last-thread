@@ -26,9 +26,15 @@ export type Place = {
   pos: Vec2
   /** Short label for the minimap. */
   short: string
+  /** Real-world position (WGS84). Abis spots are fictional but placed inside the real Abis district. */
+  mapPos: { lat: number; lng: number }
+  /** true = a real landmark/station, false = fictional place inside a real neighbourhood. */
+  realSite: boolean
+
   description: string
   /** Landmarks that can be photographed (in-world camera or real photo). */
   photographable?: boolean
+  geo?: { lat: number; lng: number; radiusM?: number }
 }
 
 /** Hour window in Cairo local time; `to` may be smaller than `from` (wraps past midnight). */

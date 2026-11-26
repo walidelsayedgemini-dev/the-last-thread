@@ -1,11 +1,14 @@
-import { arabicDigits, formatClock } from '../core/clock'
+import { arabicDigits, formatClock, partsOf } from '../core/clock'
 import { CHARACTER_LIST } from '../data/characters'
 import { PLACES, PLACE_LIST } from '../data/places'
-import type { CharacterId, CharacterProfile, Evidence, Hotspot, Place, PlaceId } from '../data/types'
+import type { CharacterId, CharacterProfile, Evidence, EvidenceId, Hotspot, Place, PlaceId } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Session } from '../game/session'
 import { evidenceUrl, PIN_POS, isDaytime, portraitUrl, sceneNeighbors, sceneSrcSet, sceneUrl } from './art'
 import { h, setChildren, svg } from './dom'
+import { applyAreaTheme } from './worldFx'
+import { applyWorldTime } from './extras'
+import { RealMap } from './realMap'
 
 export type InvestigationTab = 'scene' | 'map'
 export type InvestigationDeps = {
@@ -16,6 +19,13 @@ export type InvestigationDeps = {
   onCaseFile: () => void
   onHint: () => void
   onPause: () => void
+  onMail?: () => void
+  mailCount?: () => number
+  onHelp?: () => void
+  onFarPlace?: (id: PlaceId) => void
+  onMute?: () => void
+  onTextSize?: () => void
+  isMuted?: () => boolean
 }
 
 const KIND_LABEL: Record<Hotspot['kind'], string> = {
@@ -34,12 +44,20 @@ export class InvestigationView {
   private session?: Session
   private placeId: PlaceId = 'zeinab_home'
   private tab: InvestigationTab = 'scene'
+  private readonly reviewedEvidence = new Set<EvidenceId>()
+  private visit = 0
   /** Desktop side drawer / mobile bottom sheet. */
   private drawerOpen = false
   private lastScene = ''
   private readonly clockEl = h('span', { class: 'inv-clock', 'aria-label': 'الساعة' })
   private lastClock = ''
   private lastDay: boolean | undefined
+  private mapKind: 'real' | 'drawn' = 'real'
+  private readonly realMap = new RealMap({
+    onSelect: id => this.selectPlace(id),
+    onFar: () => {},
+    onUnavailable: () => { if (this.mapKind === 'real') { this.mapKind = 'drawn'; if (this.tab === 'map') this.render() } },
+  })
 
   constructor(private readonly d: InvestigationDeps) {
     this.el = h('main', { class: 'investigation', hidden: true, 'aria-label': 'واجهة التحقيق' })
@@ -78,9 +96,12 @@ export class InvestigationView {
   }
 
   show(session: Session, placeId: PlaceId): void {
+    if (this.session !== session) this.reviewedEvidence.clear()
     this.session = session
     this.placeId = placeId
+    this.visit++
     this.tab = 'scene'
+    document.body.classList.add('investigation-active')
     this.el.hidden = false
     this.d.audio.setClock(session.clock.hour)
     this.d.audio.setPlace(placeId)
@@ -89,10 +110,20 @@ export class InvestigationView {
 
   hide(): void {
     this.el.hidden = true
+    document.body.classList.remove('investigation-active')
+  }
+
+  markEvidenceReviewed(id: EvidenceId): void {
+    this.reviewedEvidence.add(id)
+    if (!this.el.hidden) this.render()
   }
 
   refresh(): void {
     if (!this.el.hidden) this.render()
+  }
+
+  updateWorldTime(): void {
+    if (this.session) applyWorldTime(this.session.clock.hour, PLACES[this.placeId].district, partsOf(this.session.clock.stamp).day)
   }
 
   /** Close the map or the mobile sheet; true if something was closed (Android back button). */
@@ -121,6 +152,7 @@ export class InvestigationView {
     const next = PLACES[placeId]
     if (!next || !this.session) return
     this.placeId = placeId
+    this.visit++
     this.tab = 'scene'
     this.d.audio.play('travel')
     this.d.audio.setPlace(placeId)
@@ -187,6 +219,7 @@ export class InvestigationView {
     if (!s) return
     const place = PLACES[this.placeId]
     this.el.dataset.place = place.id
+    applyAreaTheme(place.id)
     this.el.dataset.district = place.district
     this.el.dataset.tab = this.tab
     this.el.dataset.daytime = String(isDaytime(s.clock.hour))
@@ -266,6 +299,7 @@ export class InvestigationView {
   private header(s: Session, place: Place): HTMLElement {
     const found = s.state.evidence.size
     const map = this.tab === 'map'
+    const mail = this.d.mailCount ? this.d.mailCount() : 0
     return h('header', { class: 'inv-header' },
       h('div', { class: 'inv-where' },
         h('small', null, DISTRICT_NAME[place.district], this.clockEl),
@@ -278,6 +312,9 @@ export class InvestigationView {
         h('button', { class: 'inv-act inv-file-btn', onclick: this.d.onCaseFile },
           h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'ملف القضية'),
           h('em', { class: 'inv-badge', 'aria-label': `${found} دليل` }, arabicDigits(found))),
+        mail > 0 && h('button', { class: 'inv-act inv-file-btn', onclick: this.d.onMail },
+          h('span', { class: 'ico', 'aria-hidden': true }, '✉'), h('span', null, 'الجوابات'),
+          h('em', { class: 'inv-badge' }, arabicDigits(mail))),
         h('button', { class: 'inv-act', onclick: this.d.onHint },
           h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح'), h('kbd', null, 'H')),
         h('button', { class: 'inv-act inv-pause-action', 'aria-label': 'القائمة', onclick: this.d.onPause },
@@ -377,7 +414,10 @@ export class InvestigationView {
       h('div', { class: 'inv-map-head' },
         h('h2', null, place.district === 'abis' ? 'خريطة أبيس' : 'خريطة الإسكندرية'),
         h('p', null, 'اختار مكان تروحه. السفر بين أبيس وإسكندرية بيبقى من موقف الميكروباص.')),
-      this.mapSvg(districtPlaces, place, goal),
+      h('div', { class: 'inv-map-switch', role: 'group', 'aria-label': 'نوع الخريطة' },
+        h('button', { class: this.mapKind === 'real' ? 'on' : '', type: 'button', onclick: () => { this.mapKind = 'real'; this.render() } }, 'خريطة حقيقية'),
+        h('button', { class: this.mapKind === 'drawn' ? 'on' : '', type: 'button', onclick: () => { this.mapKind = 'drawn'; this.render() } }, 'خريطة مرسومة')),
+      this.mapKind === 'real' && RealMap.available() ? this.realMap.show(place.id) : this.mapSvg(districtPlaces, place, goal),
       h('div', { class: 'inv-map-list' }, districtPlaces.map(p => {
         const here = p.id === place.id
         const isGoal = p.id === goal
@@ -525,10 +565,12 @@ export class InvestigationView {
 
   private mobileNav(s: Session): HTMLElement {
     const found = s.state.evidence.size
+    const mail = this.d.mailCount ? this.d.mailCount() : 0
     return h('nav', { class: 'inv-mobile-nav', 'aria-label': 'اختصارات التحقيق' },
       h('button', { class: this.tab === 'scene' ? 'on' : '', onclick: () => this.setTab('scene') }, h('span', { class: 'ico', 'aria-hidden': true }, '◉'), h('span', null, 'المشهد')),
       h('button', { class: this.tab === 'map' ? 'on' : '', onclick: () => this.setTab('map') }, h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة')),
       h('button', { class: 'inv-file-btn', onclick: this.d.onCaseFile }, h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'الملف'), found > 0 && h('em', { class: 'inv-badge' }, arabicDigits(found))),
+      mail > 0 && h('button', { class: 'inv-file-btn', onclick: this.d.onMail }, h('span', { class: 'ico', 'aria-hidden': true }, '✉'), h('span', null, 'الجوابات'), h('em', { class: 'inv-badge' }, arabicDigits(mail))),
       h('button', { onclick: this.d.onHint }, h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح')),
       h('button', { onclick: this.d.onPause }, h('span', { class: 'ico', 'aria-hidden': true }, '☰'), h('span', null, 'القائمة')))
   }

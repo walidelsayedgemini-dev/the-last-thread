@@ -1,0 +1,273 @@
+/* Investigation board: cork wall, animated red threads, deduction dossier and visual accusation. */
+#ui > .casefile .board-page {
+  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-areas: 'help help' 'progress progress' 'note note' 'tray tray' 'wall side';
+  row-gap: 10px;
+}
+#ui > .casefile .board-help { grid-area: help; }
+#ui > .casefile .board-progress { grid-area: progress; }
+#ui > .casefile .board-page > .board-note { grid-area: note; }
+#ui > .casefile .board-tray { grid-area: tray; }
+#ui > .casefile .board-wrap { grid-area: wall; }
+#ui > .casefile .board-side { grid-area: side; }
+
+/* Progress strip */
+#ui > .casefile .board-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+#ui > .casefile .board-stat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 5px 12px 7px;
+  border: 1px solid #2c414b;
+  background: linear-gradient(120deg, #0f1c22, #0b1418);
+}
+#ui > .casefile .board-stat span { color: var(--muted); font-size: .78rem; }
+#ui > .casefile .board-stat b { color: var(--bone); font-family: var(--display); font-size: 1.05rem; }
+#ui > .casefile .board-stat-bar {
+  grid-column: 1 / -1;
+  display: block;
+  height: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  background: #1d2d34;
+}
+#ui > .casefile .board-labels { z-index: 4; }
+#ui > .casefile .board-stat-bar > i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #6f8f94, #a7d6d6);
+  transition: width .6s cubic-bezier(.2, .8, .2, 1);
+}
+#ui > .casefile .board-stat.accent { border-color: #a9364366; }
+#ui > .casefile .board-stat.accent .board-stat-bar > i { background: linear-gradient(90deg, #a93643, #ef7078); }
+
+/* Feedback note: visible above the wall on every screen size */
+#ui > .casefile .board-page > .board-note {
+  padding: 10px 14px;
+  line-height: 1.75;
+  animation: note-in .35s ease-out;
+}
+#ui > .casefile .board-note.success {
+  background: linear-gradient(100deg, #3a1219, #1b0f10 70%);
+  border-inline-start: 4px solid var(--red-hot);
+  color: #fbe9e4;
+  box-shadow: 0 0 0 1px #ef707844, 0 8px 26px #ef70781a;
+}
+#ui > .casefile .board-note.fail { background: #16191b; border-inline-start-color: #8c9599; color: #cfd5d6; }
+#ui > .casefile .board-note.info { background: #101e23; border-inline-start-color: var(--cyan); color: #d7e6e4; }
+@keyframes note-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Selection tray */
+#ui > .casefile .board-tray {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px dashed #c9aa7840;
+  background: #0b1418cc;
+}
+#ui > .casefile .tray-slot {
+  display: grid;
+  min-height: 48px;
+  align-content: center;
+  padding: 6px 10px;
+  border: 1px solid #2c414b;
+  background: #0e1a1f;
+}
+#ui > .casefile .tray-slot small { color: var(--muted); font-size: .7rem; }
+#ui > .casefile .tray-slot b { overflow: hidden; color: #8a979a; font-size: .9rem; white-space: nowrap; text-overflow: ellipsis; }
+#ui > .casefile .tray-slot.filled { border-color: var(--red-hot); background: linear-gradient(110deg, #2a1217, #0e1a1f); }
+#ui > .casefile .tray-slot.filled b { color: var(--bone); }
+#ui > .casefile .tray-link { color: var(--red-hot); font-size: 1.3rem; letter-spacing: -.1em; }
+#ui > .casefile .tray-actions { display: flex; gap: 6px; }
+#ui > .casefile .tray-btn {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid #2c414b;
+  background: #13232a;
+  color: var(--bone);
+  font-size: .82rem;
+}
+#ui > .casefile .tray-btn:hover:not(:disabled) { border-color: var(--gold); }
+#ui > .casefile .tray-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Cork wall */
+#ui > .casefile .board-wrap {
+  position: relative;
+  border: 10px solid #2a1d14;
+  border-image: linear-gradient(135deg, #4a3423, #23170f 50%, #3c2a1c) 1;
+  background-color: #8a6440;
+  background-image:
+    radial-gradient(#00000026 1px, transparent 1.5px),
+    radial-gradient(#ffffff14 1px, transparent 1.4px),
+    radial-gradient(ellipse at 30% 20%, #b48a5c55, transparent 60%),
+    radial-gradient(ellipse at 80% 90%, #2d1d1188, transparent 55%),
+    linear-gradient(160deg, #94704a, #6e4e31);
+  background-size: 7px 7px, 11px 11px, 100% 100%, 100% 100%, 100% 100%;
+  background-position: 0 0, 3px 5px, 0 0, 0 0, 0 0;
+  box-shadow: inset 0 0 70px #000c, 0 10px 30px #0008;
+  max-height: min(64vh, 600px);
+}
+
+/* Threads */
+#ui > .casefile .board-lines .thread-shadow { fill: none; stroke: #0007; stroke-width: 5; transform: translate(2px, 4px); stroke-linecap: round; }
+#ui > .casefile .board-lines .thread-shadow.thread-fail { stroke-width: 3; stroke-dasharray: 6 6; }
+#ui > .casefile .board-lines .thread {
+  fill: none;
+  stroke: #d71f32;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px #ff3b4d88);
+  transition: opacity .25s;
+}
+#ui > .casefile .board-lines .thread.fresh { stroke-dasharray: 1; stroke-dashoffset: 1; animation: thread-draw 1.1s cubic-bezier(.6, .05, .3, 1) forwards; stroke-width: 4; }
+#ui > .casefile .board-lines .thread.dim, #ui > .casefile .board-lines .thread-shadow.dim { opacity: .18; }
+#ui > .casefile .board-lines .thread-fail { fill: none; stroke: #e9e4d9; stroke-width: 2; stroke-dasharray: 6 6; opacity: .75; animation: thread-snap .9s ease-out forwards; }
+#ui > .casefile .board-lines .thread-knot { fill: #8f0f1c; stroke: #ff7782; stroke-width: 1.2; }
+#ui > .casefile .thread-label rect { fill: #f2e9d2; stroke: #8f0f1c; stroke-width: 1; filter: drop-shadow(1px 2px 2px #0008); }
+#ui > .casefile .thread-label text { fill: #5c0c14; font: 800 11px var(--font); direction: rtl; }
+#ui > .casefile .thread-label.dim { opacity: .2; }
+@keyframes thread-draw { to { stroke-dashoffset: 0; } }
+@keyframes thread-snap { 0% { opacity: .9; } 60% { opacity: .7; } 100% { opacity: .25; } }
+
+/* Cards on the wall */
+#ui > .casefile .pin-card { transition: box-shadow .2s, opacity .25s, outline-color .2s, filter .25s; }
+#ui > .casefile .pin-card:hover { box-shadow: 5px 9px 18px #000a; z-index: 2; }
+#ui > .casefile .pin-card.selected { z-index: 3; outline: 3px solid #ff4d5c; outline-offset: 3px; box-shadow: 0 0 0 6px #ff4d5c33, 0 14px 30px #000b; }
+#ui > .casefile .pin-card.dim { opacity: .35; filter: grayscale(.7); }
+#ui > .casefile .pin-card.in-focus { z-index: 2; box-shadow: 0 0 0 3px #ffd08a, 0 12px 26px #000b; }
+#ui > .casefile .pin-card.linked-pulse { animation: card-pulse 1.2s ease-out 2; }
+@keyframes card-pulse { 0% { box-shadow: 0 0 0 0 #ff4d5caa, 3px 5px 10px #0009; } 70% { box-shadow: 0 0 0 16px #ff4d5c00, 3px 5px 10px #0009; } 100% { box-shadow: 3px 5px 10px #0009; } }
+#ui > .casefile .pin-count {
+  position: absolute;
+  top: 4px;
+  inset-inline-start: 6px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: #8f0f1c;
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 800;
+  box-shadow: 0 1px 3px #0008;
+}
+
+/* Deduction dossier */
+#ui > .casefile .deductions-list { display: grid; gap: 8px; }
+#ui > .casefile .deduction-card {
+  border: 1px solid #3a2a24;
+  border-inline-start: 3px solid var(--red-hot);
+  background: linear-gradient(160deg, #1d1517, #11161a);
+  transition: border-color .2s, box-shadow .2s;
+}
+#ui > .casefile .deduction-card.on { border-color: #ffd08a; box-shadow: 0 0 0 1px #ffd08a55; }
+#ui > .casefile .deduction-card.fresh { animation: note-in .5s ease-out; box-shadow: 0 0 22px #ef707833; }
+#ui > .casefile .deduction-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+}
+#ui > .casefile .deduction-knot { grid-row: span 2; color: #d71f32; font-size: .8rem; }
+#ui > .casefile .deduction-head b { color: var(--gold); font-family: var(--display); font-size: 1rem; }
+#ui > .casefile .deduction-head small { color: var(--muted); font-size: .7rem; }
+#ui > .casefile .deduction-card > p { margin: 0; padding: 0 12px 6px; color: #d8d0c4; font-size: .86rem; line-height: 1.75; }
+#ui > .casefile .deduction-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px 10px; }
+#ui > .casefile .deduction-chip { padding: 2px 7px; border: 1px solid #c9aa7840; background: #c9aa7812; color: #e5d6b8; font-size: .7rem; }
+#ui > .casefile .deduction-locked {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px dashed #2c414b;
+  color: var(--muted);
+}
+#ui > .casefile .deduction-locked span { display: grid; place-items: center; width: 32px; height: 32px; border: 1px dashed #4b6068; color: #7d9095; font-family: var(--display); }
+#ui > .casefile .deduction-locked p { margin: 0; font-size: .82rem; line-height: 1.6; }
+
+/* Accusation */
+#ui > .casefile .accuse-checklist { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+#ui > .casefile .accuse-checklist li { display: flex; gap: 8px; padding: 6px 9px; border: 1px solid #2c414b; color: var(--muted); font-size: .86rem; }
+#ui > .casefile .accuse-checklist li.done { border-color: #65c49b55; color: var(--bone); }
+#ui > .casefile .accuse-checklist li.done span { color: var(--ok); }
+#ui > .casefile .accuse-step { margin: 4px 0 0; color: var(--gold); font-size: .82rem; font-weight: 800; }
+#ui > .casefile .suspect-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+#ui > .casefile .suspect-card {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 3px;
+  min-height: 44px;
+  padding: 6px 4px 8px;
+  border: 1px solid #2c414b;
+  background: #0e181d;
+  color: var(--bone);
+  text-align: center;
+  transition: border-color .15s, transform .15s, box-shadow .15s;
+}
+#ui > .casefile .suspect-card img, #ui > .casefile .suspect-unknown {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  filter: grayscale(.55) contrast(1.05);
+  transition: filter .2s;
+}
+#ui > .casefile .suspect-unknown { display: grid; place-items: center; background: repeating-linear-gradient(45deg, #111d22 0 6px, #0c1519 6px 12px); color: #6f858b; font-family: var(--display); font-size: 1.8rem; }
+#ui > .casefile .suspect-card b { font-size: .78rem; line-height: 1.3; }
+#ui > .casefile .suspect-card small { color: var(--muted); font-size: .64rem; line-height: 1.3; }
+#ui > .casefile .suspect-card:hover { border-color: #c9aa7888; }
+#ui > .casefile .suspect-card.on { border-color: var(--red-hot); box-shadow: 0 0 0 2px #ef707855; transform: translateY(-2px); }
+#ui > .casefile .suspect-card.on img { filter: none; }
+#ui > .casefile .motive-list { display: grid; gap: 6px; }
+#ui > .casefile .motive-card {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #2c414b;
+  background: #0e181d;
+  color: #d8d0c4;
+  font-size: .82rem;
+  line-height: 1.6;
+  text-align: start;
+}
+#ui > .casefile .motive-card.on { border-color: var(--red-hot); background: linear-gradient(110deg, #2a1217, #0e181d); color: var(--bone); }
+#ui > .casefile .motive-mark { color: var(--red-hot); }
+#ui > .casefile .accuse-summary { margin: 2px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.6; }
+#ui > .casefile .accuse-summary b { color: var(--bone); }
+#ui > .casefile .accuse-go { min-width: 0; width: 100%; }
+#ui > .casefile .accuse-go.confirm { background: #8f1b28; border-color: #ff7782; color: #fff; animation: card-pulse 1.4s ease-out infinite; }
+
+@media (max-width: 720px) {
+  #ui > .casefile .board-page { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'help' 'progress' 'note' 'tray' 'wall' 'side'; }
+  #ui > .casefile .board-progress { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+  #ui > .casefile .board-stat { padding: 6px 8px 8px; }
+  #ui > .casefile .board-stat span { font-size: .68rem; }
+  #ui > .casefile .board-stat b { font-size: .92rem; }
+  #ui > .casefile .board-tray { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  #ui > .casefile .tray-actions { grid-column: 1 / -1; }
+  #ui > .casefile .tray-actions .tray-btn { flex: 1; }
+  #ui > .casefile .board-wrap { border-width: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ui > .casefile .board-lines .thread.fresh { animation: none; stroke-dashoffset: 0; }
+  #ui > .casefile .pin-card.linked-pulse, #ui > .casefile .accuse-go.confirm, #ui > .casefile .board-page > .board-note, #ui > .casefile .deduction-card.fresh { animation: none; }
+}

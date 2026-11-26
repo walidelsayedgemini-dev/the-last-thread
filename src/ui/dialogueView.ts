@@ -12,6 +12,8 @@ import type { Audio } from '../engine/audio'
 import type { Avatar } from '../services/profiles'
 import { evidenceUrl, playerPortrait, portraitUrl } from './art'
 import { h, setChildren } from './dom'
+import { PATHS } from '../data/life'
+import { speakButton, speech } from './extras'
 
 export type DialogueContext = {
   /** Active case ID, used to keep identical node IDs across cases distinct. */
@@ -36,8 +38,10 @@ export class DialogueView {
   private readonly nameEl: HTMLElement
   private readonly roleEl: HTMLElement
   private readonly textEl: HTMLElement
+  private readonly hintEl: HTMLElement
   private readonly choicesEl: HTMLElement
   private readonly moreEl: HTMLButtonElement
+  private readonly speakWrap: HTMLElement
   private session?: DialogueSession
   private lines: DialogueLine[] = []
   private lineIndex = 0
@@ -59,16 +63,18 @@ export class DialogueView {
     this.nameEl = h('b', { class: 'dlg-name' })
     this.roleEl = h('small', { class: 'dlg-role' })
     this.textEl = h('p', { class: 'dlg-text' })
+    this.hintEl = h('small', { class: 'dlg-hint', hidden: true })
     this.choicesEl = h('div', { class: 'dlg-choices', role: 'group', 'aria-label': 'ردودك' })
     this.moreEl = h('button', { class: 'dlg-more', onclick: () => this.next() }, 'كمّل')
+    this.speakWrap = h('div', { class: 'dlg-speak-wrap' }, speakButton(() => this.full, 'speak-btn dlg-speak'))
     this.el = h('section', { class: 'dialogue', hidden: true, role: 'dialog', 'aria-modal': 'true', 'aria-label': 'حوار' },
       this.backdrop,
       this.npcArt,
       this.playerArt,
       h('button', { class: 'dlg-leave', 'aria-label': 'إنهاء الحوار', onclick: () => this.close() }, '✕', h('span', null, 'سيب الحوار')),
       h('div', { class: 'dlg-box' },
-        h('header', { class: 'dlg-speaker' }, this.nameEl, this.roleEl),
-        h('div', { class: 'dlg-text-wrap', 'aria-live': 'polite' }, this.textEl),
+        h('header', { class: 'dlg-speaker' }, this.nameEl, this.roleEl, this.speakWrap),
+        h('div', { class: 'dlg-text-wrap', 'aria-live': 'polite' }, this.textEl, this.hintEl),
         this.choicesEl,
         this.moreEl),
     )
@@ -133,11 +139,14 @@ export class DialogueView {
     this.art(this.playerArt, playerPortrait(this.ctx.avatar, tenseArt ? 'tense' : 'neutral'), initial(this.playerName || 'ي'), '#c9aa78')
     this.el.dataset.who = line.who === 'player' ? 'player' : line.who === 'narrator' ? 'narrator' : 'npc'
     this.el.classList.toggle('tense', tenseArt)
+    speech.stop()
+    this.speakWrap.querySelector('.on')?.classList.remove('on')
     this.nameEl.textContent = label
     this.roleEl.textContent = line.who === 'player' ? 'المحقّق' : line.who === 'narrator' ? '' : (speaker ?? npc).role
     this.full = this.fill(line.text)
     this.typing = 0
     this.textEl.textContent = ''
+    this.hintEl.hidden = false
     setChildren(this.choicesEl)
     this.moreEl.hidden = true
     this.audio.play('paper')
@@ -161,6 +170,7 @@ export class DialogueView {
   private finishLine(): void {
     this.typing = this.full.length
     this.textEl.textContent = this.full
+    this.hintEl.hidden = true
     const lastLine = this.lineIndex >= this.lines.length - 1
     const v = this.session?.view()
     if (lastLine && v && v.choices.length > 0) {
@@ -175,11 +185,12 @@ export class DialogueView {
 
   private choiceButton(c: View['choices'][number], i: number): HTMLButtonElement {
     const ev = c.present ? this.ctx.evidence?.(c.present) : undefined
-    const cls = `dlg-choice${c.present ? ' present' : ''}${c.confront ? ' confront' : ''}${c.lie ? ' lie' : ''}`
+    const cls = `dlg-choice${c.present ? ' present' : ''}${c.confront ? ' confront' : ''}${c.lie ? ' lie' : ''}${c.path ? ` path-${c.path}` : ''}`
     return h('button', { class: cls, onclick: () => this.choose(c.index, c) },
       h('kbd', null, String(i + 1)),
       h('span', { class: 'dlg-choice-text' },
         c.confront && h('small', null, c.lie ? 'كدبة' : 'مواجهة'),
+        c.path && PATHS[c.path as keyof typeof PATHS] && h('i', { class: 'dlg-path-chip' }, PATHS[c.path as keyof typeof PATHS].short),
         this.fill(c.text)),
       ev && h('span', { class: `dlg-ev kind-${ev.kind}` }, evidenceUrl(c.present!) && h('img', { src: evidenceUrl(c.present!), alt: '', loading: 'lazy', decoding: 'async' }), h('span', null, h('small', null, `اعرض ${KIND_NAME[ev.kind]}`), h('b', null, ev.title))))
   }
@@ -237,6 +248,7 @@ export class DialogueView {
   close(): void {
     if (this.el.hidden) return
     this.audio.stopVoice()
+    speech.stop()
     this.el.hidden = true
     this.session?.end()
     this.flush?.()
