@@ -49,6 +49,10 @@
 .memory-action { background: #f1d3a0; color: #231b12; font-weight: bold; border-color: #ffdc9b; }
 .memory-action:hover:not(:disabled) { background: #ffdfab; color: #18120d; }
 .memory-content { display: grid; gap: .7rem; }
+.memory-content.entering { animation: memory-fade-up .26s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes memory-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.reduced-motion .memory-content.entering { animation: none; }
+@media (prefers-reduced-motion: reduce) { .memory-content.entering { animation: none; } }
 .memory-intro, .memory-leads { margin-block-end: .75rem !important; }
 .memory-leads, .memory-card {
   border: 1px solid #625744;
@@ -58,7 +62,50 @@
 }
 .memory-leads { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: .6rem; border-color: #a08b5c; }
 .memory-scene-layout { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(13rem, 1fr); gap: .65rem; align-items: start; }
-.memory-canvas { width: 100%; height: auto; display: block; margin-block: .6rem; border: 1px solid #675f4c; border-radius: .4rem; }
+.memory-plate {
+  position: relative;
+  margin: .6rem 0;
+  aspect-ratio: 16 / 9;
+  border: 1px solid #675f4c;
+  border-radius: .4rem;
+  overflow: hidden;
+  background: #121417;
+}
+.memory-plate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, transparent 52%, rgba(8, 9, 12, .58) 100%);
+}
+.memory-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter .25s ease;
+}
+.memory-plate[data-era="1992"] .memory-photo { filter: sepia(.24) contrast(1.06) brightness(.95) saturate(.85); }
+.memory-plate[data-era="2002"] .memory-photo { filter: sepia(.14) contrast(1.05) brightness(.96) saturate(.9); }
+.memory-plate[data-era="2011"] .memory-photo { filter: contrast(1.08) brightness(.96) saturate(.88); }
+.memory-plate[data-era="2021"] .memory-photo { filter: contrast(1.04) brightness(.97) saturate(.94); }
+.memory-plate[data-era="2026"] .memory-photo { filter: contrast(1.03) brightness(.98); }
+.memory-plate-caption {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+  padding: .55rem .85rem;
+  background: linear-gradient(180deg, transparent 0%, rgba(12, 13, 16, .82) 38%, rgba(12, 13, 16, .95) 100%);
+  color: #f8ddaf;
+  font-weight: bold;
+}
+.memory-plate-title { font-size: .96rem; }
+.memory-plate-year { font-size: .92rem; letter-spacing: .04em; color: #f1c985; direction: ltr; }
 .memory-place-list { margin-block: .5rem !important; }
 .memory-list { margin: 0; padding: 0; list-style: none; display: grid; gap: .38rem; }
 .memory-place-list .memory-button { width: 100%; }

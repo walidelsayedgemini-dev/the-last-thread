@@ -3,7 +3,7 @@ import { MemoryCampaign } from '../core/memoryCampaign'
 import { MAIN_STORIES, MEMORY_CHAPTERS, MEMORY_PEOPLE, MEMORY_PLACES, NETWORKS, PHASES, REGIONS, YEARS, relatedChapters, type MemoryChapter, type MemoryPlace, type MemoryWitness } from '../data/memoryWorld'
 import type { StorageAdapter } from '../services/storage'
 import { h, setChildren } from './dom'
-import { paintMemoryScene } from './memoryScene'
+import { createMemorySceneFigure } from './memoryScene'
 
 type Page = 'scene' | 'map' | 'timeline' | 'people' | 'networks'
 const PAGES: [Page, string][] = [['scene', 'المكان'], ['map', 'الخريطة'], ['timeline', 'التسلسل الزمني'], ['people', 'الشهود'], ['networks', 'الشبكات']]
@@ -20,6 +20,7 @@ export class MemoryView {
   private page: Page = 'scene'
   private past = false
   private mapRegion = 0
+  private mapDistrict: 'all' | 'abis' | 'alex' = 'all'
   private timelinePhase = 0
   private selectedWitness?: number
   private feedback = ''
@@ -64,10 +65,13 @@ export class MemoryView {
   }
   private render(resetScroll = false): void {
     const game = this.campaign
-    this.progress.textContent = `${arabicDigits(game.clueCount)} / ٥٠٠ دليل · ${arabicDigits(game.witnessCount)} / ٢٠٠ شهادة · ${arabicDigits(game.confirmedCount)} / ١٠٠ واقعة`
+    this.progress.textContent = `${arabicDigits(game.clueCount)} / ${arabicDigits(MEMORY_PLACES.length)} دليل · ${arabicDigits(game.witnessCount)} / ${arabicDigits(MEMORY_PEOPLE.length)} شهادة · ${arabicDigits(game.confirmedCount)} / ${arabicDigits(MEMORY_CHAPTERS.length)} واقعة (٥٠٠ أبيس + ٥٠٠ الإسكندرية)`
     setChildren(this.nav, PAGES.map(([page, label]) => this.button(label, () => this.selectPage(page), 'memory-quiet', { 'aria-current': page === this.page ? 'page' : undefined })))
     const view = { scene: () => this.scene(), map: () => this.map(), timeline: () => this.timeline(), people: () => this.people(), networks: () => this.networks() }
+    this.content.classList.remove('entering')
+    void this.content.offsetWidth
     setChildren(this.content, view[this.page]())
+    this.content.classList.add('entering')
     if (resetScroll) this.el.scrollTop = 0
   }
 
@@ -80,8 +84,7 @@ export class MemoryView {
     const past = open && this.past
     const phase = PHASES[place.phase]
     const region = REGIONS[place.region]
-    const canvas = h('canvas', { class: 'memory-canvas', role: 'img', 'aria-label': `${place.site[1]} في ${region[0]}، ${past ? yearLabel(place.phase) : 'الحاضر'}` })
-    paintMemoryScene(canvas, place, past)
+    const sceneFigure = createMemorySceneFigure(place, past)
     const notify = (message: string) => { this.announcement.textContent = message }
     return h('div', { class: 'memory-scene' },
       game.clueCount === 0 && h('p', { class: 'memory-intro' }, 'لقيت اسم أمي على ورقة واحدة من ملف القطعة ١٥. عشان أفهم مين غيّر الخريطة قبل اختفاء خالي، هابدأ مع علاء في التمنيات. كل شاهد محتاج يشوف دليل قبل ما أثبّت كلامه.'),
@@ -92,7 +95,7 @@ export class MemoryView {
             h('div', { class: 'memory-switch', role: 'group', 'aria-label': 'وقت المشهد' },
               this.button('الحاضر', () => this.togglePast(false), 'memory-quiet', { 'aria-pressed': String(!past) }),
               this.button(`الماضي · ${yearLabel(place.phase)}`, () => this.togglePast(true), 'memory-quiet', { disabled: !open, 'aria-pressed': String(past) }))),
-          canvas,
+          sceneFigure,
           h('p', null, past ? place.site[3] : `${place.site[1]}. ${region[2]}`),
           open && MAIN_STORIES[chapter.id] && h('p', { class: 'memory-note' }, this.summary(chapter)),
           !open && h('p', { class: 'memory-note' }, 'الفترة دي لسه مقفولة. ثبّت الوقائع المطلوبة في الخيط الرئيسي عشان تفتحها.'),
@@ -131,8 +134,8 @@ export class MemoryView {
           this.button('انشر الملخص بالأسماء المصرّح بها', () => { game.conclude('credit'); this.render() }, 'memory-action'),
           this.button('انشر الوقائع واحفظ الأسماء الخاصة', () => { game.conclude('privacy'); this.render() }, 'memory-quiet')),
         h('p', null, game.confirmedCount === MEMORY_CHAPTERS.length
-          ? 'اتقفل الأرشيف بعد ما اتثبتت الوقائع المية. كل منطقة بقت تقدر ترجع لنسختها وتعرف كانت متصلة بمين.'
-          : `الملف فيه ${arabicDigits(game.confirmedCount)} واقعة مثبتة. كل واقعة إضافية تدخل في الأرشيف مع أدلتها وشهودها.`))
+          ? `اتقفل الأرشيف بعد ما اتثبتت كل الوقائع (${arabicDigits(MEMORY_CHAPTERS.length)} واقعة في أبيس والإسكندرية). كل منطقة بقت تقدر ترجع لنسختها وتعرف كانت متصلة بمين.`
+          : `الملف فيه ${arabicDigits(game.confirmedCount)} واقعة مثبتة من أصل ${arabicDigits(MEMORY_CHAPTERS.length)}. كل واقعة إضافية تدخل في الأرشيف مع أدلتها وشهودها.`))
     }
     return h('section', { class: 'memory-leads' },
       h('div', null, h('small', null, 'الخيط الرئيسي'), h('h3', null, `${yearLabel(game.stage)} · ${PHASES[game.stage].name}`)),
@@ -148,15 +151,28 @@ export class MemoryView {
     return `${REGIONS[chapter.region][2]} ${PHASES[chapter.phase].clue}`
   }
   private map(): HTMLElement {
+    const visibleRegions = REGIONS.map((r, i) => ({ r, i })).filter(({ r }) =>
+      this.mapDistrict === 'all' ? true : this.mapDistrict === 'alex' ? r[1] === 'الإسكندرية' : r[1] !== 'الإسكندرية')
+    if (!visibleRegions.some(x => x.i === this.mapRegion)) this.mapRegion = visibleRegions[0]?.i ?? 0
     const region = REGIONS[this.mapRegion]
-    const screen = h('section', { class: 'memory-map' }, h('h3', null, 'خريطة الحاضر'), h('p', { class: 'memory-note' },
-      'المناطق والأحياء مستوحاة من جغرافيا أبيس وإسكندرية. مواقع التحقيق والوقائع والعصابات خيالية، والخريطة بتعرض علاقات القصة.'))
+    const abisCount = REGIONS.filter(r => r[1] !== 'الإسكندرية').length * PHASES.length * 5
+    const alexCount = REGIONS.filter(r => r[1] === 'الإسكندرية').length * PHASES.length * 5
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${region[7]},${region[8]}`
+    const screen = h('section', { class: 'memory-map' }, h('h3', null, 'خريطة أبيس والإسكندرية'), h('p', { class: 'memory-note' },
+      `الأرشيف يضم ${arabicDigits(abisCount)} موقع في أبيس و${arabicDigits(alexCount)} موقع جديد في أحياء الإسكندرية الحقيقية بإحداثيات جوجل ماب وربط زمني من زلزال ١٩٩٢ لحد ٢٠٢٦.`))
     const choose = h('select', { id: 'memory-region', onchange: () => {
       this.mapRegion = Number(choose.value)
       this.render()
       this.content.querySelector('select')?.focus()
-    } }, REGIONS.map((region, i) => h('option', { value: i, selected: i === this.mapRegion }, `${region[0]} — ${region[1]}`)))
-    screen.append(h('div', { class: 'memory-filters' }, h('label', { for: choose.id }, 'المنطقة'), choose),
+    } }, visibleRegions.map(({ r, i }) => h('option', { value: i, selected: i === this.mapRegion }, `${r[0]} — ${r[1]}`)))
+    screen.append(
+      h('div', { class: 'memory-link-row', role: 'group', 'aria-label': 'تصفية حسب النطاق' },
+        this.button(`الكل (${arabicDigits(abisCount + alexCount)})`, () => { this.mapDistrict = 'all'; this.render() }, 'memory-quiet', { 'aria-pressed': String(this.mapDistrict === 'all') }),
+        this.button(`أبيس والضواحي (${arabicDigits(abisCount)})`, () => { this.mapDistrict = 'abis'; this.render() }, 'memory-quiet', { 'aria-pressed': String(this.mapDistrict === 'abis') }),
+        this.button(`أحياء الإسكندرية (${arabicDigits(alexCount)})`, () => { this.mapDistrict = 'alex'; this.render() }, 'memory-quiet', { 'aria-pressed': String(this.mapDistrict === 'alex') })),
+      h('div', { class: 'memory-filters' },
+        h('label', { for: choose.id }, 'المنطقة'), choose,
+        h('a', { class: 'memory-button memory-quiet', href: mapsUrl, target: '_blank', rel: 'noopener noreferrer' }, 'خرائط جوجل ↗')),
       h('div', { class: 'memory-card' }, h('h4', null, region[0]), h('p', null, region[2])),
       h('div', { class: 'memory-map-grid' }, PHASES.map((phase, index) => {
         const chapter = MEMORY_CHAPTERS[this.mapRegion * PHASES.length + index]

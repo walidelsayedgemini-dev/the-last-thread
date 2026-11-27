@@ -13,7 +13,7 @@ const umm_saeed: Dialogue = {
     ] },
     us_bread: { id: 'us_bread', lines: [{ who: 'umm_saeed', text: 'فيه حد بياخد رغيفين زيادة وبيمثل إنه ناسي. فتّش رفوف العيش، الصفحة اللي ناقصة هتقولك مين.' }], effects: [{ type: 'flag', id: 'umm_saeed_started' }], next: 'us_hub' },
     us_stranger: { id: 'us_stranger', lines: [{ who: 'umm_saeed', text: 'غريب بجاكت كحلي سأل عن بيت المسّاح قبل الفجر بيومين. السوق شافه أكتر مني… اسأل فاطمة.' }], effects: [{ type: 'flag', id: 'umm_saeed_trust' }], next: 'us_hub' },
-    us_route: { id: 'us_route', lines: [{ who: 'umm_saeed', text: 'العيش ما بيستناش حد يا ضنايا. ابدأ بالرفوف، وبعدها لو لقيت نمرة عربية روح للمزلقان.' }], next: 'us_hub' },
+    us_route: { id: 'us_route', lines: [{ who: 'umm_saeed', text: 'انزل من بدري يا ضنايا، بص على رفوف العيش هنا، ولو لقيت نمرة عربية عدّى على عم بركات في المزلقان.' }], next: 'us_hub' },
     us_hub: { id: 'us_hub', lines: [{ who: 'umm_saeed', text: 'عاوز تسأل في إيه تاني؟' }], choices: [
       { text: 'وريني صفحة العيش.', next: 'us_trust', when: { evidence: ['e_bakery_ration'] }, present: 'e_bakery_ration', confront: true },
       { text: 'متشكر يا أم سعيد.', next: 'us_bye' },
@@ -204,24 +204,228 @@ const saber: Dialogue = {
   character: 'saber',
   entries: [{ node: 'sa_done', when: { flags: ['saber_done'] } }, { node: 'sa_trust', when: { evidence: ['e_miller_promise'] } }, { node: 'sa_first' }],
   nodes: {
-    sa_first: { id: 'sa_first', lines: [{ who: 'saber', text: 'كل شيكارة ليها وزن، وكل كلمة ليها تمن. ما تيجيش تقول سمعت من غير رقم.' }], choices: [
+    sa_first: { id: 'sa_first', lines: [{ who: 'saber', text: 'شوفي شغلك يا ابني وقول عاوز إيه دوغري… المكن شغال والدنيا زحمة.' }], choices: [
       { text: 'مين وعدك بأرض القطعة؟', next: 'sa_promise' },
       { text: 'نتيجة الحيطة بتخبي إيه؟', next: 'sa_calendar' },
       { text: 'إنت كنت مستفيد؟', next: 'sa_debt' },
     ] },
-    sa_promise: { id: 'sa_promise', lines: [{ who: 'saber', text: 'النتيجة وراها كلام. اقراها، وبعدها اسألني قدام الدليل مش قدام الغبار.' }], effects: [{ type: 'flag', id: 'saber_started' }], next: 'sa_hub' },
+    sa_promise: { id: 'sa_promise', lines: [{ who: 'saber', text: 'ورقة الوعد ملزّقة ورا نتيجة الحيطة. اقراها الأول وبعدين تعالَ كلمني.' }], effects: [{ type: 'flag', id: 'saber_started' }], next: 'sa_hub' },
     sa_calendar: { id: 'sa_calendar', lines: [{ who: 'saber', text: 'النتيجة واقفة على شهر قديم، بس القلم اللي وراها جديد. شوقي قال إن الأرض هتبقى رخيصة لما محمود يبعد.' }], next: 'sa_hub' },
-    sa_debt: { id: 'sa_debt', lines: [{ who: 'saber', text: 'ديون الجمعية على رقبتي. عشان كده أقول الرقم، مش أبيع ضميري. شوقي هو اللي جاب الوعد.' }], next: 'sa_hub' },
-    sa_hub: { id: 'sa_hub', lines: [{ who: 'saber', text: 'قول: الكلام ده مكتوب ولا جاي من الهوا؟' }], choices: [
+    sa_debt: { id: 'sa_debt', lines: [{ who: 'saber', text: 'ديون الجمعية على رقبتي. عشان كده هقول الحق على المكشوف، شوقي هو اللي جاب الوعد.' }], next: 'sa_hub' },
+    sa_hub: { id: 'sa_hub', lines: [{ who: 'saber', text: 'هتوريني الورقة ولا هتكلمني من غير سند؟' }], choices: [
       { text: 'الوعد مكتوب واسم شوقي واضح.', next: 'sa_trust', when: { evidence: ['e_miller_promise'] }, present: 'e_miller_promise', confront: true },
       { text: 'هراجع النتيجة.', next: 'sa_bye' },
     ] },
-    sa_trust: { id: 'sa_trust', lines: [{ who: 'player', text: 'ده وعد بشراء الأرض بعد إبعاد محمود.' }, { who: 'saber', text: 'أيوه. كنت غرقان في الديون، لكن اللي حطّني في الصفقة شوقي. الأرض ما كانتش هتتباع لو محمود واقف.' }], effects: [{ type: 'flag', id: 'saber_trust' }, { type: 'flag', id: 'saber_done' }], next: 'sa_done' },
-    sa_bye: { id: 'sa_bye', lines: [{ who: 'saber', text: 'الميزان ما يزوّغش. هات الورقة ونتكلم.' }] },
-    sa_done: { id: 'sa_done', lines: [{ who: 'saber', text: 'كل حاجة ليها وزن. ووزن الدليل أتقل من وزن الأرض.' }] },
+    sa_trust: { id: 'sa_trust', lines: [{ who: 'player', text: 'ده وعد بشراء الأرض بعد إبعاد محمود.' }, { who: 'saber', text: 'أيوه. كنت غرقان في الديون، واللي جرّني للسكة دي شوقي. الأرض ما كانتش هتتباع طول ما محمود موجود.' }], effects: [{ type: 'flag', id: 'saber_trust' }, { type: 'flag', id: 'saber_done' }], next: 'sa_done' },
+    sa_bye: { id: 'sa_bye', lines: [{ who: 'saber', text: 'لما تجيب الورقة ابقى اتكلم معايا.' }] },
+    sa_done: { id: 'sa_done', lines: [{ who: 'saber', text: 'قولت كل اللي عندي قدام الورق… ومفيش كلمة هزودها.' }] },
+  },
+}
+
+const am_mahdi: Dialogue = {
+  character: 'am_mahdi',
+  entries: [{ node: 'am_done', when: { flags: ['found_mahmoud'] } }, { node: 'am_again', when: { flags: ['am_mahdi_talked'] } }, { node: 'am_first' }],
+  nodes: {
+    am_first: {
+      id: 'am_first',
+      lines: [
+        { who: 'am_mahdi', text: 'أهلاً يا ياسين يا أهلاوي! تعالَ اقعد هنا، البراد لسه منزله من على النار.' },
+        { who: 'player', text: 'عامل إيه يا عم مهدي؟ خالي محمود عدّى عليك قبل ما يختفي؟' },
+        { who: 'am_mahdi', text: 'محمود؟ قعد هنا ليلة الحد اللي فات مع علاء بتاع ٥/٨ يشربوا شاي. كانوا بيبصوا في كراسة قياس وقلقانين، وقال لي قبل ما يقوم: «لو حد سأل عني في المضيفة قول لهم سافر إسكندرية».' },
+      ],
+      choices: [
+        { text: 'كانوا بيتكلموا عن إيه مع علاء؟', next: 'am_alaa' },
+        { text: 'قهوة عم عرفة شافت عربية؟', next: 'am_arafa_hint' },
+        { text: 'لسه فاكر ماتش الأهلي والقاضية هنا؟', next: 'am_ahly' },
+      ],
+    },
+    am_alaa: {
+      id: 'am_alaa',
+      lines: [
+        { who: 'am_mahdi', text: 'علاء عماد جايله من قرية ٥/٨ التمنيات ومعاه مسودة حدود الترعة القديمة من التسعينات، من أيام ما نقلوا الدفاتر بعد زلزال ٩٢. روح له ٥/٨ وهو هيفرّدلك الأرقام.' },
+      ],
+      effects: [{ type: 'flag', id: 'am_mahdi_talked' }],
+      next: 'am_again',
+    },
+    am_arafa_hint: {
+      id: 'am_arafa_hint',
+      lines: [
+        { who: 'am_mahdi', text: 'ناصية قهوة عم عرفة كاشفة حارة المضيفة والجامع كويس أوي. عم عرفة قال لي إنه شاف عربية ملاكي غريبة وقفت ورا المضيفة عند جامع قرية ١٥.' },
+      ],
+      effects: [{ type: 'flag', id: 'am_mahdi_talked' }],
+      next: 'am_again',
+    },
+    am_ahly: {
+      id: 'am_ahly',
+      lines: [
+        { who: 'am_mahdi', text: 'ههههه ده اليوم ده انت وخالك وعلاء وأحمد بشير قلبتوا القهوة فرح! والاتحداوية في قهوة رجب كانوا بيضحكوا معانا برضه. ربنا يرجّع خالك بالسلامة ونشوف الماتش الجاي سوا.' },
+      ],
+      effects: [{ type: 'flag', id: 'am_mahdi_talked' }],
+      next: 'am_again',
+    },
+    am_again: {
+      id: 'am_again',
+      lines: [{ who: 'am_mahdi', text: 'قهوة قرية ١٥ بيتك يا بشمهندس. عدّيت على عم عرفة أو علاء في ٥/٨؟' }],
+      choices: [
+        { text: 'أحمد بشير كان هنا إمتى؟', next: 'am_ahmed' },
+        { text: 'نازل أشوفهم دلوقتي يا عم مهدي.', next: 'am_bye' },
+      ],
+    },
+    am_ahmed: {
+      id: 'am_ahmed',
+      lines: [{ who: 'am_mahdi', text: 'أحمد بشير لسه مروح من ساعة على عزبة ٥ عند الثورة الرئيسية. شاف عربية سودة طالعة على الطريق العمومي ونمرتها معلّقة في دماغه.' }],
+      next: 'am_again',
+    },
+    am_bye: { id: 'am_bye', lines: [{ who: 'am_mahdi', text: 'الله يطمن ستّك مهدية يا ابني، سلم لي عليها.' }] },
+    am_done: { id: 'am_done', lines: [{ who: 'am_mahdi', text: 'ألف حمد لله على سلامة خالك يا أهلاوي! النهارده الشاي في القهوة على حسابي للجميع.' }] },
+  },
+}
+
+const am_arafa: Dialogue = {
+  character: 'am_arafa',
+  entries: [{ node: 'aa_done', when: { flags: ['found_mahmoud'] } }, { node: 'aa_again', when: { flags: ['am_arafa_talked'] } }, { node: 'aa_first' }],
+  nodes: {
+    aa_first: {
+      id: 'aa_first',
+      lines: [
+        { who: 'am_arafa', text: 'تعالَ يا ياسين، خُد كرسي عالناصية هنا. أنا عيني على شارع المضيفة والجامع طول النهار.' },
+        { who: 'player', text: 'شفت حد غريب قرب المضيفة أو جامع قرية ١٥ يا عم عرفة؟' },
+        { who: 'am_arafa', text: 'آه والله! قبل اختفاء خالك بيوم، وقفت عربية سودا ورا حيطة المضيفة من ناحية الجامع. نزل منها واحد لابس بدلة وسأل العيال على بيت «المهندس محمود بتاع الجمعية».' },
+      ],
+      choices: [
+        { text: 'كان معاه حد أو ساب حاجة في المضيفة؟', next: 'aa_mudayfa' },
+        { text: 'طلعت من القرية على فين؟', next: 'aa_direction' },
+      ],
+    },
+    aa_mudayfa: {
+      id: 'aa_mudayfa',
+      lines: [
+        { who: 'am_arafa', text: 'دخلوا المضيفة القريبة من الجامع ربع ساعة يتكلموا مع العمدة وبعدها خرجوا وشهم مقلوب. ستّك مهدية كانت بتوصي محمود ما يمضيش ورقة في المضيفة من غير ما يقرأها.' },
+      ],
+      effects: [{ type: 'flag', id: 'am_arafa_talked' }],
+      next: 'aa_again',
+    },
+    aa_direction: {
+      id: 'aa_direction',
+      lines: [
+        { who: 'am_arafa', text: 'لفّت ناحية ترعة الثورة وعزبة ٥، ناحية بيت صاحبك أحمد بشير. اسأله هو وأبوه، العربيات التقيلة هناك ما بتفلتش من عينهم.' },
+      ],
+      effects: [{ type: 'flag', id: 'am_arafa_talked' }],
+      next: 'aa_again',
+    },
+    aa_again: {
+      id: 'aa_again',
+      lines: [{ who: 'am_arafa', text: 'الشاي سخن لو نفسك فيه يا ابني… وأي عربية هتدخل ناصية قرية ١٥ هدّيك خبر.' }],
+      choices: [
+        { text: 'المضيفة وراها الجامع مفتوح؟', next: 'aa_mosque' },
+        { text: 'تسلم يا عم عرفة.', next: 'aa_bye' },
+      ],
+    },
+    aa_mosque: {
+      id: 'aa_mosque',
+      lines: [{ who: 'am_arafa', text: 'أيوه، باب المضيفة في وش الطريق وباب جامع قرية ١٥ في ضهرها على طول. عم حسن قاعد هناك بعد العصر.' }],
+      next: 'aa_again',
+    },
+    aa_bye: { id: 'aa_bye', lines: [{ who: 'am_arafa', text: 'ربنا معاك يا ياسين ويطمن قلبك.' }] },
+    aa_done: { id: 'aa_done', lines: [{ who: 'am_arafa', text: 'الحمد لله إن خالك رجع وسط أهله يا ياسين. قرية ١٥ كلها كانت قلقانة.' }] },
+  },
+}
+
+const ahmed_basheer: Dialogue = {
+  character: 'ahmed_basheer',
+  entries: [{ node: 'ab_done', when: { flags: ['found_mahmoud'] } }, { node: 'ab_again', when: { flags: ['ahmed_talked'] } }, { node: 'ab_first' }],
+  nodes: {
+    ab_first: {
+      id: 'ab_first',
+      lines: [
+        { who: 'ahmed_basheer', text: 'أهلاً يا ياسو، نزلت لك أول ما سمعت إن الحاج محمود مرجعش. الدنيا هنا في عزبة ٥ على الثورة الرئيسية كاشفة كل اللي طالع من قرية ١٥.' },
+        { who: 'player', text: 'أحمد، شفت عربية ملاكي سودا عدّت من الثورة الرئيسية ناحية الطريق الزراعي ليلة التلات؟' },
+        { who: 'ahmed_basheer', text: 'يا يسطا أيوه! شوفتها قدام الترعة هنا الساعة حداشر ونص بالليل تقريباً. كانت مبطّئة ومعدّية المزلقان بسرعة أول ما طالع طريق إسكندرية. اللي سايقها كان جاي من ناحية المنشية وموقف الترام القديم.' },
+      ],
+      choices: [
+        { text: 'عرفنا إزاي إنها من المنشية؟', next: 'ab_clue' },
+        { text: 'كلمت علاء عماد في ٥/٨؟', next: 'ab_alaa' },
+      ],
+    },
+    ab_clue: {
+      id: 'ab_clue',
+      lines: [
+        { who: 'ahmed_basheer', text: 'كانت مركّبة طين طازة على الكاوتش زي طين القطعة ١٥، وكان لازق على الإكصدام استيكر باركنج المنشية. وكنت بكلمك وقتها علشان ماتش الأهلي ونسيت أبص في باقي الأرقام، حقك عليّا.' },
+      ],
+      effects: [{ type: 'flag', id: 'ahmed_talked' }],
+      next: 'ab_again',
+    },
+    ab_alaa: {
+      id: 'ab_alaa',
+      lines: [
+        { who: 'ahmed_basheer', text: 'علاء عماد مستنيك في قرية ٥/٨ التمنيات من امبارح. قالي معاه فرق مساحات بين ورق الجمعية بتاع ٢٠٢٤ وورق الإصلاح الزراعي، وده اللي كان معصب خالك.' },
+      ],
+      effects: [{ type: 'flag', id: 'ahmed_talked' }],
+      next: 'ab_again',
+    },
+    ab_again: {
+      id: 'ab_again',
+      lines: [{ who: 'ahmed_basheer', text: 'أي مشوار في الثورة أو أبيس كلمني يا ياسو وأنا تحت أمرك.' }],
+      choices: [
+        { text: 'بعد ما نرجّع خالي علينا قعدة في قهوة عم مهدي.', next: 'ab_match' },
+        { text: 'ربنا يخليك يا أحمد.', next: 'ab_bye' },
+      ],
+    },
+    ab_match: {
+      id: 'ab_match',
+      lines: [{ who: 'ahmed_basheer', text: 'أكيد يا باشا، بس نخلّص موضوع الحاج محمود الأول، وبعدها التالتة شمال مستنيانا!' }],
+      next: 'ab_again',
+    },
+    ab_bye: { id: 'ab_bye', lines: [{ who: 'ahmed_basheer', text: 'خلي تليفونك مفتوح يا ياسين.' }] },
+    ab_done: { id: 'ab_done', lines: [{ who: 'ahmed_basheer', text: 'مبروك يا ياسو! وجود الحاج محمود بينا بالسلامة أحلى من أي بطولة!' }] },
+  },
+}
+
+const alaa_emad: Dialogue = {
+  character: 'alaa_emad',
+  entries: [{ node: 'al_done', when: { flags: ['found_mahmoud'] } }, { node: 'al_again', when: { flags: ['alaa_talked'] } }, { node: 'al_first' }],
+  nodes: {
+    al_first: {
+      id: 'al_first',
+      lines: [
+        { who: 'alaa_emad', text: 'أهلاً يا ياسين. كنت متأكد إنك هتوصل هنا لقرية ٥/٨ التمنيات، خالك محمود لسه سايب عندي كراسة مقارنة الأحواض.' },
+        { who: 'player', text: 'علاء، خالي لاحظ إيه في القياس الجديد قبل ما يختفي؟' },
+        { who: 'alaa_emad', text: 'قعدنا هنا يوم الجمعة نطابق إحداثيات أحواض التمنيات وقرية ١٥ مع لوح الأرشيف القديمة اللي فضلت بعد نقل ملفات زلزال ٩٢. لقينا حجر القطعة ١٥ الجنوبي اتنقل ١٤ متر ناحية الترعة علشان يوسّع أرض التعويضات لملف شوقي.' },
+      ],
+      choices: [
+        { text: 'والنسخة الأصلية السليمة فين دلوقتي؟', next: 'al_copy' },
+        { text: 'ليه ربط موضوع الترام والمكتبة ببعض؟', next: 'al_timeline' },
+      ],
+    },
+    al_copy: {
+      id: 'al_copy',
+      lines: [
+        { who: 'alaa_emad', text: 'محمود عمل صورة مصدّقة ومضاها في مكتبة الإسكندرية اللي حضر افتتاحها سنة ٢٠٠٢، وحطها في مظروف بأرقام جدارية الحروف عشان مفيش سمسار يوصلها. ومعايا هنا نوتة بالإحداثيات الصحيحة تشهدله.' },
+      ],
+      effects: [{ type: 'flag', id: 'alaa_talked' }],
+      next: 'al_again',
+    },
+    al_timeline: {
+      id: 'al_timeline',
+      lines: [
+        { who: 'alaa_emad', text: 'قال لي من ساعة زلزال ٩٢ لحد موكب المومياوات ٢٠٢١ الناس بتهتم بالتاريخ الكبير وتنسى خرائط العزب الصغيرة. ووقت تطوير ترام الرمل السريع السنة دي والزحمة على طريق أبيس، كل اللي ساوموا على الأرض اتكشفوا.' },
+      ],
+      effects: [{ type: 'flag', id: 'alaa_talked' }],
+      next: 'al_again',
+    },
+    al_again: {
+      id: 'al_again',
+      lines: [{ who: 'alaa_emad', text: 'القياسات الأصلية متسجلة عندي يا ياسين… لما تروح إسكندرية وتجيب الظرف من المكتبة، الحقيقة كلها هتركب على بعضها.' }],
+      choices: [
+        { text: 'أشوفك على خير يا علاء.', next: 'al_bye' },
+      ],
+    },
+    al_bye: { id: 'al_bye', lines: [{ who: 'alaa_emad', text: 'مع السلامة يا ياسين، وسلم على ستّك مهدية.' }] },
+    al_done: { id: 'al_done', lines: [{ who: 'alaa_emad', text: 'خالك علّمنا إن المساحة الصح بتبان حتى بعد سنين. مبروك رجوعه يا ياسين.' }] },
   },
 }
 
 export const VILLAGER_DIALOGUES: Partial<Record<CharacterId, Dialogue>> = {
   umm_saeed, omda, mounir, abdo, hamada, hagga_fatma, metwally, dr_amal, barakat, saber,
+  am_mahdi, am_arafa, ahmed_basheer, alaa_emad,
 }

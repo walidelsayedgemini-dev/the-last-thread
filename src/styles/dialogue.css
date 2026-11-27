@@ -12,12 +12,12 @@
   content: ''; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(0deg, #000e 0%, #0009 32%, transparent 62%), radial-gradient(ellipse at 50% 30%, transparent 40%, #000a 100%);
 }
-.dialogue.entering .dlg-art.npc { animation: dlg-in-npc 0.5s ease-out both; }
-.dialogue.entering .dlg-art.player { animation: dlg-in-player 0.5s ease-out both; }
-.dialogue.entering .dlg-box { animation: dlg-in-box 0.4s ease-out both; }
-@keyframes dlg-in-npc { from { opacity: 0; transform: translateX(-40px); } }
-@keyframes dlg-in-player { from { opacity: 0; transform: translateX(40px); } }
-@keyframes dlg-in-box { from { opacity: 0; transform: translateY(24px); } }
+.dialogue.entering .dlg-art.npc { animation: dlg-in-npc 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.dialogue.entering .dlg-art.player { animation: dlg-in-player 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.dialogue.entering .dlg-box { animation: dlg-in-box 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes dlg-in-npc { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes dlg-in-player { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes dlg-in-box { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
 /* Portraits: NPC on the left (the visual "other side" in RTL), investigator on the right. */
 .dlg-art {

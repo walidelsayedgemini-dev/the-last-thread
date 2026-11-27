@@ -1,9 +1,0 @@
-Pompey's Pillar with sphinx — Alexandria
-
-Photographer: Daniel Mayer (Wikimedia Commons user Mav)
-Source: https://commons.wikimedia.org/wiki/File:Alexandria_-_Pompey%27s_Pillar_with_sphinx.JPG
-Selected license: Creative Commons Attribution-ShareAlike 4.0 International
-License: https://creativecommons.org/licenses/by-sa/4.0/
-
-The photo is used for the real Pompey's Pillar landmark in The Last Thread.
-This project's WebP copy was re-encoded from the 960 x 1280 Wikimedia thumbnail without cropping. The display may apply mild CSS color/brightness treatment. The photo and any adaptations remain under CC BY-SA 4.0. This license applies to this photograph, not to the game's original code, story, or other artwork. No endorsement by the photographer is implied.

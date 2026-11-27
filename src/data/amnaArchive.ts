@@ -66,7 +66,7 @@ export const ARCHIVE_DIALOGUES: Partial<Record<CharacterId, Dialogue>> = {
         { text: 'خلّي رسالتها للعيلة', next: 'privacy' },
       ] },
       credit: { id: 'credit', lines: [{ who: 'mona_archive', text: 'كتبت: «آمنة، صاحبة النسخة الأصلية». لما حد يرجع للملف بعدنا هيعرف مين حماها.' }], effects: [{ type: 'flag', id: 'amna_decided' }, { type: 'flag', id: 'amna_credit' }] },
-      privacy: { id: 'privacy', lines: [{ who: 'mona_archive', text: 'هكتب إن النسخة أودعتها واحدة من أبيس. وخُد الرسالة لستّك زينب. حقكم تقروها سوا.' }], effects: [{ type: 'flag', id: 'amna_decided' }, { type: 'flag', id: 'amna_private' }] },
+      privacy: { id: 'privacy', lines: [{ who: 'mona_archive', text: 'هكتب إن النسخة أودعتها واحدة من أبيس. وخُد الرسالة لستّك مهدية. حقكم تقروها سوا.' }], effects: [{ type: 'flag', id: 'amna_decided' }, { type: 'flag', id: 'amna_private' }] },
     },
   },
 }

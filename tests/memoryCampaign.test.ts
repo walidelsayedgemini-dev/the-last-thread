@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { MemoryCampaign } from '../src/core/memoryCampaign'
 import { MAIN_STORIES, MEMORY_CHAPTERS, MEMORY_PEOPLE, MEMORY_PLACES, REGIONS, YEARS, relatedChapters, type MemoryChapter } from '../src/data/memoryWorld'
 import { MemoryStorage } from '../src/services/storage'
+import { resolveMemoryScene } from '../src/ui/memoryScene'
 
 function solve(game: MemoryCampaign, chapter: MemoryChapter) {
   for (const place of chapter.sites) {
@@ -14,14 +15,17 @@ function solve(game: MemoryCampaign, chapter: MemoryChapter) {
 }
 
 describe('Yassin’s archive', () => {
-  it('connects 500 playable places and 200 witnesses to 100 dated events', () => {
-    expect(REGIONS).toHaveLength(20)
-    expect(MEMORY_PLACES).toHaveLength(500)
-    expect(new Set(MEMORY_PLACES.map(place => place.title)).size).toBe(500)
-    expect(MEMORY_PEOPLE).toHaveLength(200)
-    expect(new Set(MEMORY_PEOPLE.map(({ witness }) => witness.name)).size).toBe(200)
-    expect(MEMORY_CHAPTERS).toHaveLength(100)
-    expect(new Set(MEMORY_CHAPTERS.map(event => [event.year, event.month, event.day].join('-'))).size).toBe(100)
+  it('connects 1000 playable places (500 Abis + 500 Alexandria) and 400 witnesses to 200 dated events', () => {
+    expect(REGIONS).toHaveLength(40)
+    expect(REGIONS.filter(r => r[1] === 'الإسكندرية')).toHaveLength(20)
+    expect(MEMORY_PLACES.filter(p => REGIONS[p.region][1] === 'الإسكندرية')).toHaveLength(500)
+    expect(MEMORY_PLACES.filter(p => REGIONS[p.region][1] !== 'الإسكندرية')).toHaveLength(500)
+    expect(MEMORY_PLACES).toHaveLength(1000)
+    expect(new Set(MEMORY_PLACES.map(place => place.title)).size).toBe(1000)
+    expect(MEMORY_PEOPLE).toHaveLength(400)
+    expect(new Set(MEMORY_PEOPLE.map(({ witness }) => witness.name)).size).toBe(400)
+    expect(MEMORY_CHAPTERS).toHaveLength(200)
+    expect(new Set(MEMORY_CHAPTERS.map(event => [event.year, event.month, event.day].join('-'))).size).toBe(200)
     const discovered = new Set<number>()
     const queue = [MEMORY_CHAPTERS[0]]
     for (const chapter of queue) {
@@ -30,7 +34,7 @@ describe('Yassin’s archive', () => {
       queue.push(...relatedChapters(chapter))
       for (const witness of chapter.witnesses) expect(witness.needs).toContain(witness.correctSlot)
     }
-    expect(discovered.size).toBe(100)
+    expect(discovered.size).toBe(200)
     expect(MEMORY_PEOPLE.filter(({ witness }) => witness.friend).map(({ witness }) => witness.name))
       .toEqual(['علاء عماد', 'أحمد بشير', 'ياسمين سلطان'])
   })
@@ -78,5 +82,16 @@ describe('Yassin’s archive', () => {
     expect(game.substantiate(chapter, first.id, first.correctSlot)).toBe(true)
     expect(game.substantiate(chapter, second.id, second.correctSlot)).toBe(true)
     expect(game.confirmed(chapter)).toBe(true)
+  })
+
+  it('resolves photorealistic scene assets for every archive place in past and present', () => {
+    for (const place of MEMORY_PLACES) {
+      for (const past of [false, true]) {
+        const scene = resolveMemoryScene(place, past)
+        expect(scene.src).toMatch(/\.webp($|\?)/)
+        expect(scene.alt.length).toBeGreaterThan(0)
+        expect(scene.yearLabel.length).toBe(4)
+      }
+    }
   })
 })

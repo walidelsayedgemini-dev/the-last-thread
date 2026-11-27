@@ -108,8 +108,8 @@ export type EpilogueBlock = { title: string; lines: string[]; when: Condition }
 export const EPILOGUE: EpilogueBlock[] = [
   { title: 'اللي بقي في أبيس', when: {},
     lines: [
-      'ستّك زينب فتحت ماكينة السنجر لأول مرة من سنين، وفصّلت لمحمود جلابية جديدة… وربطت في طرفها خيط أحمر صغير.',
-      'عم حسن قعد على دكة الجامع وحكى للشباب: «زمان الأرض كانت بتتحمي بالرجالة… النهاردة بالورق. والورق لازم حد يحرسه».',
+      'ستّك مهدية فتحت ماكينة السنجر لأول مرة من سنين، وفصّلت لمحمود جلابية جديدة… وربطت في طرفها خيط أحمر صغير.',
+      'عم حسن قعد على دكة الجامع ورا المضيفة وحكى للشباب: «زمان كنا بنحمي الزرع بالوقفة سوا، والنهاردة لازم نحميه قبل ما يتزوّر ورقه».',
     ] },
   { title: 'اللي كشفته الأدلة الإضافية', when: { evidence: ['e_match_night_photo', 'e_fathy_testimony', 'e_pillar_photo'] },
     lines: [
@@ -138,7 +138,7 @@ export type SideQuest = {
 
 /** Optional character stories. They reuse existing scenes and never gate the main case. */
 export const SIDE_QUESTS: SideQuest[] = [
-  { id: 'q_mother', title: 'خيط الأم', giver: 'ستّك زينب', visible: { flags: ['zeinab_talked'] },
+  { id: 'q_mother', title: 'خيط الأم', giver: 'ستّك مهدية', visible: { flags: ['zeinab_talked'] },
     summary: 'ستّك بتخبّي حكاية أول خيط أحمر في العيلة.',
     steps: [
       { text: 'اسأل ستّك عن ماما والخيط الأحمر', when: { flags: ['zeinab_thread_story'] } },

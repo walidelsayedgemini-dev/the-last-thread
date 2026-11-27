@@ -84,7 +84,7 @@ try {
   assert(await page.locator('.inv-photo').evaluate(img => img.complete && img.naturalWidth > 0), '2D scene artwork did not load')
   assert(await page.locator('.inv-nav-btn').count() === 2, 'scene and map navigation are missing')
   assert(await page.locator('.inv-objective-cta').count() === 1, 'the current objective has no direct action')
-  assert((await page.locator('.inv-scene-photo').getAttribute('src')).includes('zeinab-room'), 'Zeinab scene still reuses generic fields')
+  assert((await page.locator('.inv-scene-photo').getAttribute('src')).includes('zeinab-home'), 'Zeinab scene still reuses generic fields')
   assert(await page.locator('.inv-field-log').count() === 1, 'field-investigation notes are missing')
   await page.waitForSelector('.chapter-banner.in .chapter-title', { timeout: 6_000 })
   assert((await page.locator('.chapter-banner .chapter-title').textContent()).includes('الباب المقفول'), 'the first chapter banner did not appear')

@@ -5,7 +5,7 @@ export type TutorialAction = 'inspect' | 'photo' | 'talk' | 'casefile' | 'thread
 export type TutorialStep = { id: TutorialAction; title: string; body: string; selectors: string[] }
 
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
-  { id: 'talk', title: 'كلّم الناس', body: 'ابدأ بزينب: الوشوش اللي في المشهد شايلة نص الحقيقة. دوس عليها واتكلم معاها.', selectors: ['.inv-person', '.inv-stage'] },
+  { id: 'talk', title: 'كلّم الناس', body: 'ابدأ بمهدية: الوشوش اللي في المشهد شايلة نص الحقيقة. دوس عليها واتكلم معاها.', selectors: ['.inv-person', '.inv-stage'] },
   { id: 'inspect', title: 'بصّ على العلامة', body: 'دوس على دبوس المكان عشان تفحص الأثر وتسمع الحكاية.', selectors: ['.inv-pin.kind-inspect', '.inv-pin', '.inv-stage'] },
   { id: 'casefile', title: 'افتح ملف القضية', body: 'من زر الملف شوف الأدلة والناس والخطوة الجاية.', selectors: ['.inv-file-btn', '.inv-header'] },
   { id: 'hint', title: 'خد تلميح لو اتزنقت', body: 'زر التلميح يديك دفعة صغيرة. بس خلي بالك: التلميحات بتخصم من التقدير.', selectors: ['.inv-actions .inv-act:nth-child(4)', '.inv-mobile-nav button:nth-child(4)', '.inv-header'] },

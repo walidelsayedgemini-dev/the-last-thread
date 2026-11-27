@@ -23,9 +23,9 @@
 .reduced-motion .fx-layer { display: none; }
 
 /* ---- Scene entry, parallax, header extras ------------------------------------------------------------------- */
-.inv-scene-art.enter { animation: scene-enter .7s cubic-bezier(.2, .8, .3, 1) both; }
-@keyframes scene-enter { from { opacity: 0; transform: translateY(14px) scale(.985); filter: brightness(1.6) blur(3px); } to { opacity: 1; transform: none; filter: none; } }
-body:not(.reduced-motion) .inv-scene-art .inv-scene-photo { transform: translate(calc(var(--px, 0) * -9px), calc(var(--py, 0) * -6px)) scale(1.045); transition: transform .35s ease-out; }
+.inv-scene-art.enter { animation: scene-enter .34s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes scene-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+body:not(.reduced-motion) .inv-scene-art .inv-scene-photo { transform: translate(calc(var(--px, 0) * -9px), calc(var(--py, 0) * -6px)) scale(1.045); transition: transform .42s cubic-bezier(.22, 1, .36, 1); }
 body:not(.reduced-motion) .inv-scene-art:hover .inv-scene-photo { transform: translate(calc(var(--px, 0) * -9px), calc(var(--py, 0) * -6px)) scale(1.045); }
 .inv-ring { position: relative; min-width: 44px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: conic-gradient(var(--area-accent, #c9aa78) var(--p), #ffffff3a 0); flex: none; box-shadow: 0 0 0 1px #ffffff22; }
 .inv-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: #0b141a; }
@@ -52,11 +52,12 @@ body.high-contrast :is(.inv-field-log, .inv-sidebar, .cf-folder, .inv-interactio
 body.high-contrast :is(p, small, span, li) { text-shadow: 0 1px 0 #000; }
 body.high-contrast .inv-scene-shade { opacity: .6; }
 
-/* Dialogue: dim + blur the scene so the card never fights with the scene captions behind it */
-.dialogue { background: linear-gradient(180deg, #0000 10%, #000b 70%); backdrop-filter: blur(3px) saturate(.85); animation: fade-in .25s both; }
-.dlg-card { animation: dlg-rise .35s cubic-bezier(.2, .9, .3, 1) both; }
-@keyframes dlg-rise { from { opacity: 0; transform: translateY(26px); } }
-.reduced-motion .dlg-card, .reduced-motion .dialogue { animation: none; }
+/* Dialogue: calm fade without harsh visual flash */
+.dialogue { background: linear-gradient(180deg, #0000 10%, #000b 70%); backdrop-filter: blur(2.5px) saturate(.9); animation: fade-in .26s cubic-bezier(.22, 1, .36, 1) both; }
+.dlg-card { animation: dlg-rise .28s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dlg-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.reduced-motion .dlg-card, .reduced-motion .dialogue, .reduced-motion .inv-scene-art.enter { animation: none; }
 
 /* ---- Real map (OpenStreetMap tiles, Google-Maps style) ------------------------------------------------------------ */
 .inv-map-switch { display: inline-flex; gap: 0; margin: 4px 0 10px; border: 1px solid #c9aa7855; }

@@ -14,7 +14,7 @@ export type Vec2 = { x: number; z: number }
 /** Real-world anchor used by field photography (GPS verification). */
 
 export type PlaceId =
-  | 'zeinab_home' | 'mahmoud_house' | 'cafe_ragab' | 'abis_mosque' | 'canal_bridge' | 'plot15'
+  | 'zeinab_home' | 'mahmoud_house' | 'cafe_ragab' | 'abis_mosque' | 'mudayfa' | 'cafe_mahdi' | 'cafe_arafa' | 'thawra_ezba5' | 'tamanyat_5_8' | 'canal_bridge' | 'plot15'
   | 'abis_stop' | 'raml_stop' | 'mansheya' | 'qaitbay' | 'bibliotheca' | 'pompey' | 'corniche'
   | 'kom_dikka' | 'alex_museum'
   | 'abis_market' | 'bakery' | 'old_school' | 'pump_station' | 'omda_house' | 'guava_orchard' | 'rail_crossing' | 'cemetery' | 'pigeon_tower' | 'mill' | 'health_unit' | 'waterwheel'
@@ -56,7 +56,7 @@ export type Gate = {
   closedText?: string
 }
 
-export type EventKind = 'match_ittihad' | 'market_day' | 'friday_prayer'
+export type EventKind = 'match_ittihad' | 'match_ahly' | 'market_day' | 'friday_prayer'
 
 export type RealEvent = {
   id: string
@@ -83,6 +83,7 @@ export type CharacterId =
   | 'salma' | 'nabil' | 'adham' | 'nadia' | 'farid' | 'omar' | 'hoda' | 'khaled'
   | 'nabil_survey' | 'mona_archive'
   | 'umm_saeed' | 'omda' | 'mounir' | 'abdo' | 'hamada' | 'hagga_fatma' | 'metwally' | 'dr_amal' | 'barakat' | 'saber'
+  | 'am_mahdi' | 'am_arafa' | 'ahmed_basheer' | 'alaa_emad'
 
 /** Deep character profile ("ملف تعريف"): drives the notebook, dialogue tone and the figure. */
 export type CharacterProfile = {

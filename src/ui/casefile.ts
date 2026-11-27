@@ -28,7 +28,7 @@ const SIMPLE_HIDDEN: Tab[] = ['organizer', 'map', 'calendar']
 type EvidenceFilter = 'all' | 'new' | Evidence['kind']
 const KIND_LABEL: Record<Evidence['kind'], string> = { object: 'جسم', testimony: 'شهادة', document: 'مستند', photo: 'صورة', trace: 'أثر' }
 const KIND_ICON: Record<Evidence['kind'], string> = { object: '▣', testimony: '“ ”', document: '▤', photo: '◉', trace: '⌁' }
-const EVENT_LABEL: Record<EventKind, string> = { match_ittihad: 'مباراة الاتحاد', market_day: 'سوق', friday_prayer: 'صلاة الجمعة' }
+const EVENT_LABEL: Record<EventKind, string> = { match_ittihad: 'مباراة الاتحاد', match_ahly: 'مباراة الأهلي', market_day: 'سوق', friday_prayer: 'صلاة الجمعة' }
 const ART_NOTE = 'رسوم توضيحية أصلية مكمّلة لسجلّ الدليل النصّي.'
 const CARD_W = 150
 const CARD_H = 164
@@ -177,7 +177,10 @@ export class CaseFileView {
         label, id === 'journal' && unread > 0 && h('span', { class: 'cf-tab-badge', 'aria-label': `${arabicDigits(unread)} صفحة جديدة` }, arabicDigits(unread)),
         id === 'letters' && mail > 0 && h('span', { class: 'cf-tab-badge mail', 'aria-label': `${arabicDigits(mail)} جواب جديد` }, arabicDigits(mail)))))
     const page = { letters: () => this.d.letters.list(s), evidence: () => this.evidence(s), people: () => this.people(s), objectives: () => this.objectives(s), board: () => this.board(s), journal: () => this.journal(s), organizer: () => this.organizer(s), life: () => this.life(s), map: () => this.map(s), calendar: () => this.calendar(s) }[this.tab]()
+    this.pageEl.classList.remove('entering')
+    void this.pageEl.offsetWidth
     setChildren(this.pageEl, page)
+    this.pageEl.classList.add('entering')
   }
 
   // ---- Evidence -----------------------------------------------------------------------------------------------------

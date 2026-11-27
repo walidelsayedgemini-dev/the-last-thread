@@ -17,7 +17,7 @@ export const PLACES: Record<PlaceId, Place> = {
     description: 'واجهة فيلا فاتحة وسلّم مزدوج على طريق الحرية. قرب المدخل، منى بتقابل أهل أبيس اللي مودعين صورهم في أرشيفها الأهلي.',
   },
   zeinab_home: {
-    id: 'zeinab_home', name: 'بيت ستّك زينب', short: 'البيت', mapPos: { lat: 31.1472, lng: 30.0062 }, realSite: false, district: 'abis', pos: { x: 40, z: 240 },
+    id: 'zeinab_home', name: 'بيت ستّك مهدية', short: 'البيت', mapPos: { lat: 31.1472, lng: 30.0062 }, realSite: false, district: 'abis', pos: { x: 40, z: 240 },
     description: 'بيت طوب أحمر بدورين في آخر شارع الجامع في عزبة ١٥. الباب الأخضر مشقق من الشمس، وماكينة الخياطة السنجر بتاعة ستّك لسه بتشتغل بالرجل. هنا بتصحى وهنا بترجع تنام.',
   },
   mahmoud_house: {
@@ -29,8 +29,28 @@ export const PLACES: Record<PlaceId, Place> = {
     description: 'كراسي خشب وترابيزات صاج تحت تعريشة عنب، وتليفزيون معلّق على الحيطة مايتطفيش وقت ماتشات الاتحاد. كل أخبار العزبة بتعدّي من هنا قبل ما توصل لأصحابها.',
   },
   abis_mosque: {
-    id: 'abis_mosque', name: 'جامع العزبة', short: 'الجامع', mapPos: { lat: 31.1461, lng: 30.008 }, realSite: false, district: 'abis', pos: { x: 70, z: 268 },
-    description: 'جامع صغير بمادنة بيضا وقبة خضرا. عم حسن بيقعد على دكّته بعد صلاة العصر يحكي عن أيام ما كانت أبيس كلها أرض زراعية.',
+    id: 'abis_mosque', name: 'جامع قرية ١٥', short: 'الجامع', mapPos: { lat: 31.1461, lng: 30.008 }, realSite: false, district: 'abis', pos: { x: 70, z: 268 },
+    description: 'جامع القرية بمئذنته البيضا وقبته القريبة، والمضيفة مبنية قدامه مباشرة في وش الشارع. عم حسن بيقعد هنا بعد العصر يحكي عن أيام ما كانت أبيس كلها أرض زراعية.',
+  },
+  mudayfa: {
+    id: 'mudayfa', name: 'المضيفة — قرية ١٥', short: 'المضيفة', mapPos: { lat: 31.1463, lng: 30.0079 }, realSite: false, district: 'abis', pos: { x: 66, z: 256 },
+    description: 'المضيفة المفتوحة بتاعة قرية ١٥، وفي ضهرها على طول جامع القرية بمئذنته البيضا. هنا بيتجمع كبار العزبة في المناسبات والعزا والقعدات العائلية ساعة الجد.',
+  },
+  cafe_mahdi: {
+    id: 'cafe_mahdi', name: 'قهوة عم مهدي — قرية ١٥', short: 'قهوة عم مهدي', mapPos: { lat: 31.1474, lng: 30.0086 }, realSite: false, district: 'abis', pos: { x: 132, z: 220 },
+    description: 'قهوة بلدي بسقف قش ولمبات دافية في قرية ١٥. الفلاحين وصنايعية العزبة بيتلمّوا فيها بعد الشغل على شاي براد وقعدة هادية بعيد عن زحمة الموقف.',
+  },
+  cafe_arafa: {
+    id: 'cafe_arafa', name: 'قهوة عم عرفة — قرية ١٥', short: 'قهوة عم عرفة', mapPos: { lat: 31.1464, lng: 30.0091 }, realSite: false, district: 'abis', pos: { x: 152, z: 262 },
+    description: 'قهوة ناصية في قلب قرية ١٥ عند تفرّع الشوارع الداخلية. كنكة الشاي ما بتبطلش على النار، وعم عرفة حافظ وش كل واحد دخل القرية من الصبح لليل.',
+  },
+  thawra_ezba5: {
+    id: 'thawra_ezba5', name: 'عزبة ٥ — الثورة الرئيسية', short: 'عزبة ٥ / الثورة', mapPos: { lat: 31.1214, lng: 30.0039 }, realSite: false, district: 'abis', pos: { x: -45, z: 128 },
+    description: 'عزبة ٥ على طريق الثورة الرئيسية جنب الترعة ومكنة الري القديمة. هنا ساكن أحمد بشير، وأي نقل تقيل بين قرية ١٥ والطريق العمومي بيعدّي من قدام بابهم.',
+  },
+  tamanyat_5_8: {
+    id: 'tamanyat_5_8', name: 'قرية ٥/٨ — التمنيات', short: 'قرية ٥/٨', mapPos: { lat: 31.1328, lng: 30.0156 }, realSite: false, district: 'abis', pos: { x: 215, z: 185 },
+    description: 'طريق هادي ببيوت طوب أحمر ونخل طويل في قرية خمسة تمانية (التمنيات). هنا بيت علاء عماد زميل ياسين في القياسات، وعنده أوراق حصر الترع القديمة.',
   },
   canal_bridge: {
     id: 'canal_bridge', name: 'كوبري الترعة', short: 'الكوبري', mapPos: { lat: 31.1488, lng: 30.007 }, realSite: false, district: 'abis', pos: { x: 40, z: 150 },

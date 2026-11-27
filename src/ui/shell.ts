@@ -318,7 +318,7 @@ export class Shell {
     const missed = report.missed.map(id => file.evidence.find(e => e.id === id)).filter(e => e !== undefined)
     const archiveEpilogue = file.id === 'case01' && (
       session.state.flags.has('amna_credit') ? 'منى أضافت اسم آمنة للملخص. ولأول مرة، النسخة اللي حمت الأرض رجع عليها اسم صاحبتها.'
-        : session.state.flags.has('amna_private') ? 'بعد ما الملف اتقفل، قريت جواب آمنة مع ستّك زينب. سابتك تكمّل القراءة على صوت ماكينة الخياطة.'
+        : session.state.flags.has('amna_private') ? 'بعد ما الملف اتقفل، قريت جواب آمنة مع ستّك مهدية. سابتك تكمّل القراءة على صوت ماكينة الخياطة.'
           : undefined)
     const epilogue = [...endingLines(file.id, report.grade, file.finale.ending)]
     if (archiveEpilogue) epilogue.push(archiveEpilogue)

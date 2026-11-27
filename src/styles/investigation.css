@@ -35,10 +35,12 @@
 /* ---- Body layout ---- */
 .inv-body { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; min-height: 0; }
 .inv-stage { position: relative; overflow: hidden; min-height: 0; background: #000; }
-.inv-stage.entering > * { animation: inv-enter 0.55s ease-out both; }
+.inv-stage.entering > * { animation: inv-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes inv-enter { from { opacity: 0; } to { opacity: 1; } }
-.inv-stage.entering > .inv-photo { animation: inv-photo-in 1.1s ease-out both; }
-@keyframes inv-photo-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: scale(1.0); } }
+.inv-stage.entering > .inv-photo { animation: inv-photo-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes inv-photo-in { from { opacity: 0; transform: scale(1.015); } to { opacity: 1; transform: scale(1.0); } }
+.reduced-motion .inv-stage.entering > *, .reduced-motion .inv-stage.entering > .inv-photo { animation: none; }
+@media (prefers-reduced-motion: reduce) { .inv-stage.entering > *, .inv-stage.entering > .inv-photo { animation: none; } }
 
 .inv-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; user-select: none; }
 .inv-photo-shade {

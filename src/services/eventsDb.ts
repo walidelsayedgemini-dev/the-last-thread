@@ -19,9 +19,9 @@ import type { StorageAdapter } from './storage'
 
 const EVENTS_SCHEMA_VERSION = 1
 const CACHE_KEY = 'ltt.events.v1'
-const KINDS: readonly EventKind[] = ['match_ittihad', 'market_day', 'friday_prayer']
+const KINDS: readonly EventKind[] = ['match_ittihad', 'match_ahly', 'market_day', 'friday_prayer']
 /** Default duration when `endsAt` is missing. */
-const DEFAULT_DURATION_H: Record<EventKind, number> = { match_ittihad: 2, market_day: 7, friday_prayer: 2 }
+const DEFAULT_DURATION_H: Record<EventKind, number> = { match_ittihad: 2, match_ahly: 2, market_day: 7, friday_prayer: 2 }
 
 export type EventsDocument = {
   schemaVersion: number

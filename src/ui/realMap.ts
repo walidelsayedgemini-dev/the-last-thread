@@ -13,7 +13,7 @@ import { sceneUrl, sceneSrcSet } from './art'
 import { h } from './dom'
 
 export const MAP_GLYPH: Record<string, string> = {
-  zeinab_home: '⌂', mahmoud_house: '⌂', cafe_ragab: '♨', abis_mosque: '☪', canal_bridge: '≋', plot15: '▦', abis_stop: '⇄',
+  zeinab_home: '⌂', mahmoud_house: '⌂', cafe_ragab: '♨', abis_mosque: '☪', mudayfa: '🏛', cafe_mahdi: '♨', cafe_arafa: '☕', thawra_ezba5: '≋', tamanyat_5_8: '⌂', canal_bridge: '≋', plot15: '▦', abis_stop: '⇄',
   raml_stop: '⇄', mansheya: '⚖', qaitbay: '♜', bibliotheca: '▤', pompey: '┃', corniche: '⚓',
 }
 

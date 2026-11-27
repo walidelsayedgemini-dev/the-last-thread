@@ -43,6 +43,11 @@ const SCENE_FILE: Record<string, string> = {
   mill: 'mill',
   health_unit: 'health-unit',
   waterwheel: 'waterwheel',
+  mudayfa: 'mudayfa',
+  cafe_mahdi: 'cafe-mahdi',
+  cafe_arafa: 'cafe-arafa',
+  thawra_ezba5: 'thawra-ezba5',
+  tamanyat_5_8: 'tamanyat-5-8',
 }
 
 const byStem = (files: Record<string, string>, stem: string) => files[Object.keys(files).find(k => k.endsWith(`/${stem}.webp`)) ?? '']
@@ -196,4 +201,14 @@ export const PIN_POS: Record<string, { x: number; y: number }> = {
   hs_health_unit_register_c3: { x: 22, y: 74 },
   hs_waterwheel_wheel_c3: { x: 34, y: 43 },
   hs_waterwheel_trough_c3: { x: 58, y: 59 },
+  hs_mudayfa_bench: { x: 64, y: 74 },
+  hs_mudayfa_mosque_wall: { x: 34, y: 38 },
+  hs_cafe_mahdi_kettle: { x: 14, y: 66 },
+  hs_cafe_mahdi_table: { x: 52, y: 70 },
+  hs_cafe_arafa_corner: { x: 46, y: 66 },
+  hs_cafe_arafa_kettle: { x: 41, y: 54 },
+  hs_thawra_ezba5_tracks: { x: 28, y: 72 },
+  hs_thawra_ezba5_boat: { x: 62, y: 68 },
+  hs_tamanyat_5_8_desk: { x: 34, y: 66 },
+  hs_tamanyat_5_8_street: { x: 66, y: 58 },
 }
