@@ -25,6 +25,7 @@ import { SettingsStore, type Settings } from './engine/save'
 import { Session } from './game/session'
 import { haptic, onBackButton } from './services/native'
 import { EventsDb, JsonUrlProvider, type EventsDocument } from './services/eventsDb'
+import { voicePath } from './data/voice'
 import { HintService, RemoteChatProvider } from './services/hints'
 import { ProfileService, type Profile } from './services/profiles'
 import { LocalStorageAdapter, MemoryStorage } from './services/storage'
@@ -169,7 +170,7 @@ async function boot(): Promise<void> {
     mailCount: () => (session ? letters.unreadCount(session) : 0),
   })
 
-  const shell = new Shell({ settings, profiles, events, audio, now }, {
+  const shell = new Shell({ settings, profiles, audio }, {
     play: id => void beginProfile(profiles.select(id)),
     create: (avatar, mode) => void beginProfile(profiles.create(avatar, mode), 'force'),
     resume: () => resume(),
@@ -198,7 +199,15 @@ async function boot(): Promise<void> {
         tutorial.start(session)
       }
     },
-    startWorld: () => startWorld(),
+    startWorld: () => {
+      if (session?.caseId === 'case01' && !session.state.evidence.has('e_thread_door')) {
+        currentPlace = 'mahmoud_house'
+        const place = PLACES[currentPlace]
+        session.setPosition(place.district, place.pos.x, place.pos.z, 0)
+        session.save()
+      }
+      startWorld()
+    },
     nextCase: () => startNextCase(),
     help: () => showHelp(),
   })
@@ -244,7 +253,6 @@ async function boot(): Promise<void> {
 
   function startWorld(): void {
     if (!session) return
-    shell.el.onclick = null
     shell.go('none')
     paused = false
     active = true
@@ -254,11 +262,14 @@ async function boot(): Promise<void> {
     audio.playMusic(musicFor(currentPlace), { loop: true })
     audio.setArea(currentPlace)
     audio.setScene(PLACES[currentPlace].district, 0.4, 0.2)
-    if (!settings.data.helpSeen) window.setTimeout(() => showHelp(), 900)
-    else maybeRecap()
+    const atOpeningDoor = session.caseId === 'case01' && currentPlace === 'mahmoud_house' && !session.state.flags.has('zeinab_talked')
+    if (!atOpeningDoor) {
+      if (!settings.data.helpSeen) window.setTimeout(() => showHelp(), 900)
+      else maybeRecap()
+    }
     loopRef?.resetAccumulator()
     window.setTimeout(storyCheck, 700)
-    if (session.caseId === 'case01' && !session.progress.tutorial.completed && new URLSearchParams(location.search).get('tutorial') !== '0') tutorial.start(session)
+    if (!atOpeningDoor && session.caseId === 'case01' && new URLSearchParams(location.search).get('tutorial') !== '0') tutorial.start(session)
   }
 
   function startNextCase(): void {
@@ -345,6 +356,8 @@ async function boot(): Promise<void> {
     if (before !== place.district) audio.playMusic(musicFor(id), { loop: true })
     if (before !== place.district) tutorial.action('travel')
     hud.hideNarration()
+    if (id === 'zeinab_home' && session.caseId === 'case01' && !session.state.flags.has('zeinab_talked') &&
+      new URLSearchParams(location.search).get('tutorial') !== '0') tutorial.start(session)
   }
 
   function openCaseFile(): void {
@@ -458,6 +471,8 @@ async function boot(): Promise<void> {
     if (hotspot.kind === 'inspect') tutorial.action('inspect')
     else if (hotspot.kind === 'photo') tutorial.action('photo')
     if (hotspot.text) hud.narrate(session.fill(hotspot.text))
+    const voice = voicePath(session.caseId, hotspot.id, 0)
+    if (voice) audio.playVoice(voice)
     if (hotspot.kind === 'travel' && hotspot.to) {
       session.useHotspot(hotspot)
       const to = hotspot.to

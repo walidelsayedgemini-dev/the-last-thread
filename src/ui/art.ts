@@ -105,6 +105,7 @@ export function playerPortrait(avatar?: Partial<Avatar>, variant: 'neutral' | 't
 export const PIN_POS: Record<string, { x: number; y: number }> = {
   hs_sewing: { x: 14, y: 50 },
   hs_door_thread: { x: 74, y: 44 },
+  hs_mahmoud_voicemail: { x: 34, y: 43 },
   hs_desk: { x: 44, y: 70 },
   hs_coat: { x: 88, y: 36 },
   hs_stone: { x: 36, y: 62 },

@@ -2,7 +2,7 @@
  * Menu shell: title, profiles, character creation, mode selection, intro, pause, settings, ending.
  * Rendered as full-screen "case file" pages; the HUD and overlays live in their own modules.
  */
-import { arabicDigits, formatDateTime } from '../core/clock'
+import { arabicDigits } from '../core/clock'
 import { CASE_01 } from '../data/case01'
 import { CHARACTERS } from '../data/characters'
 import { endingLines } from '../data/endings'
@@ -12,7 +12,6 @@ import type { Audio } from '../engine/audio'
 import type { Settings, SettingsStore } from '../engine/save'
 import { ACHIEVEMENTS, getAchievement } from '../game/achievements'
 import type { Session } from '../game/session'
-import type { EventsDb } from '../services/eventsDb'
 import { HOMES, MAX_PROFILES, type Avatar, type ProfileService } from '../services/profiles'
 import { cinematicUrl, playerPortrait, portraitUrl, titleArt } from './art'
 import { h, setChildren, svg } from './dom'
@@ -47,9 +46,11 @@ export class Shell {
   private readonly bootBar = h('i')
   private draft: { avatar: Partial<Avatar> } = { avatar: { kind: 'yassin', gender: 'male', accent: ACCENTS[0], home: HOMES[0], name: 'ياسين' } }
   private typer?: { el: HTMLElement; full: string; at: number; done: () => void }
+  private revealIntro?: () => void
+  private introTimer?: number
 
   constructor(
-    private readonly s: { settings: SettingsStore; profiles: ProfileService; events: EventsDb; audio: Audio; now: () => number },
+    private readonly s: { settings: SettingsStore; profiles: ProfileService; audio: Audio },
     private readonly act: ShellActions,
   ) {
     this.el = h('div', { class: 'shell' })
@@ -76,6 +77,8 @@ export class Shell {
     this.screen = screen
     this.back = back
     this.typer = undefined
+    this.revealIntro = undefined
+    window.clearTimeout(this.introTimer)
     this.el.hidden = screen === 'none'
     this.el.dataset.screen = screen
     const page = {
@@ -94,17 +97,11 @@ export class Shell {
       else if (this.back) this.go(this.back)
       return true
     }
-    if (this.screen === 'intro' && ['Space', 'Enter', 'KeyE'].includes(e.code)) {
-      this.skipTyping()
+    if (this.revealIntro && ['Space', 'Enter', 'KeyE'].includes(e.code) && !(e.target instanceof HTMLButtonElement)) {
+      this.revealIntro()
       return true
     }
     return false
-  }
-
-  private skipTyping(): void {
-    const t = this.typer
-    if (!t) return
-    t.at = t.full.length
   }
 
   // ---- Screens -----------------------------------------------------------------------------------------------
@@ -238,24 +235,20 @@ export class Shell {
   }
 
   private mode(): HTMLElement {
-    const now = this.s.now()
-    const next = this.s.events.upcoming(now, 3, 'match_ittihad')
     const pick = (mode: GameMode) => this.act.create(this.draft.avatar, mode)
     return h('section', { class: 'page mode' },
       h('h2', null, 'اختار طريقة اللعب'),
       h('div', { class: 'cards' },
-        h('button', { class: 'card', onclick: () => pick('realistic') },
-          h('b', null, 'الوضع الواقعي'), h('small', null, 'بالوقت والتاريخ الحقيقي'),
-          h('p', null, 'القهوة بتقفل بالليل، حارس الموقع بيمشي بعد الخامسة، وبعض الأدلة الإضافية بتظهر بس في يوم ماتش الاتحاد. الأدلة الأساسية متاحة دايماً.'),
-          h('div', { class: 'clock-now' }, h('b', null, 'دلوقتي في القاهرة'), h('span', null, formatDateTime(now))),
-          next.length > 0 && h('ul', { class: 'fixtures' }, next.map(o => h('li', null, `${o.event.title} – ${formatDateTime(o.start)}`, o.event.provisional && h('em', null, ' (مؤقت)'))))),
         h('button', { class: 'card', onclick: () => pick('story') },
-          h('b', null, 'وضع القصة'), h('small', null, 'من غير ضغط وقت'),
-          h('p', null, 'كل الأدلة والأماكن متاحة في أي وقت. الساعة جوه اللعبة بتتحرك مع التحقيق وبتغمّق الأجواء كل ما تكتشف أكتر.'))),
+          h('b', null, 'وضع القصة'), h('small', null, 'العب في أي وقت'),
+          h('p', null, 'الساعة جوه اللعبة بتتحرك مع التحقيق.')),
+        h('button', { class: 'card', onclick: () => pick('realistic') },
+          h('b', null, 'الوضع الواقعي'), h('small', null, 'توقيت القاهرة بيفتح أدلة إضافية'),
+          h('p', null, 'الأدلة الأساسية متاحة دايمًا. مواعيد الماتشات في تقويم ملف القضية.'))),
       h('button', { class: 'btn ghost back', onclick: () => this.go('create', 'profiles') }, 'رجوع'))
   }
 
-  /** Typewriter intro; calls `startWorld` when finished or on click. */
+  /** Let players read at their own pace before entering the investigation. */
   showIntro(session: Session): void {
     this.screen = 'intro'
     this.el.hidden = false
@@ -267,32 +260,52 @@ export class Shell {
       ? ['case01-phone-call', 'case01-red-thread-door', 'case01-microbus-dawn'][Math.min(index, 2)]
       : `${file.id}-intro`
     const visual = h('div', { class: 'intro-visual', 'aria-hidden': true }, h('img', { src: cinematicUrl(introImageId(0)) ?? '', alt: '', decoding: 'async' }))
-    const skip = h('button', { class: 'btn primary', onclick: () => this.act.startWorld() }, 'ابدأ التحقيق ◂')
-    skip.hidden = true
+    const start = h('button', { class: 'btn primary', hidden: true, onclick: () => this.act.startWorld() }, 'ابدأ التحقيق ◂')
+    const reveal = h('button', { class: 'btn ghost', onclick: () => {
+      this.revealIntro?.()
+      start.focus()
+    } }, 'اعرض النص كله')
+    const finish = () => {
+      this.revealIntro = undefined
+      reveal.hidden = true
+      start.hidden = false
+    }
     setChildren(this.el, h('section', { class: 'page intro' },
-      visual, h('div', { class: 'intro-copy' }, h('div', { class: 'stamp' }, `ملف رقم ${file.number}`), h('h2', null, file.title), body, skip)))
+      visual, h('div', { class: 'intro-copy' }, h('div', { class: 'stamp' }, `ملف رقم ${file.number}`), h('h2', null, file.title), body, reveal, start)))
+    const updateArt = (index: number) => {
+      const art = cinematicUrl(introImageId(index))
+      if (art) visual.querySelector('img')!.src = art
+    }
+    this.revealIntro = () => {
+      window.clearTimeout(this.introTimer)
+      this.typer = undefined
+      setChildren(body, lines.map(line => h('p', null, line)))
+      updateArt(lines.length - 1)
+      finish()
+    }
+    if (this.s.settings.data.reducedMotion) {
+      this.revealIntro()
+      return
+    }
     let i = 0
     const next = () => {
       if (i >= lines.length) {
-        skip.hidden = false
+        finish()
         return
       }
-      const art = cinematicUrl(introImageId(i))
-      if (art) visual.querySelector('img')!.src = art
+      updateArt(i)
       const p = h('p')
       body.append(p)
       this.s.audio.play('paper')
-      this.typer = { el: p, full: lines[i++], at: 0, done: () => setTimeout(next, 450) }
+      this.typer = { el: p, full: lines[i++], at: 0, done: () => { this.introTimer = window.setTimeout(next, 450) } }
     }
     next()
-    this.el.onclick = () => this.skipTyping()
   }
 
   showEnding(session: Session): void {
     this.screen = 'ending'
     this.el.hidden = false
     this.el.dataset.screen = 'ending'
-    this.el.onclick = null
     const file = session.caseFile
     const report = session.gradeReport()
     const st = session.progress.stats

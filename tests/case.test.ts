@@ -76,6 +76,12 @@ describe('case data integrity', () => {
 describe('case engine', () => {
   it('shows objectives progressively', () => {
     const { engine } = make()
+    const thread = CASE_01.hotspots.find(h => h.id === 'hs_door_thread')!
+    const voicemail = CASE_01.hotspots.find(h => h.id === 'hs_mahmoud_voicemail')!
+    expect(engine.currentObjective()?.id).toBe('o_first_thread')
+    expect(engine.hotspotAvailable(voicemail)).toBe(false)
+    engine.useHotspot(thread)
+    expect(engine.hotspotAvailable(voicemail)).toBe(true)
     expect(engine.currentObjective()?.id).toBe('o_zeinab')
     engine.apply([{ type: 'flag', id: 'zeinab_talked' }])
     expect(engine.currentObjective()?.id).toBe('o_house')

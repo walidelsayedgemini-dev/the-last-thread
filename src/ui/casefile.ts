@@ -157,7 +157,9 @@ export class CaseFileView {
     if (chapterEl) chapterEl.textContent = `الفصل ${arabicDigits(chapterAt + 1)} · ${CHAPTERS[chapterAt].title}`
     const unread = this.tab === 'journal' ? 0 : this.d.story.unreadCount(s)
     const mail = this.d.letters.unreadCount(s)
-    const tabs = this.d.simple() ? TABS.filter(([id]) => !SIMPLE_HIDDEN.includes(id)) : TABS
+    const tabs = this.d.simple()
+      ? TABS.filter(([id]) => !SIMPLE_HIDDEN.includes(id) || (id === 'calendar' && s.mode === 'realistic'))
+      : TABS
     if (!tabs.some(([id]) => id === this.tab)) this.tab = 'board'
     setChildren(this.tabsEl, tabs.map(([id, label]) =>
       h('button', { class: `cf-tab${id === this.tab ? ' on' : ''}`, role: 'tab', 'aria-selected': String(id === this.tab), onclick: () => { this.d.audio.play('ui'); this.setTab(id) } },

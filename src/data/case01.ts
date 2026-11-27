@@ -24,13 +24,8 @@ export const CASE_01: CaseFile = {
   title: 'خيط القطعة ١٥',
   tagline: 'خالك اختفى… وساب لك خيط أحمر.',
   intro: [
-    'أبيس. الساعة قرّبت على المغرب، وريحة الطين والدخان لسه معلّقة في الهوا.',
-    'تلات أيام من يوم ما خالك محمود اتّصل بيك آخر مرة. ماردّيتش. كنت مشغول… والمكالمة كانت دقيقة ونص.',
-    'سابلك رسالة صوتية بصوت مبحوح: «لو حصلي حاجة… دوّر على الخيط. وماتثقش في اللي بيضحك أكتر من اللازم».',
-    'بيته مقفول. تليفونه مقفول. وستّك زينب بتلف المسبحة وبتنده على اسمك كل شوية، كإنها بتتأكد إنك لسه موجود.',
-    'في أبيس، الأرض مش بس طين… الأرض فلوس. والطريق الجديد هيعدّي من القطعة ١٥.',
-    'خالك مش بس مهندس مساحة. هو اللي علّمك إن الخط المستقيم ماحدّش يقدر يلوّيه… وإن فيه ناس بتحاول.',
-    'اسمك {player}. وانت من {home}. وأنت اللي هتلاقيه.',
+    'أبيس. الساعة قرّبت على المغرب. من تلات أيام خالك محمود اتّصل بيك، ومن يومها اختفى.',
+    'وصلت قدّام بيته. الباب مقفول، وفي خيط أحمر مربوط في المقبض. قرّب وبصّ عليه يا {player}.',
   ],
 
   suspects: [
@@ -159,6 +154,8 @@ export const CASE_01: CaseFile = {
       pairs: [['e_survey_book', 'e_handwriting']], sets: ['handwriting_tied'] },
   ],
   objectives: [
+    { id: 'o_first_thread', title: 'افحص الخيط على الباب', detail: 'بصّ على الخيط الأحمر المربوط في المقبض.', place: 'mahmoud_house',
+      doneWhen: { evidence: ['e_thread_door'] } },
     { id: 'o_zeinab', title: 'كلّم ستّك زينب', detail: 'آخر واحدة كلّمت محمود. معاها المفتاح الاحتياطي.', place: 'zeinab_home', doneWhen: { flags: ['zeinab_talked'] } },
     { id: 'o_house', title: 'فتّش بيت خالك', detail: 'الباب، المكتب، والمعطف. كل حاجة ليها حكاية.', place: 'mahmoud_house',
       when: { flags: ['zeinab_talked'] }, doneWhen: { evidence: ['e_thread_door', 'e_survey_book', 'e_microbus_ticket'] } },
@@ -195,7 +192,11 @@ export const CASE_01: CaseFile = {
   ],
   hotspots: [
     { id: 'hs_door_thread', label: 'الخيط على الباب', place: 'mahmoud_house', offset: { x: 0, z: 9 }, kind: 'inspect', consumable: true,
-      text: 'خيط قطن أحمر مربوط في المقبض بعقدة غريبة. ريحة البحر لسه فيه.', effects: [{ type: 'evidence', id: 'e_thread_door' }] },
+      text: 'خيط قطن أحمر مربوط في المقبض بعقدة غريبة. افتكرت الرسالة الصوتية اللي خالك سابهالك. افتحها من المشهد.',
+      effects: [{ type: 'evidence', id: 'e_thread_door' }] },
+    { id: 'hs_mahmoud_voicemail', label: 'اسمع رسالة محمود', place: 'mahmoud_house', offset: { x: 0, z: -7 }, kind: 'inspect',
+      when: { evidence: ['e_thread_door'] },
+      text: 'رسالة خالك محمود: «لو حصلي حاجة… دوّر على الخيط. وماتثقش في اللي بيضحك أكتر من اللازم».' },
     { id: 'hs_desk', label: 'مكتب خالك (بالمفتاح)', place: 'mahmoud_house', offset: { x: -6, z: 8 }, kind: 'inspect', consumable: true,
       when: { flags: ['has_key'] }, text: 'فتحت الباب بمفتاح ستّك. المكتب مرتّب بشكل مريب… ودفتر المساحة مفتوح على آخر صفحة.',
       effects: [{ type: 'evidence', id: 'e_survey_book' }, { type: 'flag', id: 'read_survey' }] },

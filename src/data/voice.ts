@@ -5,10 +5,7 @@
 export type VoiceLineKey = `${string}:${string}:${number}`
 
 export const VOICE_LINES: Readonly<Record<VoiceLineKey, string>> = {
-  'case01:intro:0': 'audio/voice/c01_intro_0.mp3',
-  'case01:intro:1': 'audio/voice/c01_intro_1.mp3',
-  'case01:intro:2': 'audio/voice/c01_intro_2.mp3',
-  // Intro line 3 is player/home-dependent and intentionally remains caption-only.
+  'case01:hs_mahmoud_voicemail:0': 'audio/voice/c01_intro_2.mp3',
   'case01:h_confront_right:0': 'audio/voice/c01_h_confront_player.mp3',
   'case01:h_confront_right:1': 'audio/voice/c01_h_confront_hassan.mp3',
   'case01:r_confront_right:0': 'audio/voice/c01_r_confront_player.mp3',
