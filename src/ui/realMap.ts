@@ -9,6 +9,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { PLACE_LIST, PLACES } from '../data/places'
 import type { Place, PlaceId } from '../data/types'
+import { sceneUrl, sceneSrcSet } from './art'
 import { h } from './dom'
 
 export const MAP_GLYPH: Record<string, string> = {
@@ -34,6 +35,7 @@ export type RealMapDeps = {
 }
 
 export class RealMap {
+  private hour = 18
   readonly el: HTMLElement
   private readonly canvas: HTMLElement
   private map?: L.Map
@@ -111,6 +113,7 @@ export class RealMap {
     const here = PLACES[this.current]
     const same = p.district === here.district
     const body = h('div', { class: 'rm-pop' },
+      h('img', { class: 'rm-preview', src: sceneUrl(p.id, this.hour), srcset: sceneSrcSet(p.id, this.hour), sizes: '260px', alt: '' }),
       h('b', null, p.name),
       h('small', null, p.realSite ? 'مكان حقيقي في الإسكندرية' : 'مكان متخيَّل جوه حي أبيس الحقيقي'),
       h('p', null, p.description),
@@ -145,7 +148,8 @@ export class RealMap {
   }
 
   /** Update the player's place and (re)size the map after the element has been attached. */
-  show(current: PlaceId): HTMLElement {
+  show(current: PlaceId, hour: number): HTMLElement {
+    this.hour = hour
     const prevDistrict = PLACES[this.current].district
     this.current = current
     const map = this.ensure()

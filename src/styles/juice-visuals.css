@@ -86,6 +86,7 @@ body.high-contrast .inv-scene-shade { opacity: .6; }
 .rm-popup .leaflet-popup-content-wrapper { border-radius: 8px; background: #fff; color: #202124; direction: rtl; }
 .rm-popup .leaflet-popup-content { margin: 12px 14px; font-family: var(--font); line-height: 1.6; }
 .rm-pop { display: grid; gap: 4px; }
+.rm-popup .rm-preview { width: 100%; aspect-ratio: 2; object-fit: cover; border-radius: 4px; }
 .rm-pop b { font-size: 1.02rem; }
 .rm-pop small { color: #5f6368; }
 .rm-pop p { margin: 2px 0 6px; font-size: .85rem; color: #3c4043; }

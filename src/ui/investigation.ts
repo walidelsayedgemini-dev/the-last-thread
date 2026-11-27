@@ -55,7 +55,7 @@ export class InvestigationView {
   private mapKind: 'real' | 'drawn' = 'real'
   private readonly realMap = new RealMap({
     onSelect: id => this.selectPlace(id),
-    onFar: () => {},
+    onFar: id => this.d.onFarPlace?.(id),
     onUnavailable: () => { if (this.mapKind === 'real') { this.mapKind = 'drawn'; if (this.tab === 'map') this.render() } },
   })
 
@@ -268,16 +268,21 @@ export class InvestigationView {
     const guide = rel(stage.querySelector('.inv-guide'))
     const people = rel(stage.querySelector('.inv-people'))
     const margin = 8
-    const top = (guide ? guide.b : 0) + margin
+    const guideBelow = stage.querySelector('.inv-guide.opening') !== null
+    const top = (guide && !guideBelow ? guide.b : 0) + margin
     const placed: { l: number; r: number; t: number; b: number }[] = []
     for (const pin of pins) {
       const pw = pin.offsetWidth
       const ph = pin.offsetHeight
       let x = ox + (Number(pin.dataset.x) / 100) * iw
       let y = oy + (Number(pin.dataset.y) / 100) * ih
+      if (W <= 540 && pin.classList.contains('opening-thread')) {
+        x = W * 0.61
+        y = H * 0.55
+      }
       x = Math.max(margin + pw / 2, Math.min(W - margin - pw / 2, x))
       const overlapsPeople = (cx: number) => people && cx + pw / 2 > people.l && cx - pw / 2 < people.r
-      const bottom = (overlapsPeople(x) ? people!.t : H) - margin
+      const bottom = Math.min(overlapsPeople(x) ? people!.t : H, guide && guideBelow ? guide.t : H) - margin
       y = Math.max(top + ph / 2, Math.min(bottom - ph / 2, y))
       // Nudge down (then up) until it no longer collides with an already placed pin.
       const hits = (cy: number) => placed.some(p => x - pw / 2 < p.r && x + pw / 2 > p.l && cy - ph / 2 < p.b + 4 && cy + ph / 2 > p.t - 4)
@@ -326,6 +331,9 @@ export class InvestigationView {
     const active = s.engine.activeHotspots().filter(hotspot => hotspot.place === place.id)
     const people = CHARACTER_LIST.filter(c => c.id !== 'yassin' && c.place === place.id && s.present(c))
     const hour = s.clock.hour
+    const opening = s.caseId === 'case01' && place.id === 'mahmoud_house' && !s.state.flags.has('zeinab_talked')
+    const voicemail = opening ? active.find(hotspot => hotspot.id === 'hs_mahmoud_voicemail') : undefined
+    const pins = active.filter(hotspot => hotspot !== voicemail)
     return [
       ...sceneNeighbors(place.id).map(id => h('link', {
         rel: 'preload', as: 'image', href: sceneUrl(id, hour), imagesrcset: sceneSrcSet(id, hour),
@@ -336,9 +344,9 @@ export class InvestigationView {
         alt: place.name, draggable: 'false', loading: 'eager', fetchpriority: 'high', decoding: 'async',
       }),
       h('div', { class: 'inv-photo-shade', 'aria-hidden': true }),
-      this.guide(s, place, active.length + people.length),
-      h('div', { class: 'inv-pins' }, active.map((hotspot, i) => this.pin(hotspot, i, active.length))),
-      people.length > 0 && h('div', { class: 'inv-people', role: 'list', 'aria-label': 'الموجودين هنا' },
+      this.guide(s, place, active.length + people.length, opening, voicemail),
+      h('div', { class: 'inv-pins' }, pins.map((hotspot, i) => this.pin(hotspot, i, pins.length))),
+      people.length > 0 && h('div', { class: 'inv-people', role: 'group', 'aria-label': 'الموجودين هنا' },
         people.map(c => this.person(s, c))),
       active.length === 0 && people.length === 0
         && h('p', { class: 'inv-quiet' }, 'المكان هادي دلوقتي ومفيش أثر جديد. بص على الخطوة الجاية فوق.'),
@@ -346,7 +354,7 @@ export class InvestigationView {
   }
 
   /** The single source of "what do I do now" guidance. */
-  private guide(s: Session, place: Place, things: number): HTMLElement {
+  private guide(s: Session, place: Place, things: number, opening: boolean, voicemail?: Hotspot): HTMLElement {
     const objective = s.engine.currentObjective()
     if (!objective) {
       return h('div', { class: 'inv-guide done' },
@@ -354,6 +362,8 @@ export class InvestigationView {
         h('div', { class: 'inv-guide-copy' }, h('small', null, 'الخطوة الجاية'), h('b', null, 'افتح ملف القضية واربط الخيوط')),
         h('button', { class: 'inv-guide-go', onclick: this.d.onCaseFile }, 'الملف', h('span', { 'aria-hidden': true }, '←')))
     }
+    const thread = opening && s.state.evidence.has('e_thread_door') ? s.engine.evidenceInfo('e_thread_door') : undefined
+    const threadArt = thread && evidenceUrl(thread.id)
     const target = objective.place ? PLACES[objective.place] : undefined
     let action: HTMLElement | false = false
     let where = objective.detail
@@ -366,16 +376,22 @@ export class InvestigationView {
         where = `في ${target.district === 'city' ? 'إسكندرية' : 'أبيس'}: ${target.name}. اركب من ${stop.short}.`
         if (place.id !== stop.id) action = h('button', { class: 'inv-guide-go', onclick: () => this.selectPlace(stop.id) }, `روح ${stop.short}`, h('span', { 'aria-hidden': true }, '←'))
       }
-    } else if (target && things > 0) {
+    } else if (target && things > 0 && !opening) {
       where = 'انت في المكان الصح. افحص العلامات أو كلّم اللي موجود.'
     }
-    return h('div', { class: 'inv-guide' },
+    return h('div', { class: `inv-guide${opening ? ' opening' : ''}` },
       h('span', { class: 'inv-guide-mark', 'aria-hidden': true }, '⌖'),
       h('div', { class: 'inv-guide-copy' },
         h('small', null, 'الخطوة الجاية'),
         h('b', null, objective.title),
-        h('span', null, where)),
-      action)
+        h('span', null, where),
+        thread && h('div', { class: 'inv-opening-evidence', role: 'status' },
+          threadArt && h('img', { src: threadArt, alt: '', decoding: 'async' }),
+          h('div', null, h('small', null, 'الدليل اتسجل'), h('b', null, thread.title)))),
+      h('div', { class: 'inv-guide-actions' },
+        voicemail && h('button', { class: 'inv-guide-go inv-voicemail', onclick: () => this.d.onHotspot(voicemail) },
+          h('span', { 'aria-hidden': true }, '▶'), voicemail.label),
+        action))
   }
 
   private pin(hotspot: Hotspot, index: number, count: number): HTMLButtonElement {
@@ -383,27 +399,30 @@ export class InvestigationView {
     const spread = count > 1 ? (index - (count - 1) / 2) * 20 : 0
     const left = fixed?.x ?? Math.max(14, Math.min(86, 50 + hotspot.offset.x * 3 + spread))
     const top = fixed?.y ?? Math.max(34, Math.min(62, 50 + hotspot.offset.z * 0.6))
+    const thread = hotspot.id === 'hs_door_thread'
+    const voicemail = hotspot.id === 'hs_mahmoud_voicemail'
+    const label = voicemail ? 'اسمع' : KIND_LABEL[hotspot.kind]
     return h('button', {
-      class: `inv-pin kind-${hotspot.kind}${left > 60 ? ' label-start' : ''}`,
+      class: `inv-pin kind-${hotspot.kind}${left > 60 ? ' label-start' : ''}${thread ? ' opening-thread' : ''}${voicemail ? ' voicemail' : ''}`,
       style: { left: `${left}%`, top: `${top}%`, '--i': String(index) },
       'data-x': String(left), 'data-y': String(top),
-      'aria-label': `${KIND_LABEL[hotspot.kind]}: ${hotspot.label}`,
+      'aria-label': `${label}: ${hotspot.label}`,
       onclick: () => { this.d.audio.play('pin'); this.d.onHotspot(hotspot) },
     },
-    h('span', { class: 'inv-pin-dot', 'aria-hidden': true }, KIND_ICON[hotspot.kind]),
-    h('span', { class: 'inv-pin-label' }, h('small', null, KIND_LABEL[hotspot.kind]), h('b', null, hotspot.label)))
+    h('span', { class: 'inv-pin-dot', 'aria-hidden': true }, voicemail ? '▶' : KIND_ICON[hotspot.kind]),
+    h('span', { class: 'inv-pin-label' }, h('small', null, label), h('b', null, hotspot.label)))
   }
 
   private person(s: Session, c: CharacterProfile): HTMLElement {
     const src = portraitUrl(c.id)
     const met = s.state.flags.has(`met_${c.id}`)
-    return h('button', { class: 'inv-person', role: 'listitem', onclick: () => this.d.onTalk(c.id), 'aria-label': `كلّم ${c.nickname ?? c.name}` },
+    return h('button', { class: 'inv-person', onclick: () => this.d.onTalk(c.id), 'aria-label': `كلّم ${c.nickname ?? c.name}` },
       h('span', { class: 'inv-person-art', style: { '--accent': c.figure.accent, '--body': c.figure.body } },
         src ? h('img', { src, alt: '', draggable: 'false', loading: 'lazy', decoding: 'async' }) : h('span', { class: 'inv-person-initial' }, initial(c.name))),
       h('span', { class: 'inv-person-copy' },
         h('b', null, c.nickname ?? c.name),
         h('small', null, c.role),
-        h('i', null, met ? 'كمّل الكلام' : 'كلّمه')))
+        h('i', null, h('span', { 'aria-hidden': true }, '☏ '), met ? 'كمّل الكلام' : 'كلّمه')))
   }
 
   // ---- Map ---------------------------------------------------------------------------------------------------------
@@ -417,18 +436,36 @@ export class InvestigationView {
       h('div', { class: 'inv-map-switch', role: 'group', 'aria-label': 'نوع الخريطة' },
         h('button', { class: this.mapKind === 'real' ? 'on' : '', type: 'button', onclick: () => { this.mapKind = 'real'; this.render() } }, 'خريطة حقيقية'),
         h('button', { class: this.mapKind === 'drawn' ? 'on' : '', type: 'button', onclick: () => { this.mapKind = 'drawn'; this.render() } }, 'خريطة مرسومة')),
-      this.mapKind === 'real' && RealMap.available() ? this.realMap.show(place.id) : this.mapSvg(districtPlaces, place, goal),
+      this.mapKind === 'real' && RealMap.available() ? this.realMap.show(place.id, s.clock.hour) : this.mapSvg(districtPlaces, place, goal),
       h('div', { class: 'inv-map-list' }, districtPlaces.map(p => {
         const here = p.id === place.id
         const isGoal = p.id === goal
         return h('button', {
           class: `inv-map-card${here ? ' here' : ''}${isGoal ? ' goal' : ''}`,
           'aria-current': here ? 'location' : undefined,
-          onclick: () => this.selectPlace(p.id),
+          onclick: () => this.previewPlace(p.id),
         },
         h('img', { src: sceneUrl(p.id, s.clock.hour), srcset: sceneSrcSet(p.id, s.clock.hour), sizes: '220px', alt: '', loading: 'lazy', decoding: 'async' }),
         h('span', null, h('b', null, p.name), h('small', null, here ? 'انت هنا' : isGoal ? 'الخطوة الجاية هنا' : p.short)))
       })))
+  }
+
+  private previewPlace(id: PlaceId): void {
+    const session = this.session
+    const place = PLACES[id]
+    if (!session || place.district !== PLACES[this.placeId].district) return
+    const here = id === this.placeId
+    const dialog = h('dialog', { class: 'inv-destination', 'aria-labelledby': 'inv-destination-name' },
+      h('img', { src: sceneUrl(id, session.clock.hour), srcset: sceneSrcSet(id, session.clock.hour), sizes: '420px', alt: '' }),
+      h('div', { class: 'inv-destination-copy' },
+        h('small', null, here ? 'إنت هنا' : 'الوجهة المختارة'),
+        h('h3', { id: 'inv-destination-name' }, place.name),
+        h('div', { class: 'inv-destination-actions' },
+          h('button', { class: 'btn ghost', onclick: () => dialog.close() }, 'رجوع للخريطة'),
+          h('button', { class: 'btn primary', onclick: () => { dialog.close(); this.selectPlace(id) } }, here ? 'ارجع للمشهد' : 'روح المكان'))))
+    dialog.addEventListener('close', () => dialog.remove(), { once: true })
+    this.el.append(dialog)
+    dialog.showModal()
   }
 
   private mapSvg(places: Place[], current: Place, goal?: PlaceId): SVGSVGElement {
@@ -513,7 +550,8 @@ export class InvestigationView {
     }
     for (const p of places) {
       const cls = `inv-map-pin${p.id === current.id ? ' current' : ''}${p.id === goal ? ' goal' : ''}`
-      const g = svg('g', { class: cls, transform: `translate(${px(p.pos.x)} ${py(p.pos.z)})`, tabindex: '0', role: 'button', 'aria-label': p.name })
+      const g = svg('g', { class: cls, transform: `translate(${px(p.pos.x)} ${py(p.pos.z)})`, tabindex: '0', role: 'button',
+        'aria-current': p.id === current.id ? 'location' : 'false', 'aria-label': p.id === goal ? `${p.name}، الخطوة الجاية` : p.name })
       // Generous invisible hit area: the visible dot is small on phones once the SVG scales down.
       g.append(svg('circle', { r: places.length > 10 ? 26 : 42, class: 'pin-hit' }))
       if (p.id === goal) g.append(svg('circle', { r: 19, class: 'pin-goal' }))
@@ -523,9 +561,9 @@ export class InvestigationView {
       const label = svg('text', { x: pl.dx, y: pl.dy, 'text-anchor': pl.anchor, class: 'pin-label' })
       label.textContent = labelFor(p)
       g.append(label)
-      g.addEventListener('click', () => this.selectPlace(p.id))
+      g.addEventListener('click', () => this.previewPlace(p.id))
       g.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.selectPlace(p.id) }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.previewPlace(p.id) }
       })
       root.append(g)
     }

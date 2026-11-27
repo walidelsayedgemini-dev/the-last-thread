@@ -1,7 +1,7 @@
 /* Investigation board: cork wall, animated red threads, deduction dossier and visual accusation. */
 #ui > .casefile .board-page {
   grid-template-columns: minmax(0, 1fr) 300px;
-  grid-template-areas: 'help help' 'progress progress' 'note note' 'tray tray' 'wall side';
+  grid-template-areas: 'help help' 'progress progress' 'note note' 'tray tray' 'result result' 'detail detail' 'wall side';
   row-gap: 10px;
 }
 #ui > .casefile .board-help { grid-area: help; }
@@ -10,6 +10,16 @@
 #ui > .casefile .board-tray { grid-area: tray; }
 #ui > .casefile .board-wrap { grid-area: wall; }
 #ui > .casefile .board-side { grid-area: side; }
+#ui > .casefile .pin-card-summary { display: none; }
+#ui > .casefile .board-link-result {
+  display: grid; grid-area: result; gap: 3px; padding: 9px 12px;
+  border-inline-start: 3px solid #e67781; background: #20151b; color: #f7edef;
+}
+#ui > .casefile .board-link-result span { line-height: 1.55; }
+#ui > .casefile .board-link-result small { color: #efc2c5; }
+#ui > .casefile .sel-detail { grid-area: detail; margin: 0; background: #101a20; }
+#ui > .casefile .sel-detail summary { min-height: 32px; color: #f4e6cf; }
+#ui > .casefile .pin-card-placeholder { display: grid; place-items: center; color: #f2d9a7; }
 
 /* Progress strip */
 #ui > .casefile .board-progress {
@@ -257,7 +267,7 @@
 #ui > .casefile .accuse-go.confirm { background: #8f1b28; border-color: #ff7782; color: #fff; animation: card-pulse 1.4s ease-out infinite; }
 
 @media (max-width: 720px) {
-  #ui > .casefile .board-page { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'help' 'progress' 'note' 'tray' 'wall' 'side'; }
+  #ui > .casefile .board-page { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'help' 'progress' 'note' 'tray' 'detail' 'wall' 'result' 'side'; }
   #ui > .casefile .board-progress { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
   #ui > .casefile .board-stat { padding: 6px 8px 8px; }
   #ui > .casefile .board-stat span { font-size: .68rem; }
@@ -265,7 +275,21 @@
   #ui > .casefile .board-tray { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
   #ui > .casefile .tray-actions { grid-column: 1 / -1; }
   #ui > .casefile .tray-actions .tray-btn { flex: 1; }
-  #ui > .casefile .board-wrap { border-width: 6px; }
+  #ui > .casefile .board-wrap:not(.board-wrap-empty) { max-height: none; min-height: 0; border-width: 4px; }
+  #ui > .casefile .board { display: grid; gap: 10px; width: 100% !important; height: auto !important; padding: 10px; direction: rtl; }
+  #ui > .casefile .board-lines, #ui > .casefile .board-labels, #ui > .casefile .board-reorder { display: none; }
+  #ui > .casefile .pin-card {
+    position: relative; inset: auto !important; width: 100% !important; height: auto !important;
+    min-height: 76px; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 2px 9px;
+    align-content: center; padding: 8px; transform: none; text-align: start; touch-action: pan-y; cursor: pointer;
+    border-block-end-width: 1px;
+  }
+  #ui > .casefile .pin-card .pin { display: none; }
+  #ui > .casefile .pin-card-art { grid-row: 1 / span 3; width: 64px; height: 54px; align-self: center; border-width: 3px; }
+  #ui > .casefile .pin-card > small, #ui > .casefile .pin-card > b, #ui > .casefile .pin-card-summary { grid-column: 2; }
+  #ui > .casefile .pin-card-summary {
+    display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .79rem; color: #392c24;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   #ui > .casefile .board-lines .thread.fresh { animation: none; stroke-dashoffset: 0; }

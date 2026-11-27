@@ -61,6 +61,7 @@ export class CaseFileView {
   private lifeView: LifeView = 'paths'
   private noteKind: '' | 'success' | 'fail' | 'info' | 'ok' | 'bad' = ''
   private fresh?: { a: EvidenceId; b: EvidenceId; id?: DeductionId }
+  private lastLink?: { a: EvidenceId; b: EvidenceId; deduction: Deduction }
   private freshTimer = 0
   private focusDeduction?: DeductionId
   private readonly tried = new Set<string>()
@@ -97,6 +98,7 @@ export class CaseFileView {
       this.tried.clear()
       this.selected = undefined
       this.fresh = undefined
+      this.lastLink = undefined
       this.focusDeduction = undefined
       this.accSuspect = undefined
       this.accMotive = undefined
@@ -365,21 +367,23 @@ export class CaseFileView {
 
     const cards = found.map(e => {
       const p = this.pos.get(e.id)!
-      const art = EVIDENCE_ART[e.id]
+      const art = EVIDENCE_ART[e.id]?.src ?? evidenceUrl(e.id)
       const count = threadCount.get(e.id) ?? 0
       const freshPulse = this.fresh && (this.fresh.a === e.id || this.fresh.b === e.id)
       const state = `${this.selected === e.id ? ' selected' : ''}${focus ? (focusIds.has(e.id) ? ' in-focus' : ' dim') : ''}${freshPulse ? ' linked-pulse' : ''}`
       const card = h('div', { class: `pin-card kind-${e.kind}${state}`, style: { left: `${p.x}px`, top: `${p.y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }, tabindex: 0, role: 'button', 'aria-pressed': String(this.selected === e.id), 'aria-label': `${e.title}${count ? `، مربوط بـ ${arabicDigits(count)} خيط` : ''}` },
         h('i', { class: `pin kind-${e.kind}` }),
         count > 0 && h('span', { class: 'pin-count', 'aria-hidden': true, title: 'خيوط مربوطة' }, arabicDigits(count)),
-        art && h('img', { class: 'pin-card-art', src: art.src, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' }),
-        h('small', null, KIND_LABEL[e.kind]), h('b', null, e.title))
+        art ? h('img', { class: 'pin-card-art', src: art, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' })
+          : h('span', { class: 'pin-card-art pin-card-placeholder', 'aria-hidden': true }, '▣'),
+        h('small', null, KIND_LABEL[e.kind]), h('b', null, e.title),
+        h('span', { class: 'pin-card-summary' }, e.summary))
       this.dragCard(card, e.id, lines, W, H)
       return card
     })
 
     const sel = selId ? s.engine.evidenceInfo(selId) : undefined
-    const selectedArt = selId ? EVIDENCE_ART[selId] : undefined
+    const selectedArt = sel && (EVIDENCE_ART[sel.id]?.src ?? evidenceUrl(sel.id))
     const wrap = found.length
       ? h('div', { class: `board-wrap${found.length === 1 ? ' board-wrap-single' : ''}` },
         h('div', { class: 'board', style: { width: `${W}px`, height: `${H}px` } }, lines, cards, labelLayer),
@@ -401,30 +405,33 @@ export class CaseFileView {
     const slot = (title: string, ev: Evidence | undefined, n: string) =>
       h('div', { class: `tray-slot${ev ? ' filled' : ''}` }, h('small', null, n), h('b', null, ev ? ev.title : title))
     const tray = found.length >= 2 ? h('div', { class: 'board-tray' },
-      slot('اختار الدليل', selectedEvidence, 'الدليل الأول'),
-      h('span', { class: 'tray-link', 'aria-hidden': true }, selectedEvidence ? '⟿' : '·  ·  ·'),
-      slot('بعده الدليل التاني', undefined, 'الدليل الثاني'),
+      slot('اختار الدليل', selectedEvidence ?? (this.lastLink && s.engine.evidenceInfo(this.lastLink.a)), 'الدليل الأول'),
+      h('span', { class: 'tray-link', 'aria-hidden': true }, selectedEvidence || this.lastLink ? '⟿' : '·  ·  ·'),
+      slot('بعده الدليل التاني', this.lastLink && s.engine.evidenceInfo(this.lastLink.b), 'الدليل الثاني'),
       h('div', { class: 'tray-actions' },
         h('button', { class: 'tray-btn', disabled: !selectedEvidence, onclick: () => { this.selected = undefined; this.note = 'اتلغى تحديد الدليل.'; this.d.audio.play('back'); this.render() } }, 'إلغاء التحديد'),
-        h('button', { class: 'tray-btn', onclick: () => { this.pos.clear(); this.d.audio.play('paper'); this.render() } }, 'ترتيب الكروت'))) : undefined
+        h('button', { class: 'tray-btn board-reorder', onclick: () => { this.pos.clear(); this.d.audio.play('paper'); this.render() } }, 'ترتيب الكروت'))) : undefined
 
     return h('div', { class: 'board-page' },
       h('div', { class: 'board-help' },
         h('p', { 'aria-live': 'polite' }, found.length === 0 ? 'سجل الخيوط هيتكوّن مع كل دليل جديد.'
           : found.length < 2 ? 'اتسجل أول دليل. اجمع دليلًا تانيًا عشان تبدأ الربط.'
             : selectedEvidence ? `اتحدد «${selectedEvidence.title}». اختار دليل تاني عشان تكمّل الربط.`
-              : 'اختار دليل، وبعده دليل تاني عشان تربطهم بخيط أحمر. واسحب الكروت لو عايز ترتّبها.')),
+              : 'اختار دليل، وبعده دليل تاني عشان تربطهم بخيط أحمر.')),
       progress,
       this.note && h('p', { class: `board-note${this.noteKind ? ` ${this.noteKind}` : ''}`, role: 'status', 'aria-live': 'polite' }, this.note),
       tray,
-      wrap,
-      h('div', { class: 'board-side' },
-        sel && h('div', { class: 'sel-detail' },
-          h('h4', null, sel.title),
+      sel && h('details', { class: 'sel-detail' },
+          h('summary', null, `تفاصيل ${sel.title}`),
           selectedArt && h('figure', { class: 'sel-artwork' },
-            h('img', { src: selectedArt.src, alt: selectedArt.alt, loading: 'lazy', decoding: 'async' }),
+            h('img', { src: selectedArt, alt: EVIDENCE_ART[sel.id]?.alt ?? sel.title, loading: 'lazy', decoding: 'async' }),
             h('figcaption', null, ART_NOTE)),
           h('p', null, sel.detail)),
+      wrap,
+      this.lastLink && h('div', { class: 'board-link-result', role: 'status' },
+        h('small', null, `${s.engine.evidenceInfo(this.lastLink.a).title} + ${s.engine.evidenceInfo(this.lastLink.b).title}`),
+        h('b', null, this.lastLink.deduction.title), h('span', null, this.lastLink.deduction.conclusion)),
+      h('div', { class: 'board-side' },
         h('h4', null, 'الاستنتاجات'),
         this.deductionList(s, tied),
         this.accuseBlock(s)))
@@ -460,6 +467,7 @@ export class CaseFileView {
     let start: { px: number; py: number; x: number; y: number } | undefined
     let moved = false
     card.addEventListener('pointerdown', e => {
+      if (window.matchMedia('(max-width: 720px)').matches) return
       const p = this.pos.get(id)!
       start = { px: e.clientX, py: e.clientY, x: p.x, y: p.y }
       moved = false
@@ -485,6 +493,7 @@ export class CaseFileView {
     }
     card.addEventListener('pointerup', end)
     card.addEventListener('pointercancel', () => { start = undefined })
+    card.addEventListener('click', () => { if (window.matchMedia('(max-width: 720px)').matches) this.pick(id) })
     card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.pick(id) } })
     void lines
   }
@@ -499,6 +508,7 @@ export class CaseFileView {
     if (!s) return
     this.d.audio.play('ui')
     this.setNote('')
+    this.lastLink = undefined
     this.flash = undefined
     if (!this.selected || this.selected === id) {
       if (!this.selected) this.d.audio.play('pin')
@@ -513,13 +523,13 @@ export class CaseFileView {
     const r = s.tie(a, id)
     if (r.ok) {
       const dd = s.engine.file.deductions.find(x => x.id === r.deduction)!
+      this.lastLink = { a, b: id, deduction: dd }
       if (r.fresh) {
         this.d.audio.play('thread')
         this.fresh = { a, b: id, id: dd.id }
         this.focusDeduction = undefined
         window.clearTimeout(this.freshTimer)
         this.freshTimer = window.setTimeout(() => { this.fresh = undefined; this.refresh() }, 2200)
-        this.setNote(`✔ استنتاج جديد: ${dd.title} — ${dd.conclusion}`, 'success')
       } else this.setNote('الخيط ده مربوط قبل كده.', 'info')
     } else {
       this.flash = { a, b: id }
@@ -531,6 +541,9 @@ export class CaseFileView {
       } else this.setNote('اختار دليلين مختلفين.', 'fail')
     }
     this.render()
+    if (this.lastLink && window.matchMedia('(max-width: 720px)').matches) {
+      this.pageEl.querySelector('.board-link-result')?.scrollIntoView({ block: 'nearest' })
+    }
   }
 
   private accuseBlock(s: Session): HTMLElement {

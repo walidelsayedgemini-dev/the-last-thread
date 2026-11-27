@@ -55,7 +55,7 @@
 .dlg-box {
   grid-row: 2; position: relative; z-index: 2; justify-self: center; width: min(880px, 100%);
   display: grid; gap: 10px; padding: 16px 22px 14px; border-radius: 14px;
-  background: #070c10f5; border: 1px solid #ffffff1f; border-top: 3px solid var(--accent, var(--red)); box-shadow: 0 -8px 36px #000c;
+  background: #10181e; color: #faf3e7; border: 1px solid #56636a; border-top: 3px solid var(--accent, var(--red)); box-shadow: 0 -8px 36px #000c;
 }
 .dialogue[data-who='player'] .dlg-box { border-top-color: var(--gold); }
 .dialogue[data-who='narrator'] .dlg-box { border-top-color: var(--muted); }
@@ -63,16 +63,17 @@
 .dlg-name { font-family: var(--display); font-size: 1.35rem; color: var(--red-hot); }
 .dialogue[data-who='player'] .dlg-name { color: var(--gold); }
 .dialogue[data-who='narrator'] .dlg-name { color: var(--muted); }
-.dlg-role { color: var(--muted); font-size: 0.85rem; }
+.dlg-role { color: #c9d2d6; font-size: 0.85rem; }
 .dlg-text { margin: 0; font-size: calc(1.18rem * var(--text-scale, 1)); line-height: 1.95; min-height: 3.8em; cursor: pointer; }
 .dialogue[data-who='narrator'] .dlg-text { font-style: italic; color: #d4c9b0; }
 .dlg-choices { display: grid; gap: 7px; }
 .dlg-choice {
   display: flex; align-items: center; gap: 12px; text-align: start; padding: 10px 14px; border-radius: 10px;
-  background: #101d24; border: 1px solid var(--line); color: var(--bone); font-size: calc(1.02rem * var(--text-scale, 1));
+  min-height: 44px; background: #1a2933; border: 1px solid #647680; color: #faf3e7; font-size: calc(1.02rem * var(--text-scale, 1));
   transition: background 0.15s, border-color 0.15s, transform 0.15s;
 }
 .dlg-choice:hover, .dlg-choice:focus-visible { background: #18303a; border-color: #4f7580; outline: none; transform: translateX(-3px); }
+.dlg-choice:focus-visible, .dlg-leave:focus-visible { outline: 2px solid #f4d594; outline-offset: 2px; }
 .dlg-choice kbd { margin: 0; flex: none; min-width: 26px; text-align: center; color: var(--gold); }
 .dlg-choice-text { flex: 1; display: grid; gap: 2px; }
 .dlg-choice-text small { color: var(--red-hot); font-weight: 800; font-size: 0.75rem; }

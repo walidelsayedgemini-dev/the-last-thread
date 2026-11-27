@@ -445,9 +445,11 @@ async function boot(): Promise<void> {
         audio.play('found')
         haptic('medium')
         buzz(30)
-        investigation.celebrate(change.evidence)
-        hud.toast(`دليل جديد: ${change.evidence.title}`, 'evidence')
-        fx.evidence(change.evidence.title, EVIDENCE_ART[change.evidence.id])
+        if (change.evidence.id !== 'e_thread_door' || session?.state.flags.has('zeinab_talked')) {
+          investigation.celebrate(change.evidence)
+          hud.toast(`دليل جديد: ${change.evidence.title}`, 'evidence')
+          fx.evidence(change.evidence.title, EVIDENCE_ART[change.evidence.id])
+        }
       } else if (change.type === 'evidence-gated') {
         hud.toast(change.reason ?? 'الدليل ده لسه ماظهرش… ارجع في وقت تاني.', 'warn')
       } else if (change.type === 'deduction') {
@@ -470,7 +472,8 @@ async function boot(): Promise<void> {
     audio.play('ui')
     if (hotspot.kind === 'inspect') tutorial.action('inspect')
     else if (hotspot.kind === 'photo') tutorial.action('photo')
-    if (hotspot.text) hud.narrate(session.fill(hotspot.text))
+    const openingThread = hotspot.id === 'hs_door_thread' && !session.state.flags.has('zeinab_talked')
+    if (hotspot.text && !openingThread) hud.narrate(session.fill(hotspot.text))
     const voice = voicePath(session.caseId, hotspot.id, 0)
     if (voice) audio.playVoice(voice)
     if (hotspot.kind === 'travel' && hotspot.to) {
@@ -579,6 +582,7 @@ async function boot(): Promise<void> {
 
   // ---- Input and timing ----------------------------------------------------------------------------------------
   window.addEventListener('keydown', event => {
+    if (investigation.el.querySelector('.inv-destination[open]')) return
     const handled = travel.key(event) || recap.key(event) || lens.key(event) || help.key(event) || letters.key(event) || dialogue.key(event) || caseFile.key(event) || shell.key(event)
     if (handled) {
       event.preventDefault()
@@ -594,6 +598,8 @@ async function boot(): Promise<void> {
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause() })
   // Android back button: close the innermost layer first; returning false minimises the app.
   onBackButton(() => {
+    const destination = investigation.el.querySelector<HTMLDialogElement>('.inv-destination[open]')
+    if (destination) { destination.close(); return true }
     if (dialogue.open) { dialogue.close(); return true }
     if (!caseFile.el.hidden) { caseFile.close(); return true }
     if (investigation.back()) return true

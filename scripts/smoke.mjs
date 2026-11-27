@@ -130,6 +130,7 @@ try {
 
   await openMap(page)
   await (page.locator('.inv-place-card, .inv-map-card').filter({ hasText: 'موقف ميكروباص أبيس' }).first()).click()
+  await page.getByRole('button', { name: 'روح المكان' }).click()
   await page.waitForFunction(() => window.__ltt.investigation.currentPlace === 'abis_stop')
   assert((await snap(page)).district === 'abis', 'map allowed the player to leave the current district')
   await page.locator('.inv-pin.kind-travel').click()
@@ -147,12 +148,14 @@ try {
   // ---- 3. Travel back, inspect evidence, and open the existing case board ------------------------------------------
   await openMap(page)
   await page.locator('.inv-map-card').filter({ hasText: 'موقف محطة الرمل' }).click()
+  await page.getByRole('button', { name: 'ارجع للمشهد' }).click()
   await page.waitForFunction(() => window.__ltt.investigation.currentPlace === 'raml_stop')
   await page.locator('.inv-pin.kind-travel').click()
   await page.waitForFunction(() => window.__ltt.investigation.currentPlace === 'abis_stop', null, { timeout: 10_000 })
 
   await openMap(page)
   await page.locator('.inv-map-card').filter({ hasText: 'بيت خالك محمود' }).click()
+  await page.getByRole('button', { name: 'روح المكان' }).click()
   await page.waitForFunction(() => window.__ltt.investigation.currentPlace === 'mahmoud_house')
   await page.locator('.inv-pin').filter({ hasText: 'الخيط على الباب' }).click()
   await page.waitForFunction(() => window.__ltt.session.state.evidence.has('e_thread_door'), null, { timeout: 10_000 })
