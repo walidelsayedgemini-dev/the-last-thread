@@ -274,8 +274,7 @@ export class FlashFx {
       art ? h('img', { src: art.src, alt: '', draggable: 'false' }) : h('span', { class: 'ev-fly-icon' }, '▣'),
       h('b', null, title), h('small', null, 'اتضاف لملف القضية'))
     this.el.append(card)
-    const target = [...document.querySelectorAll<HTMLElement>('.inv-file-action, .inv-mobile-file')].find(el => el.offsetParent !== null)
-    const reduced = document.body.classList.contains('reduced-motion')
+    const reduced = document.body.classList.contains('reduced-motion') || window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const done = () => card.remove()
     if (reduced || !card.animate) { window.setTimeout(done, 1800); return }
     const pop = card.animate([
@@ -284,6 +283,7 @@ export class FlashFx {
       { opacity: 1, transform: 'translate(-50%, -50%) scale(1) rotate(-2deg)' },
     ], { duration: 1500, easing: 'cubic-bezier(.2,1.2,.4,1)', fill: 'forwards' })
     pop.onfinish = () => {
+      const target = [...document.querySelectorAll<HTMLElement>('[data-case-file]')].find(el => el.offsetParent !== null)
       const r = card.getBoundingClientRect()
       const t = target?.getBoundingClientRect()
       const dx = t ? t.left + t.width / 2 - (r.left + r.width / 2) : 0

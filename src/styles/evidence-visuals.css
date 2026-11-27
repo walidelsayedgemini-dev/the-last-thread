@@ -186,3 +186,18 @@
     height: 72px;
   }
 }
+#ui > .casefile .cf-evidence-layout { display: flex; flex-wrap: wrap; gap: 6px; }
+#ui > .casefile .cf-evidence-layout button {
+  min-height: 44px; padding: 6px 12px; color: #f0e7d8; background: #17232c; border: 1px solid #52636d; border-radius: 5px;
+}
+#ui > .casefile .cf-evidence-layout button[aria-pressed='true'] { border-color: #f6d394; background: #453623; }
+#ui > .casefile .cf-evidence-list.gallery {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr)); align-items: start;
+}
+#ui > .casefile .gallery .ev.expanded { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr); }
+#ui > .casefile .gallery .ev-trigger { grid-template-columns: minmax(0, 1fr); gap: 7px; height: 100%; }
+#ui > .casefile .gallery .ev-thumb, #ui > .casefile .gallery .ev-kind-icon { width: 100%; height: 112px; }
+#ui > .casefile .gallery .ev-thumb img { width: 100%; height: 100%; object-fit: cover; }
+#ui > .casefile .gallery .ev-chevron { display: none; }
+#ui > .casefile .gallery .ev.expanded .ev-trigger { grid-template-columns: 56px minmax(0, 1fr); height: auto; }
+#ui > .casefile .gallery .ev.expanded :is(.ev-thumb, .ev-kind-icon) { height: 56px; }

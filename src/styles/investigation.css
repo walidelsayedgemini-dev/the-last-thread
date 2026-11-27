@@ -31,9 +31,6 @@
   font-style: normal; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-grid; place-items: center;
   background: var(--red); color: #fff; font-size: 0.8rem; font-weight: 800;
 }
-.inv-file-btn.bump { animation: inv-bump 0.6s ease-out; }
-.inv-file-btn.bump .inv-badge { background: var(--red-hot); box-shadow: 0 0 18px var(--red-hot); }
-@keyframes inv-bump { 0% { transform: scale(1); } 35% { transform: scale(1.14); } 100% { transform: scale(1); } }
 
 /* ---- Body layout ---- */
 .inv-body { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; min-height: 0; }
@@ -301,18 +298,6 @@
 }
 .inv-d-open:hover { background: #c2414f; }
 
-/* ---- Flying evidence card ---- */
-.inv-fly-card {
-  position: fixed; z-index: 60; transform: translate(-50%, -50%) scale(0.6); opacity: 0; pointer-events: none;
-  display: grid; text-align: center; gap: 2px; padding: 14px 22px; min-width: 200px; border-radius: 6px;
-  background: #f1e9d6; color: #1d140d; border-top: 6px solid var(--red); box-shadow: 0 18px 50px #000c, 0 0 40px #ef707866;
-  transition: transform 0.35s cubic-bezier(.2,1.4,.4,1), opacity 0.3s, left 0.65s ease-in, top 0.65s ease-in;
-  font-family: var(--font);
-}
-.inv-fly-card small { color: var(--red); font-weight: 800; }
-.inv-fly-card b { font-family: var(--display); font-size: 1.25rem; }
-.inv-fly-card.in { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-2deg); }
-.inv-fly-card.fly { transform: translate(-50%, -50%) scale(0.15); opacity: 0.2; }
 
 /* ---- Mobile nav ---- */
 .inv-mobile-nav { display: none; }
@@ -669,4 +654,3 @@ body.investigation-active #ui::after { opacity: .025; animation: none; }
   .inv-map-card small { font-size: 0.82rem; }
 }
 /* The case file is a modal over the stage; a flying evidence card must not bleed through it. */
-body:has(.casefile:not([hidden])) .inv-fly-card { display: none; }

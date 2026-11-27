@@ -144,3 +144,7 @@ body[data-weather='rain'] .inv-rain { display: block; }
 @keyframes mood-shake { 25% { transform: translateX(-4px) scale(1.03); } 75% { transform: translateX(4px) scale(1.03); } }
 @keyframes mood-tremble { 50% { transform: translate(1.5px, -1px); } }
 .reduced-motion .dlg-portrait img { animation: none !important; }
+@media (max-width: 760px) {
+  .investigation .inv-drawer, .investigation .inv-mobile-nav { background-color: #0b151b; backdrop-filter: none; }
+  #ui > .dialogue { backdrop-filter: none; }
+}

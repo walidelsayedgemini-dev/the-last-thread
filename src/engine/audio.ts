@@ -107,7 +107,7 @@ export class Audio {
   private tension = 0.2
   private district: District = 'abis'
   private night = 0.5
-  private timers: number[] = []
+  private readonly timers = new Set<number>()
   private placeTimers: number[] = []
   private placeEventToken = 0
   private placeLayer?: PlaceLayer
@@ -267,7 +267,7 @@ export class Audio {
     this.running = false
     this.stopVoice()
     this.timers.forEach(clearTimeout)
-    this.timers = []
+    this.timers.clear()
     this.cancelPlaceEvents()
     const old = this.placeLayer
     this.placeLayer = undefined
@@ -379,8 +379,11 @@ export class Audio {
     }
   }
   private later(ms: number, fn: () => void): void {
-    this.timers.push(window.setTimeout(() => this.running && fn(), ms))
-    if (this.timers.length > 40) this.timers.splice(0, 20)
+    const timer = window.setTimeout(() => {
+      this.timers.delete(timer)
+      if (this.running) fn()
+    }, ms)
+    this.timers.add(timer)
   }
 
   private scheduleHeartbeat(): void {

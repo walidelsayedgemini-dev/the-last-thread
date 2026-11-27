@@ -150,7 +150,6 @@ async function boot(): Promise<void> {
         investigation.refresh()
       }
     },
-    onEvidenceReviewed: id => investigation.markEvidenceReviewed(id),
   })
   const investigation = new InvestigationView({
     audio,
@@ -444,7 +443,6 @@ async function boot(): Promise<void> {
         haptic('medium')
         buzz(30)
         if (change.evidence.id !== 'e_thread_door' || session?.state.flags.has('zeinab_talked')) {
-          investigation.celebrate(change.evidence)
           hud.toast(`دليل جديد: ${change.evidence.title}`, 'evidence')
           fx.evidence(change.evidence.title, EVIDENCE_ART[change.evidence.id])
         }
@@ -607,6 +605,7 @@ async function boot(): Promise<void> {
   })
   window.addEventListener('pagehide', () => session?.save())
 
+  let clockRefresh = 0
   const loop = new GameLoop({
     step: dt => {
       if (!session || !active || paused) return
@@ -622,7 +621,11 @@ async function boot(): Promise<void> {
       shell.frame(dt)
       dialogue.frame(dt)
       if (session && active && !paused) {
-        investigation.tickClock(session.clock.hour)
+        clockRefresh += dt
+        if (clockRefresh >= 0.25) {
+          clockRefresh = 0
+          investigation.tickClock(session.clock.hour)
+        }
       }
     },
   })

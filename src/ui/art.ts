@@ -62,16 +62,6 @@ export function sceneSrcSet(placeId: string, hour = 21): string {
   return phone ? `${phone} 960w, ${full} 1600w` : full
 }
 
-/** Same-district neighbors are cheap to preload; every other scene stays out of the request queue. */
-export function sceneNeighbors(placeId: string): string[] {
-  const ids = Object.keys(SCENE_FILE)
-  const index = Math.max(0, ids.indexOf(placeId))
-  const district = placeId.includes('raml') || placeId === 'mansheya' || placeId === 'qaitbay' || placeId === 'bibliotheca' || placeId === 'pompey' || placeId === 'corniche' ? 'city' : 'abis'
-  const same = ids.filter(id => (id.includes('raml') || id === 'mansheya' || id === 'qaitbay' || id === 'bibliotheca' || id === 'pompey' || id === 'corniche' ? 'city' : 'abis') === district)
-  const at = Math.max(0, same.indexOf(placeId))
-  return [same[at - 1], same[at + 1]].filter((id): id is string => Boolean(id) && id !== ids[index])
-}
-
 export function titleArt(): string | undefined {
   return Object.values(TITLE)[0]
 }

@@ -45,7 +45,6 @@ export type CaseFileDeps = {
   where: () => { zone: 'abis' | 'city'; x: number; z: number }
   onClose: () => void
   onAccused: (result: 'ok' | 'wrong-culprit' | 'wrong-motive' | 'locked') => void
-  onEvidenceReviewed: (id: EvidenceId) => void
 }
 
 export class CaseFileView {
@@ -72,6 +71,7 @@ export class CaseFileView {
   private accMotive?: string
   private accConfirm = false
   private evidenceFilter: EvidenceFilter = 'all'
+  private evidenceLayout: 'list' | 'gallery' = 'list'
   private expandedEvidence?: EvidenceId
   private readonly reviewedEvidence = new Set<EvidenceId>()
 
@@ -181,8 +181,7 @@ export class CaseFileView {
 
   private evidence(s: Session): HTMLElement {
     const all = s.engine.file.evidence
-    const found = all.filter(e => s.engine.has(e.id)).sort((a, b) =>
-      (s.state.evidence.get(b.id) ?? 0) - (s.state.evidence.get(a.id) ?? 0))
+    const found = Array.from(s.state.evidence.keys()).reverse().map(id => s.engine.evidenceInfo(id))
     const fresh = found.filter(e => !this.reviewedEvidence.has(e.id))
     const categories: Evidence['kind'][] = ['object', 'testimony', 'document', 'photo', 'trace']
     const filters: { id: EvidenceFilter; label: string; count: number }[] = [
@@ -191,22 +190,40 @@ export class CaseFileView {
       ...categories.map(kind => ({ id: kind, label: KIND_LABEL[kind], count: found.filter(e => e.kind === kind).length })),
     ]
     const visible = found.filter(e => this.evidenceFilter === 'all'
-      || (this.evidenceFilter === 'new' ? !this.reviewedEvidence.has(e.id) : e.kind === this.evidenceFilter))
+      || (this.evidenceFilter === 'new' ? !this.reviewedEvidence.has(e.id) || this.expandedEvidence === e.id : e.kind === this.evidenceFilter))
     return h('div', { class: 'cf-evidence-page' },
       h('div', { class: 'cf-evidence-toolbar' },
         h('div', { class: 'cf-evidence-summary' },
           h('b', null, `${arabicDigits(found.length)} من ${arabicDigits(all.length)} دليل`),
           h('small', null, `${arabicDigits(this.reviewedEvidence.size)} تمت مراجعته`)),
+        found.length > 0 && h('div', { class: 'cf-evidence-layout', role: 'group', 'aria-label': 'طريقة عرض الأدلة' },
+          (['list', 'gallery'] as const).map(layout => h('button', {
+            type: 'button', 'aria-pressed': String(this.evidenceLayout === layout),
+            onclick: (event: Event) => {
+              if (layout === this.evidenceLayout) return
+              const hadFocus = document.activeElement === event.currentTarget
+              this.evidenceLayout = layout
+              this.render()
+              if (hadFocus) this.pageEl.querySelector<HTMLButtonElement>('.cf-evidence-layout [aria-pressed="true"]')?.focus()
+            },
+          }, layout === 'list' ? 'قائمة' : 'معرض الصور'))),
         h('nav', { class: 'cf-evidence-filters', 'aria-label': 'تصفية الأدلة' }, filters.map(filter =>
           h('button', {
             class: `cf-evidence-filter${this.evidenceFilter === filter.id ? ' on' : ''}`,
-            'aria-pressed': this.evidenceFilter === filter.id,
-            disabled: filter.id !== 'all' && filter.count === 0,
-            onclick: () => { this.evidenceFilter = filter.id; this.d.audio.play('ui'); this.render() },
+            'aria-pressed': String(this.evidenceFilter === filter.id),
+            disabled: filter.id !== 'all' && filter.id !== this.evidenceFilter && filter.count === 0,
+            onclick: () => {
+              if (this.evidenceFilter === filter.id) return
+              this.evidenceFilter = filter.id
+              this.expandedEvidence = undefined
+              this.d.audio.play('ui')
+              this.render()
+              this.pageEl.querySelector<HTMLElement>('.cf-evidence-filter.on')?.focus({ preventScroll: true })
+            },
           }, h('span', null, filter.label), h('b', null, arabicDigits(filter.count))))),
       ),
       found.length
-        ? visible.length ? h('div', { class: 'cf-evidence-list' }, visible.map(e => this.evidenceCard(s, e)))
+        ? visible.length ? h('div', { class: `cf-evidence-list${this.evidenceLayout === 'gallery' ? ' gallery' : ''}` }, visible.map(e => this.evidenceCard(s, e)))
           : h('p', { class: 'cf-empty' }, 'مفيش أدلة في التصنيف ده لسه.')
         : h('p', { class: 'cf-empty' }, 'لسه ما جمعتش أي دليل. افحص المكان وكلّم الناس.'))
   }
@@ -224,13 +241,11 @@ export class CaseFileView {
         'aria-expanded': String(expanded),
         'aria-controls': `ev-record-${e.id}`,
         onclick: () => {
-          if (!this.reviewedEvidence.has(e.id)) {
-            this.reviewedEvidence.add(e.id)
-            this.d.onEvidenceReviewed(e.id)
-          }
+          this.reviewedEvidence.add(e.id)
           this.expandedEvidence = expanded ? undefined : e.id
           this.d.audio.play('ui')
-          this.render()
+            this.render()
+            this.pageEl.querySelector<HTMLElement>(`[aria-controls="ev-record-${e.id}"]`)?.focus({ preventScroll: true })
         },
       },
         art

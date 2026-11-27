@@ -1,10 +1,10 @@
 import { arabicDigits, formatClock, partsOf } from '../core/clock'
 import { CHARACTER_LIST } from '../data/characters'
 import { PLACES, PLACE_LIST } from '../data/places'
-import type { CharacterId, CharacterProfile, Evidence, EvidenceId, Hotspot, Place, PlaceId } from '../data/types'
+import type { CharacterId, CharacterProfile, Hotspot, Place, PlaceId } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Session } from '../game/session'
-import { evidenceUrl, PIN_POS, isDaytime, portraitUrl, sceneNeighbors, sceneSrcSet, sceneUrl } from './art'
+import { evidenceUrl, PIN_POS, isDaytime, portraitUrl, sceneSrcSet, sceneUrl } from './art'
 import { h, setChildren, svg } from './dom'
 import { applyAreaTheme } from './worldFx'
 import { applyWorldTime } from './extras'
@@ -44,11 +44,12 @@ export class InvestigationView {
   private session?: Session
   private placeId: PlaceId = 'zeinab_home'
   private tab: InvestigationTab = 'scene'
-  private readonly reviewedEvidence = new Set<EvidenceId>()
   private visit = 0
   /** Desktop side drawer / mobile bottom sheet. */
   private drawerOpen = false
   private lastScene = ''
+  private photo?: { key: string; element: HTMLImageElement }
+  private pendingRefresh = 0
   private readonly clockEl = h('span', { class: 'inv-clock', 'aria-label': 'الساعة' })
   private lastClock = ''
   private lastDay: boolean | undefined
@@ -97,7 +98,6 @@ export class InvestigationView {
   }
 
   show(session: Session, placeId: PlaceId): void {
-    if (this.session !== session) this.reviewedEvidence.clear()
     this.session = session
     this.placeId = placeId
     this.visit++
@@ -110,18 +110,19 @@ export class InvestigationView {
   }
 
   hide(): void {
+    cancelAnimationFrame(this.pendingRefresh)
+    this.pendingRefresh = 0
     this.destination?.close()
     this.el.hidden = true
     document.body.classList.remove('investigation-active')
   }
 
-  markEvidenceReviewed(id: EvidenceId): void {
-    this.reviewedEvidence.add(id)
-    if (!this.el.hidden) this.render()
-  }
-
   refresh(): void {
-    if (!this.el.hidden) this.render()
+    if (this.el.hidden || this.pendingRefresh) return
+    this.pendingRefresh = requestAnimationFrame(() => {
+      this.pendingRefresh = 0
+      if (!this.el.hidden) this.render()
+    })
   }
 
   updateWorldTime(): void {
@@ -165,39 +166,6 @@ export class InvestigationView {
     this.render()
   }
 
-  /** A card flies from the scene into the case-file button when evidence is found. */
-  celebrate(evidence: Evidence): void {
-    if (this.el.hidden) return
-    const target = [...this.el.querySelectorAll<HTMLElement>('.inv-file-btn')].find(b => b.offsetParent !== null)
-    if (document.body.classList.contains('reduced-motion')) {
-      target?.classList.add('bump')
-      window.setTimeout(() => target?.classList.remove('bump'), 700)
-      return
-    }
-    const art = evidenceUrl(evidence.id)
-    const card = h('div', { class: 'inv-fly-card', role: 'presentation' },
-      art && h('img', { src: art, alt: '', loading: 'lazy', decoding: 'async' }),
-      h('div', null, h('small', null, 'دليل جديد'), h('b', null, evidence.title)))
-    const from = this.el.querySelector<HTMLElement>('.inv-stage')?.getBoundingClientRect()
-    card.style.left = `${from ? from.left + from.width / 2 : window.innerWidth / 2}px`
-    card.style.top = `${from ? from.top + from.height / 2 : window.innerHeight / 2}px`
-    document.body.append(card)
-    requestAnimationFrame(() => card.classList.add('in'))
-    window.setTimeout(() => {
-      const to = target?.getBoundingClientRect()
-      if (to) {
-        card.style.left = `${to.left + to.width / 2}px`
-        card.style.top = `${to.top + to.height / 2}px`
-      }
-      card.classList.add('fly')
-    }, 1100)
-    window.setTimeout(() => {
-      card.remove()
-      target?.classList.add('bump')
-      window.setTimeout(() => target?.classList.remove('bump'), 700)
-    }, 1800)
-  }
-
   private selectPlace(placeId: PlaceId): void {
     const next = PLACES[placeId]
     const here = PLACES[this.placeId]
@@ -220,6 +188,8 @@ export class InvestigationView {
   }
 
   private render(): void {
+    cancelAnimationFrame(this.pendingRefresh)
+    this.pendingRefresh = 0
     const s = this.session
     if (!s) return
     const place = PLACES[this.placeId]
@@ -240,11 +210,7 @@ export class InvestigationView {
         this.drawer(s, place)),
       this.mobileNav(s),
     )
-    if (this.tab === 'scene') {
-      this.layoutPins()
-      const photo = this.el.querySelector<HTMLImageElement>('.inv-photo')
-      if (photo && !photo.complete) photo.addEventListener('load', () => this.layoutPins(), { once: true })
-    }
+    if (this.tab === 'scene') this.layoutPins()
   }
   /**
    * Pins are authored as percentages of the 16:9 photograph, but the photo is cropped with
@@ -276,9 +242,7 @@ export class InvestigationView {
     const guideBelow = stage.querySelector('.inv-guide.opening') !== null
     const top = (guide && !guideBelow ? guide.b : 0) + margin
     const placed: { l: number; r: number; t: number; b: number }[] = []
-    for (const pin of pins) {
-      const pw = pin.offsetWidth
-      const ph = pin.offsetHeight
+    const positions = pins.map(pin => ({ pin, pw: pin.offsetWidth, ph: pin.offsetHeight })).map(({ pin, pw, ph }) => {
       let x = ox + (Number(pin.dataset.x) / 100) * iw
       let y = oy + (Number(pin.dataset.y) / 100) * ih
       if (W <= 540 && pin.classList.contains('opening-thread')) {
@@ -301,6 +265,9 @@ export class InvestigationView {
         }
       }
       placed.push({ l: x - pw / 2, r: x + pw / 2, t: y - ph / 2, b: y + ph / 2 })
+      return { pin, x, y }
+    })
+    for (const { pin, x, y } of positions) {
       pin.style.left = `${Math.round(x)}px`
       pin.style.top = `${Math.round(y)}px`
     }
@@ -319,7 +286,7 @@ export class InvestigationView {
           h('span', { class: 'ico', 'aria-hidden': true }, '◉'), h('span', null, 'المشهد')),
         h('button', { class: `inv-act inv-nav-btn${map ? ' active' : ''}`, 'aria-pressed': String(map), onclick: () => this.setTab('map') },
           h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة'), h('kbd', null, 'M')),
-        h('button', { class: 'inv-act inv-file-btn', onclick: this.d.onCaseFile },
+        h('button', { class: 'inv-act inv-file-btn', 'data-case-file': '', onclick: this.d.onCaseFile },
           h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'ملف القضية'),
           h('em', { class: 'inv-badge', 'aria-label': `${found} دليل` }, arabicDigits(found))),
         mail > 0 && h('button', { class: 'inv-act inv-file-btn', onclick: this.d.onMail },
@@ -339,15 +306,17 @@ export class InvestigationView {
     const opening = s.caseId === 'case01' && place.id === 'mahmoud_house' && !s.state.flags.has('zeinab_talked')
     const voicemail = opening ? active.find(hotspot => hotspot.id === 'hs_mahmoud_voicemail') : undefined
     const pins = active.filter(hotspot => hotspot !== voicemail)
-    return [
-      ...sceneNeighbors(place.id).map(id => h('link', {
-        rel: 'preload', as: 'image', href: sceneUrl(id, hour), imagesrcset: sceneSrcSet(id, hour),
-        imagesizes: '100vw', fetchpriority: 'low',
-      })),
-      h('img', {
-        class: 'inv-photo', src: sceneUrl(place.id, hour), srcset: sceneSrcSet(place.id, hour), sizes: '100vw',
+    const key = `${place.id}:${isDaytime(hour)}`
+    if (this.photo?.key !== key) {
+      const element = h('img', {
+        class: 'inv-photo', sizes: '100vw', srcset: sceneSrcSet(place.id, hour), src: sceneUrl(place.id, hour),
         alt: place.name, draggable: 'false', loading: 'eager', fetchpriority: 'high', decoding: 'async',
-      }),
+      })
+      element.addEventListener('load', () => { if (this.photo?.element === element) this.layoutPins() })
+      this.photo = { key, element }
+    }
+    return [
+      this.photo.element,
       h('div', { class: 'inv-photo-shade', 'aria-hidden': true }),
       this.guide(s, place, active.length + people.length, opening, voicemail),
       h('div', { class: 'inv-pins' }, pins.map((hotspot, i) => this.pin(hotspot, i, pins.length))),
@@ -585,7 +554,7 @@ export class InvestigationView {
     const found = s.state.evidence.size
     const total = file.evidence.length
     const foundHere = file.evidence.filter(e => e.place === place.id && s.engine.has(e.id))
-    const recent = file.evidence.filter(e => s.engine.has(e.id)).slice(-3).reverse()
+    const recent = Array.from(s.state.evidence.keys()).slice(-3).reverse().map(id => s.engine.evidenceInfo(id))
     const objectives = s.engine.objectives()
     const done = objectives.filter(o => o.done).length
     const meter = (label: string, a: number, b: number) => h('div', { class: 'inv-meter' },
@@ -617,7 +586,7 @@ export class InvestigationView {
     return h('nav', { class: 'inv-mobile-nav', 'aria-label': 'اختصارات التحقيق' },
       h('button', { class: this.tab === 'scene' ? 'on' : '', onclick: () => this.setTab('scene') }, h('span', { class: 'ico', 'aria-hidden': true }, '◉'), h('span', null, 'المشهد')),
       h('button', { class: this.tab === 'map' ? 'on' : '', onclick: () => this.setTab('map') }, h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة')),
-      h('button', { class: 'inv-file-btn', onclick: this.d.onCaseFile }, h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'الملف'), found > 0 && h('em', { class: 'inv-badge' }, arabicDigits(found))),
+      h('button', { class: 'inv-file-btn', 'data-case-file': '', onclick: this.d.onCaseFile }, h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'الملف'), found > 0 && h('em', { class: 'inv-badge' }, arabicDigits(found))),
       mail > 0 && h('button', { class: 'inv-file-btn', onclick: this.d.onMail }, h('span', { class: 'ico', 'aria-hidden': true }, '✉'), h('span', null, 'الجوابات'), h('em', { class: 'inv-badge' }, arabicDigits(mail))),
       h('button', { onclick: this.d.onHint }, h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح')),
       h('button', { onclick: this.d.onPause }, h('span', { class: 'ico', 'aria-hidden': true }, '☰'), h('span', null, 'القائمة')))
