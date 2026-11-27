@@ -1,4 +1,5 @@
 import type { CharacterId, Dialogue, DialogueChoice } from './types'
+import { ARCHIVE_DIALOGUES } from './amnaArchive'
 import { GATES } from './case01'
 import { VILLAGER_DIALOGUES } from './dialogues.villagers01'
 import { VILLAGER_DIALOGUES_02 } from './dialogues.villagers02'
@@ -17,6 +18,10 @@ const showZeinabThread: DialogueChoice = {
 const showZeinabPhoto: DialogueChoice = {
   text: 'مين كان واقف جنب محمود يوم الصورة دي؟', next: 'z_show_photo', present: 'e_old_photo',
   when: { evidence: ['e_old_photo'], notFlags: ['zeinab_photo_shown'] },
+}
+const showZeinabAmna: DialogueChoice = {
+  text: 'اقروا جواب آمنة سوا', next: 'z_amna_letter', present: 'e_amna_letter',
+  when: { evidence: ['e_amna_letter'], flags: ['amna_decided'], notFlags: ['amna_zeinab_read'] },
 }
 
 const zeinab: Dialogue = {
@@ -38,6 +43,7 @@ const zeinab: Dialogue = {
         { text: 'اهدي يا ستّي… أنا هلاقيه.', next: 'z_calm' },
         showZeinabThread,
         showZeinabPhoto,
+        showZeinabAmna,
       ],
     },
     z_calm: {
@@ -81,6 +87,7 @@ const zeinab: Dialogue = {
         { text: 'سلامو عليكو يا ستّي.', next: 'z_bye' },
         showZeinabThread,
         showZeinabPhoto,
+        showZeinabAmna,
       ],
     },
     z_show_thread: {
@@ -102,6 +109,15 @@ const zeinab: Dialogue = {
         { who: 'zeinab', text: 'تبصّ على كتف محمود؟ فيه صوابع حد جاي من طرف الصورة. كنت فاكرة إن الصورة اتقطعت بالغلط… اسأل خالك لما تلاقيه.' },
       ],
       effects: [{ type: 'flag', id: 'zeinab_photo_shown' }],
+      next: 'z_hub',
+    },
+    z_amna_letter: {
+      id: 'z_amna_letter',
+      lines: [
+        { who: 'zeinab', text: 'آمنة كانت بتعمل خط أحمر تحت أي حاجة لازم تفضل. حتى على باترون الفستان اللي كانت بتعلّمني أخيّطه.' },
+        { who: 'zeinab', text: 'هي كانت عايزاك تختار بإيدك. اقرأ أول سطر تاني يا ضنايا… وحشني صوتها.' },
+      ],
+      effects: [{ type: 'flag', id: 'amna_zeinab_read' }],
       next: 'z_hub',
     },
     z_neighbor: {
@@ -177,6 +193,7 @@ const zeinab: Dialogue = {
         { text: 'خالي مش مخطوف… هو متخبّي.', next: 'z_hope', when: { flags: ['found_mahmoud'] } },
         showZeinabThread,
         showZeinabPhoto,
+        showZeinabAmna,
       ],
     },
     z_hope: {
@@ -822,7 +839,7 @@ const mahmoud: Dialogue = {
     m_third: {
       id: 'm_third',
       lines: [
-        { who: 'mahmoud', text: '…لسه فاكرها؟ كنا اتنين قدام العمود، بس الصورة اتصوّرت بتلات. الراجل التالت هو اللي دلّ شوقي على أول عقد مشبوه.' },
+        { who: 'mahmoud', text: 'أنا وشوقي اللي وشوشنا في الصورة. إنما شريكنا التالت كان ورا العدسة. هو اللي دلّ شوقي على أول عقد مشبوه.' },
         { who: 'mahmoud', text: 'مش وقته أقولك اسمه. اقفل القضية دي الأول، وبعدين نفتح اللي بعدها.' },
         { who: 'narrator', text: 'اتحفر في دماغك سطر واحد: فيه راجل تالت… لسه ماحدّش قال اسمه.' },
       ],
@@ -863,7 +880,7 @@ const mahmoud: Dialogue = {
   },
 }
 
-export const DIALOGUES: Partial<Record<CharacterId, Dialogue>> = { ...VILLAGER_DIALOGUES, zeinab, hassan, ragab, bahr, fathy, shawky, mahmoud }
+export const DIALOGUES: Partial<Record<CharacterId, Dialogue>> = { ...VILLAGER_DIALOGUES, ...ARCHIVE_DIALOGUES, zeinab, hassan, ragab, bahr, fathy, shawky, mahmoud }
 
 
 const salma: Dialogue = {

@@ -26,6 +26,38 @@ const talk = (engine: CaseEngine, who: keyof typeof DIALOGUES) => {
   return s
 }
 
+describe('Amna archive', () => {
+  it.each(['amna_credit', 'amna_private'])('unlocks the letter and records only %s', decision => {
+    const { engine, state } = make()
+    const hotspot = (id: string) => CASE_01.hotspots.find(h => h.id === id)!
+    expect(engine.hotspotAvailable(hotspot('hs_amna_envelope'))).toBe(false)
+    engine.apply([{ type: 'evidence', id: 'e_library_envelope' }])
+    engine.useHotspot(hotspot('hs_amna_envelope'))
+    expect(state.flags.has('amna_route')).toBe(true)
+    expect(engine.hotspotAvailable(hotspot('hs_amna_negative'))).toBe(false)
+    talk(engine, 'nabil_survey').choose(0)
+    expect(engine.hotspotAvailable(hotspot('hs_amna_negative'))).toBe(true)
+    engine.useHotspot(hotspot('hs_amna_negative'))
+    engine.useHotspot(hotspot('hs_amna_receipt'))
+    const mona = talk(engine, 'mona_archive')
+    mona.choose(0)
+    mona.choose(0)
+    expect(engine.has('e_amna_letter')).toBe(false)
+    mona.advance()
+    mona.choose(1)
+    expect(engine.has('e_amna_letter')).toBe(true)
+    mona.advance()
+    expect(mona.view()?.choices).toHaveLength(0)
+    engine.tie('e_amna_letter', 'e_nabil_memory')
+    mona.choose(1)
+    mona.choose(decision === 'amna_credit' ? 0 : 1)
+    expect(state.flags.has('amna_decided')).toBe(true)
+    expect(state.flags.has(decision)).toBe(true)
+    expect(state.flags.has(decision === 'amna_credit' ? 'amna_private' : 'amna_credit')).toBe(false)
+    expect(talk(engine, 'mona_archive').view()?.choices).toHaveLength(0)
+  })
+})
+
 describe('case data integrity', () => {
   it('gives every clue a question and every valid pair its own reasoning', () => {
     for (const file of [CASE_01, CASE_02, CASE_03]) {

@@ -16,6 +16,7 @@ export type Vec2 = { x: number; z: number }
 export type PlaceId =
   | 'zeinab_home' | 'mahmoud_house' | 'cafe_ragab' | 'abis_mosque' | 'canal_bridge' | 'plot15'
   | 'abis_stop' | 'raml_stop' | 'mansheya' | 'qaitbay' | 'bibliotheca' | 'pompey' | 'corniche'
+  | 'kom_dikka' | 'alex_museum'
   | 'abis_market' | 'bakery' | 'old_school' | 'pump_station' | 'omda_house' | 'guava_orchard' | 'rail_crossing' | 'cemetery' | 'pigeon_tower' | 'mill' | 'health_unit' | 'waterwheel'
 
 export type Place = {
@@ -80,6 +81,7 @@ export type RealEvent = {
 export type CharacterId =
   | 'yassin' | 'zeinab' | 'hassan' | 'ragab' | 'mahmoud' | 'shawky' | 'bahr' | 'fathy'
   | 'salma' | 'nabil' | 'adham' | 'nadia' | 'farid' | 'omar' | 'hoda' | 'khaled'
+  | 'nabil_survey' | 'mona_archive'
   | 'umm_saeed' | 'omda' | 'mounir' | 'abdo' | 'hamada' | 'hagga_fatma' | 'metwally' | 'dr_amal' | 'barakat' | 'saber'
 
 /** Deep character profile ("ملف تعريف"): drives the notebook, dialogue tone and the figure. */
@@ -120,6 +122,7 @@ export type EvidenceId =
   | 'e_bakery_ration' | 'e_school_note' | 'e_pump_payment' | 'e_omda_guestbook' | 'e_guava_trace'
   | 'e_rail_tracks' | 'e_cemetery_cache' | 'e_pigeon_note' | 'e_health_alias' | 'e_waterwheel_carving'
   | 'e_market_crates' | 'e_mill_receipt'
+  | 'e_odeon_negative' | 'e_nabil_memory' | 'e_museum_receipt' | 'e_amna_letter'
   | 'e02_black_envelope' | 'e02_burned_map' | 'e02_red_receipt' | 'e02_corniche_photo'
   | 'e02_key_tag' | 'e02_ledger_page' | 'e02_messenger_note' | 'e02_sea_glass'
   | 'e02_recording' | 'e02_archive_stamp' | 'e02_radio_log' | 'e02_stock_manifest'
@@ -153,6 +156,7 @@ export type Evidence = {
 }
 
 export type DeductionId =
+  | 'd_amna_archive'
   | 'd_trail' | 'd_markers' | 'd_alibi' | 'd_where' | 'd_forgery' | 'd_motive'
   | 'd_vehicle' | 'd_water_pressure' | 'd_handwriting'
   | 'd02_route' | 'd02_motive' | 'd02_forgery' | 'd02_betrayal' | 'd02_chain' | 'd02_confrontation'

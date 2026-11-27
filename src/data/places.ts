@@ -6,6 +6,16 @@ import type { Place, PlaceId } from './types'
  * microbus line. Landmark GPS anchors are the real public coordinates used for field photography.
  */
 export const PLACES: Record<PlaceId, Place> = {
+  kom_dikka: {
+    id: 'kom_dikka', name: 'المسرح الروماني بكوم الدكة', short: 'كوم الدكة', realSite: true, district: 'city',
+    mapPos: { lat: 31.1944, lng: 29.9046 }, pos: { x: 25, z: -108 },
+    description: 'درجات حجر بتلف حوالين أرضية المسرح الروماني. على دكة برّه، عم نبيل مستني حد يسأله عن صورة بقالها سنين في شنطته.',
+  },
+  alex_museum: {
+    id: 'alex_museum', name: 'متحف الإسكندرية القومي', short: 'المتحف القومي', realSite: true, district: 'city',
+    mapPos: { lat: 31.2007, lng: 29.9136 }, pos: { x: 172, z: -151 },
+    description: 'واجهة فيلا فاتحة وسلّم مزدوج على طريق الحرية. قرب المدخل، منى بتقابل أهل أبيس اللي مودعين صورهم في أرشيفها الأهلي.',
+  },
   zeinab_home: {
     id: 'zeinab_home', name: 'بيت ستّك زينب', short: 'البيت', mapPos: { lat: 31.1472, lng: 30.0062 }, realSite: false, district: 'abis', pos: { x: 40, z: 240 },
     description: 'بيت طوب أحمر بدورين في آخر شارع الجامع في عزبة ١٥. الباب الأخضر مشقق من الشمس، وماكينة الخياطة السنجر بتاعة ستّك لسه بتشتغل بالرجل. هنا بتصحى وهنا بترجع تنام.',

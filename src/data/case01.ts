@@ -1,4 +1,5 @@
 import type { CaseFile, Gate } from './types'
+import { ARCHIVE_DEDUCTION, ARCHIVE_EVIDENCE, ARCHIVE_HOTSPOTS, ARCHIVE_OBJECTIVES } from './amnaArchive'
 
 /** Gates reused by evidence, hotspots and dialogue. Only BONUS content is gated in realistic mode. */
 export const GATES = {
@@ -36,6 +37,7 @@ export const CASE_01: CaseFile = {
     { id: 'unknown', label: 'مجهول' },
   ],
   evidence: [
+    ...ARCHIVE_EVIDENCE,
     { id: 'e_thread_door', title: 'خيط أحمر على الباب', kind: 'object', place: 'mahmoud_house', source: 'مقبض باب بيت الخال',
       summary: 'خيط قطن أحمر مربوط في مقبض الباب بعقدة غريبة.',
       detail: 'العقدة مش عقدة خالك المعتادة. لفتين ماسكين في بعض، والطرفين مشدودين كأن الخيط حبل.',
@@ -166,6 +168,7 @@ export const CASE_01: CaseFile = {
       question: { text: 'سداد المطحنة حصل قبل ولا بعد وقف الميّه؟', answeredWhen: [{ deductions: ['d_water_pressure'] }] } },
   ],
   deductions: [
+    ARCHIVE_DEDUCTION,
     { id: 'd_markers', title: 'الحدود اتحرّكت', conclusion: 'دفتر محمود بيقول إن الحجر الجنوبي اتزحزح ٣ متر، والحجر نفسه كده فعلاً: حد حرّك الحدود بإيده.',
       pairReasons: ['الدفتر بيحدد الحجر الجنوبي، ونفس رقم القطعة محفور على الحجر اللي حواليه طين طازة.'],
       pairs: [['e_boundary_stone', 'e_survey_book']], sets: ['markers_tied'] },
@@ -230,8 +233,13 @@ export const CASE_01: CaseFile = {
       doneWhen: { deductions: ['d_markers', 'd_forgery', 'd_trail', 'd_vehicle', 'd_water_pressure', 'd_handwriting'] } },
     { id: 'o_accuse', title: 'اتّهم الجاني', detail: 'كل الخيوط اتربطت: العربية، المية، والخط. من لوحة التحقيق اختار المتهم والدافع.', when: { deductions: ['d_markers', 'd_forgery', 'd_trail', 'd_vehicle', 'd_water_pressure', 'd_handwriting'] },
       doneWhen: { flags: ['case_solved'] } },
+    ...ARCHIVE_OBJECTIVES,
   ],
   hotspots: [
+    ...ARCHIVE_HOTSPOTS,
+    { id: 'hs_amna_envelope', label: 'راجع ظهر مظروف المكتبة', place: 'bibliotheca', offset: { x: -9, z: 8 }, kind: 'inspect', consumable: true,
+      when: { evidence: ['e_library_envelope'] }, effects: [{ type: 'flag', id: 'amna_route' }],
+      text: 'على الضهر خطّ محمود: «نبيل عند درجات المسرح في كوم الدكة. اسأله عن الصورة قبل ما تتقصّ.»' },
     { id: 'hs_door_thread', label: 'الخيط على الباب', place: 'mahmoud_house', offset: { x: 0, z: 9 }, kind: 'inspect', consumable: true,
       text: 'خيط قطن أحمر مربوط في المقبض بعقدة غريبة. افتكرت الرسالة الصوتية اللي خالك سابهالك. افتحها من المشهد.',
       effects: [{ type: 'evidence', id: 'e_thread_door' }] },

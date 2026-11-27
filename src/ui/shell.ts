@@ -314,7 +314,12 @@ export class Shell {
     const stars = h('div', { class: 'stars', 'aria-label': `${report.stars} من ٥ نجوم` },
       [1, 2, 3, 4, 5].map(i => h('span', { class: i <= report.stars ? 'on' : '', style: { '--d': `${i * 0.12}s` } }, '★')))
     const missed = report.missed.map(id => file.evidence.find(e => e.id === id)).filter(e => e !== undefined)
-    const epilogue = endingLines(file.id, report.grade, file.finale.ending)
+    const archiveEpilogue = file.id === 'case01' && (
+      session.state.flags.has('amna_credit') ? 'منى أضافت اسم آمنة للملخص. ولأول مرة، النسخة اللي حمت الأرض رجع عليها اسم صاحبتها.'
+        : session.state.flags.has('amna_private') ? 'بعد ما الملف اتقفل، قريت جواب آمنة مع ستّك زينب. سابتك تكمّل القراءة على صوت ماكينة الخياطة.'
+          : undefined)
+    const epilogue = [...endingLines(file.id, report.grade, file.finale.ending)]
+    if (archiveEpilogue) epilogue.push(archiveEpilogue)
     const endingArt = cinematicUrl(`${file.id}-ending`)
     const unlocked = session.progress.achievements.map(id => getAchievement(id)).filter((a): a is NonNullable<typeof a> => Boolean(a))
     setChildren(this.el, h('section', { class: 'page ending' },

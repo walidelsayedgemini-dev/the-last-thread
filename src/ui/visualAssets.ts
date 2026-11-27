@@ -4,6 +4,8 @@ export type SceneArt = { src: string; mobileSrc?: string; alt: string; mood: str
 
 /** Original portraits for the recurring cast; these are presentation-only and never drive story logic. */
 export const CHARACTER_ART: Partial<Record<CharacterId, { src: string; alt: string }>> = {
+  nabil_survey: { src: new URL('../assets/portraits/nabil_survey.webp', import.meta.url).href, alt: 'عم نبيل بجاكت بني وكوفية رمادي' },
+  mona_archive: { src: new URL('../assets/portraits/mona_archive.webp', import.meta.url).href, alt: 'منى بحجاب فاتح وجاكت كحلي' },
   yassin: { src: new URL('../assets/characters/yassin.webp', import.meta.url).href, alt: 'ياسين، طالب هندسة ومساعد مساحة' },
   zeinab: { src: new URL('../assets/characters/zeinab.webp', import.meta.url).href, alt: 'الحاجة زينب، جدة ياسين وخيّاطة متقاعدة' },
   hassan: { src: new URL('../assets/characters/hassan.webp', import.meta.url).href, alt: 'عم حسن، فلاح أبيس وشاهد على الأراضي القديمة' },
@@ -16,6 +18,8 @@ export const CHARACTER_ART: Partial<Record<CharacterId, { src: string; alt: stri
 
 /** Original fictional environments; existing landmark imagery stays unchanged. */
 export const SCENE_ART: Partial<Record<PlaceId, SceneArt>> = {
+  kom_dikka: { src: new URL('../assets/scenes/kom-dikka.webp', import.meta.url).href, alt: 'مشهد مرسوم مستوحى من درجات المسرح الروماني بكوم الدكة', mood: 'صدى الحجر • كوم الدكة' },
+  alex_museum: { src: new URL('../assets/scenes/alex-museum.webp', import.meta.url).href, alt: 'مشهد مرسوم مستوحى من فيلا متحف الإسكندرية القومي', mood: 'ذاكرة الورق • المتحف القومي' },
   zeinab_home: { src: new URL('../assets/scenes/zeinab-room.webp', import.meta.url).href, mobileSrc: new URL('../assets/scenes/zeinab-room-mobile.webp', import.meta.url).href, alt: 'أوضة ريفية قديمة، ماكينة خياطة وباب أخضر وضوء فانوس', mood: 'ضوء الفانوس • البيت' },
   mahmoud_house: { src: new URL('../assets/scenes/abis-house.webp', import.meta.url).href, alt: 'باب بيت محمود الأخضر وعليه الخيط الأحمر', mood: 'باب مقفول • أثر أحمر' },
   cafe_ragab: { src: new URL('../assets/scenes/ragab-cafe.webp', import.meta.url).href, mobileSrc: new URL('../assets/scenes/ragab-cafe-mobile.webp', import.meta.url).href, alt: 'قهوة ريفية تحت تعريشة عنب، كراسي وشاي وتليفزيون بعيد', mood: 'دخان الشاي • القهوة' },
@@ -40,6 +44,9 @@ export const MAHMOUD_STUDY: SceneArt = {
 
 /** Illustrative close-ups supplement, but never replace, the original evidence text. */
 export const EVIDENCE_ART: Partial<Record<EvidenceId, { src: string; alt: string }>> = {
+  e_odeon_negative: { src: new URL('../assets/evidence/e_odeon_negative.webp', import.meta.url).href, alt: 'نيجاتيف قديم في غلاف بعلامتين حمراوين' },
+  e_museum_receipt: { src: new URL('../assets/evidence/e_museum_receipt.webp', import.meta.url).href, alt: 'إيصال أرشيف قديم بختم وخطين حمراوين' },
+  e_amna_letter: { src: new URL('../assets/evidence/e_amna_letter.webp', import.meta.url).href, alt: 'جواب مطوي بجوار رسم حدود للأرض بقلم أحمر' },
   e_thread_door: { src: new URL('../assets/evidence/red-thread.webp', import.meta.url).href, alt: 'صورة توضيحية لخيط أحمر معقود على مقبض باب أخضر' },
   e_survey_book: { src: new URL('../assets/evidence/survey-book.webp', import.meta.url).href, alt: 'صورة توضيحية لدفتر مساحة مفتوح ورسم حدود الأرض' },
   e_microbus_ticket: { src: new URL('../assets/evidence/ticket.webp', import.meta.url).href, alt: 'صورة توضيحية لتذكرة ورقية مكرمشة في جيب معطف' },

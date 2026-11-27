@@ -1,4 +1,5 @@
 import type { CharacterId, CharacterProfile } from './types'
+import { ARCHIVE_WITNESSES } from './amnaArchive'
 
 /**
  * Character dossiers. `past` entries unlock through story flags as the player earns the character's
@@ -6,6 +7,7 @@ import type { CharacterId, CharacterProfile } from './types'
  * portraits and the scene standees.
  */
 export const CHARACTERS: Record<CharacterId, CharacterProfile> = {
+  ...ARCHIVE_WITNESSES,
   yassin: {
     id: 'yassin', name: 'ياسين', age: 22, role: 'طالب هندسة معمارية ومساعد مساحة', home: 'عزبة ١٥ – أبيس',
     appearance: 'شاب نحيف رياضي، شعر أسود مجعّد قصير، دقن خفيفة، بشرة قمحية. قميص كاروهات أزرق ورمادي مفتوح فوق تيشيرت أبيض، جينز كحلي وكوتشي أبيض مترب من طين الترعة.',
