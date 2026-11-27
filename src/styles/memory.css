@@ -1,0 +1,82 @@
+.memory-view {
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: min(72rem, 100% - 1.5rem);
+  height: min(54rem, 100% - 1.5rem);
+  max-height: 100%;
+  padding: clamp(.7rem, 2vw, 1.3rem);
+  color: #f4e4cc;
+  background: radial-gradient(ellipse at top right, #343126, #171b20 54%);
+  border: 1px solid #827354;
+  border-radius: .8rem;
+  direction: rtl;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.memory-view::backdrop { background: #0d0e12df; }
+.memory-view h2, .memory-view h3, .memory-view h4, .memory-view p { margin: 0; }
+.memory-view p { line-height: 1.65; }
+.memory-view :is(h2, h3, h4) { color: #ffe1a8; }
+.memory-view small { color: #dfc496; }
+.memory-head, .memory-section-head, .memory-switch, .memory-tabs, .memory-link-row, .memory-filters {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.memory-head, .memory-section-head { justify-content: space-between; }
+.memory-progress, .memory-note { color: #d4c8b5; font-size: .87rem; }
+.memory-tabs { margin-block: .65rem .9rem; padding-block-end: .65rem; border-bottom: 1px solid #6f644a; }
+.memory-button, .memory-filters select, .memory-filters input {
+  min-height: 44px;
+  padding: .45rem .7rem;
+  border: 1px solid #8f8061;
+  border-radius: .45rem;
+  background: #2b2d30;
+  color: #f5e4c8;
+  font: inherit;
+  font-size: .92em;
+  text-align: start;
+  cursor: pointer;
+}
+.memory-button:hover:not(:disabled), .memory-button[aria-current], .memory-button[aria-pressed="true"] {
+  background: #534332;
+  border-color: #eed19a;
+  color: #fff3d7;
+}
+.memory-button:focus-visible, .memory-filters :is(select, input):focus-visible { outline: 2px solid #f5c97a; outline-offset: 2px; }
+.memory-button:disabled { opacity: .55; cursor: default; }
+.memory-action { background: #f1d3a0; color: #231b12; font-weight: bold; border-color: #ffdc9b; }
+.memory-action:hover:not(:disabled) { background: #ffdfab; color: #18120d; }
+.memory-content { display: grid; gap: .7rem; }
+.memory-intro, .memory-leads { margin-block-end: .75rem !important; }
+.memory-leads, .memory-card {
+  border: 1px solid #625744;
+  border-radius: .65rem;
+  padding: .75rem;
+  background: #202125;
+}
+.memory-leads { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: .6rem; border-color: #a08b5c; }
+.memory-scene-layout { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(13rem, 1fr); gap: .65rem; align-items: start; }
+.memory-canvas { width: 100%; height: auto; display: block; margin-block: .6rem; border: 1px solid #675f4c; border-radius: .4rem; }
+.memory-place-list { margin-block: .5rem !important; }
+.memory-list { margin: 0; padding: 0; list-style: none; display: grid; gap: .38rem; }
+.memory-place-list .memory-button { width: 100%; }
+.memory-witness-link { margin: .35rem 0 .35rem .35rem; }
+.memory-card > p, .memory-card > .memory-button, .memory-card > details, .memory-card .memory-link-row { margin-block-start: .45rem; }
+.memory-card details .memory-button, .memory-networks li .memory-button { margin: .35rem 0 0 .35rem; }
+.memory-clue { color: #f6dcab; background: #3b3023; border-inline-start: .2rem solid #efc982; padding: .55rem; border-radius: .3rem; }
+.memory-filters { margin-block: .65rem; }
+.memory-filters select { max-width: 100%; }
+.memory-filters input { flex: 1; min-width: 8rem; }
+.memory-directory { margin-block-start: .75rem; }
+.memory-directory-results { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+.memory-map-grid, .memory-networks, .memory-people, .memory-events { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin-block-start: .65rem; }
+.memory-state { color: #e9d7b0; font-size: .83em; }
+.memory-timeline > .memory-link-row { margin-block: .45rem; }
+.memory-sr { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
+@media (max-width: 660px) {
+  .memory-view { width: calc(100% - .5rem); height: calc(100% - .5rem); }
+  .memory-scene-layout, .memory-map-grid, .memory-networks, .memory-people, .memory-events { grid-template-columns: 1fr; }
+  .memory-progress { font-size: .77rem; }
+}

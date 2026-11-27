@@ -35,6 +35,7 @@ export type ShellActions = {
   nextCase(): void
   /** Reset the active profile's onboarding and show it again when possible. */
   replayTutorial(): void
+  memoryCampaign(): void
 }
 
 const ACCENTS = ['#b3121f', '#d9a441', '#3b7ea1', '#5b8c5a', '#8a5aa8', '#e2e2e2']
@@ -155,6 +156,7 @@ export class Shell {
           h('div', { class: 'menu' },
             has && action('كمّل التحقيق', 'افتح ملف الحفظ وشوف آخر دليل', '٠١', true, () => this.go('profiles', 'title')),
             action('تحقيق جديد', 'ابدأ قضية من أول الخيط', has ? '٠٢' : '٠١', !has, () => this.startCreate()),
+            action('أرشيف ياسين', 'القرى والشهود ووقائع الماضي', '◈', false, () => this.act.memoryCampaign()),
             action('الإنجازات', 'شوف الخيوط اللي فتحتها', has ? '٠٣' : '٠٢', false, () => this.go('achievements', 'title')),
             action('الإعدادات', 'الصوت وحجم الخط والتباين', has ? '٠٤' : '٠٣', false, () => this.go('settings', 'title'))))),
       h('footer', null,
@@ -346,6 +348,7 @@ export class Shell {
         h('ul', null, missed.map(e => h('li', null, h('b', null, e.title), h('small', null, ` • ${e.source}`)))),
         h('p', { class: 'note' }, 'بعض الأدلة الإضافية بتظهر بس في الوضع الواقعي في مواعيد معيّنة.')),
       h('div', { class: 'row end' },
+        h('button', { class: 'btn', onclick: () => this.act.memoryCampaign() }, 'افتح أرشيف ياسين'),
         h('button', { class: 'btn ghost', onclick: () => this.act.resume() }, 'ارجع للتحقيق'),
         h('button', { class: `btn${next ? '' : ' primary'}`, onclick: () => this.act.quit() }, 'القائمة الرئيسية'),
         next && h('button', { class: 'btn primary', onclick: () => this.act.nextCase() }, 'ابدأ القضية التانية'))))
@@ -356,6 +359,7 @@ export class Shell {
       h('h2', null, 'التحقيق متوقف'),
       h('div', { class: 'menu' },
         h('button', { class: 'btn primary', onclick: () => this.act.resume() }, 'كمّل'),
+        h('button', { class: 'btn', onclick: () => this.act.memoryCampaign() }, 'أرشيف ياسين'),
         h('button', { class: 'btn', onclick: () => this.act.casefile() }, 'ملف القضية'),
         h('button', { class: 'btn', onclick: () => this.act.help() }, 'إزاي ألعب؟'),
         h('button', { class: 'btn', onclick: () => this.go('achievements', 'pause') }, 'الإنجازات'),

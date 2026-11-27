@@ -13,6 +13,7 @@ import './styles/world-visuals.css'
 import './styles/polish-visuals.css'
 import './styles/juice-visuals.css'
 import './styles/clue-details.css'
+import './styles/memory.css'
 import { arabicDigits, cairoStamp, nowFromQuery } from './core/clock'
 import type { CaseEvent } from './core/caseState'
 import { CHARACTER_LIST } from './data/characters'
@@ -33,6 +34,7 @@ import { achievementContext, evaluateAchievements } from './game/achievements'
 import { CrashReporter } from './services/crash'
 import { CaseFileView } from './ui/casefile'
 import { LockerView } from './ui/clueDetails'
+import { MemoryView } from './ui/memoryView'
 import { DialogueView } from './ui/dialogueView'
 import { HelpView } from './ui/helpView'
 import { Hud } from './ui/hud'
@@ -170,11 +172,19 @@ async function boot(): Promise<void> {
     mailCount: () => (session ? letters.unreadCount(session) : 0),
   })
 
+  let memoryView: MemoryView | undefined
   const shell = new Shell({ settings, profiles, audio }, {
     play: id => void beginProfile(profiles.select(id)),
     create: (avatar, mode) => void beginProfile(profiles.create(avatar, mode), 'force'),
     resume: () => resume(),
     quit: () => quit(),
+    memoryCampaign: () => {
+      if (!memoryView) {
+        memoryView = new MemoryView(storage)
+        ui.append(memoryView.el)
+      }
+      memoryView.show()
+    },
     casefile: () => { shell.go('none'); openCaseFile() },
     settings: patch => {
       settings.update(patch)
@@ -589,7 +599,7 @@ async function boot(): Promise<void> {
 
   // ---- Input and timing ----------------------------------------------------------------------------------------
   window.addEventListener('keydown', event => {
-    if (locker.el.open || investigation.destinationOpen) return
+    if (memoryView?.open || locker.el.open || investigation.destinationOpen) return
     const handled = travel.key(event) || recap.key(event) || lens.key(event) || help.key(event) || letters.key(event) || dialogue.key(event) || caseFile.key(event) || shell.key(event)
     if (handled) {
       event.preventDefault()
@@ -605,6 +615,7 @@ async function boot(): Promise<void> {
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause() })
   // Android back button: close the innermost layer first; returning false minimises the app.
   onBackButton(() => {
+    if (memoryView?.open) { memoryView.close(); return true }
     if (locker.el.open) { locker.el.close(); return true }
     if (lens.open) { lens.hide(); return true }
     if (recap.open) return recap.key(new KeyboardEvent('keydown', { code: 'Escape' }))
