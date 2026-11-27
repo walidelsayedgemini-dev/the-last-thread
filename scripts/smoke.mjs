@@ -359,7 +359,7 @@ try {
   await mobile.waitForFunction(() => window.__ltt.session && !window.__ltt.investigation.el.hidden, null, { timeout: 60_000 })
   const mobileNav = await mobile.locator('.inv-mobile-nav').evaluate(el => getComputedStyle(el).display)
   assert(mobileNav === 'grid', 'mobile investigation navigation is not visible')
-  assert(await mobile.locator('.inv-mobile-nav [aria-current="page"]').count() === 1, 'the mobile dock does not expose its active page')
+  assert(await mobile.locator('.inv-mobile-nav button.on').count() === 1, 'the mobile dock does not mark its active page')
   const minTouchHeight = await mobile.locator('.inv-mobile-nav button').evaluateAll(buttons => Math.min(...buttons.map(button => button.getBoundingClientRect().height)))
   assert(minTouchHeight >= 44, `mobile dock targets are too small (${minTouchHeight}px)`)
   const horizontalOverflow = await mobile.locator('.investigation, .inv-frame').first().evaluate(el => el.scrollWidth > el.clientWidth + 2)
