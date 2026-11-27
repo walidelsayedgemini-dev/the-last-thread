@@ -1,0 +1,117 @@
+.clue-wall, .clue-specimen { margin: .6rem 0; min-width: 0; }
+.clue-wall-scroll { overflow-x: auto; border-radius: .45rem; }
+.clue-wall-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+  background: #665c4c;
+  border: .25rem solid #665c4c;
+}
+.clue-wall-grid span {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1.25;
+  color: #392e24;
+  background: linear-gradient(142deg, #d2c4aa, #b8a98a);
+  box-shadow: inset 0 0 .5rem #4e3e2c50;
+  font: bold clamp(1rem, 5vw, 2.2rem)/1 serif;
+}
+.clue-wall-grid span.pigment {
+  color: #611c15;
+  background: radial-gradient(ellipse, #edc6a8 22%, #d2957c 67%, #c4b394 80%);
+  text-decoration: underline dotted;
+  text-underline-offset: .15em;
+}
+.clue-wall-grid.enlarged { min-width: 30rem; }
+.clue-wall-grid.enlarged span { font-size: 3rem; }
+.clue-wall figcaption { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; justify-content: space-between; }
+.clue-wall figcaption, .clue-specimen figcaption { font-size: .83rem; padding-block: .45rem; }
+.clue-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+.clue-locker {
+  pointer-events: auto;
+  width: min(34rem, calc(100% - 1.5rem));
+  max-height: 92dvh;
+  box-sizing: border-box;
+  padding: 1rem;
+  border: 1px solid #9b8361;
+  border-radius: .8rem;
+  color: #f8ecd7;
+  background: #25201b;
+  direction: rtl;
+  overflow: auto;
+}
+.clue-locker::backdrop { background: #110d0bba; }
+.clue-locker header, .locker-controls { display: flex; gap: .5rem; align-items: center; }
+.clue-locker header { justify-content: space-between; }
+.clue-locker form { margin-block-start: .8rem; }
+.locker-controls input {
+  flex: 1;
+  min-width: 0;
+  padding: .55rem;
+  min-height: 44px;
+  color: #241912;
+  background: #f8ecd7;
+  border: 2px solid #9b8361;
+  border-radius: .4rem;
+  font: inherit;
+}
+.locker-controls button, .clue-wall button { min-height: 44px; }
+.clue-locker summary { cursor: pointer; padding-block: .45rem; }
+.locker-status { color: #ffc5a9; }
+.locker-status:empty { display: none; }
+.locker-controls input[aria-invalid="true"] { border-color: #ce5538; }
+
+.clue-specimen {
+  padding: .8rem;
+  border-radius: .45rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.clue-stone {
+  color: #231d17;
+  background: repeating-linear-gradient(128deg, #a3967b 0 2px, #ad9d81 3px 9px);
+}
+.clue-stone b { font: bold 3rem/1.1 serif; text-shadow: 1px 2px #d7c7a5; }
+.clue-knot { background: #3e2c22; color: #f6e5cd; }
+.clue-knot-lines { display: flex; align-items: center; justify-content: center; height: 4.5rem; }
+.clue-knot-lines i {
+  position: relative;
+  width: 3.4rem;
+  height: 2.2rem;
+  border: .35rem solid #c34539;
+  border-radius: 50%;
+  box-shadow: inset 0 1px #672218, 0 2px 2px #281c16;
+  transform: rotate(-26deg);
+}
+.clue-knot-lines i + i { margin-inline-start: -1.45rem; transform: rotate(26deg); border-color: #da6750; }
+.clue-knot-lines i::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 80%;
+  top: 15%;
+  width: 2rem;
+  height: .35rem;
+  border-radius: 1rem;
+  background: #d85748;
+}
+.clue-knot-lines i + i::after { inset-inline-start: auto; inset-inline-end: 80%; top: auto; bottom: 15%; }
+.clue-paper { color: #33291e; background: repeating-linear-gradient(#efe2c5 0 24px, #d9c8a7 24px 25px); }
+.clue-payload { display: block; }
+.clue-stamp {
+  display: inline-grid;
+  place-items: center;
+  min-height: 3.25rem;
+  width: 5.2rem;
+  margin: .45rem .1rem;
+  padding: .25rem;
+  border: 3px double currentColor;
+  border-radius: 50%;
+  color: #4f5c79;
+  font-size: .7rem;
+}
+.clue-signature { display: block; color: #2e3a60; font: italic bold 1.5rem/1.3 serif; }
+.clue-paper.copy .clue-signature { transform: rotate(-9deg) skew(-15deg); }
+.clue-review { margin-block-start: .75rem; padding: .7rem; border: 1px solid #ac795f; border-radius: .55rem; }
+.clue-review h5 { margin-top: 0; font-size: 1rem; }
+.clue-comparison > article { min-width: 0; }

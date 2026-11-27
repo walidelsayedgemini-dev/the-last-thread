@@ -229,6 +229,7 @@ export type Hotspot = {
   place: PlaceId
   offset: Vec2
   kind: 'inspect' | 'photo' | 'travel' | 'rest'
+  lockCode?: string
   when?: Condition
   /** Effects applied once on inspection. */
   effects?: Effect[]

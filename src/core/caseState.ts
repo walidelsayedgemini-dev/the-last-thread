@@ -171,7 +171,8 @@ export class CaseEngine {
   }
 
   /** Use a hotspot: apply its effects once and mark consumable ones as used. */
-  useHotspot(h: Hotspot): CaseEvent[] {
+  useHotspot(h: Hotspot, code?: string): CaseEvent[] {
+    if (h.lockCode && (h.lockCode !== code || !this.hotspotAvailable(h))) return []
     const events = this.apply(h.effects)
     // A gated evidence refusal must not consume the hotspot: the player can come back later.
     const refused = events.some(e => e.type === 'evidence-gated')

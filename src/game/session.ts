@@ -133,7 +133,7 @@ export class Session {
     return s
   }
   flushDialogue(s: DialogueSession): void { this.emit(s.drainEvents()) }
-  useHotspot(h: Hotspot): CaseEvent[] { const events = this.engine.useHotspot(h); this.emit(events); return events }
+  useHotspot(h: Hotspot, code?: string): CaseEvent[] { const events = this.engine.useHotspot(h, code); this.emit(events); return events }
 
   tie(a: EvidenceId, b: EvidenceId): TieResult { const { result, events } = this.engine.tie(a, b); this.emit(events); return result }
 

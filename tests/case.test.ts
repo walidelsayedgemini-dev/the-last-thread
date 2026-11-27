@@ -124,7 +124,7 @@ describe('case engine', () => {
   })
   it('plays the whole case end-to-end in story mode', () => {
     const { engine } = make()
-    const hs = (id: string) => engine.useHotspot(CASE_01.hotspots.find(h => h.id === id)!)
+    const hs = (id: string, code?: string) => engine.useHotspot(CASE_01.hotspots.find(h => h.id === id)!, code)
 
     // Zeinab → key
     const z = talk(engine, 'zeinab')
@@ -141,7 +141,13 @@ describe('case engine', () => {
     // City
     hs('hs_bus_city')
     expect(engine.state.flags.has('visited_city')).toBe(true)
-    hs('hs_photo_library'); hs('hs_locker')
+    hs('hs_photo_library')
+    expect(hs('hs_locker')).toEqual([])
+    expect(hs('hs_locker', 'ق51')).toEqual([])
+    expect(engine.activeHotspots().some(h => h.id === 'hs_locker')).toBe(true)
+    expect(engine.has('e_library_envelope')).toBe(false)
+    hs('hs_locker', 'ق15')
+    expect(engine.has('e_library_envelope')).toBe(true)
     expect(engine.has('e_library_envelope')).toBe(true)
     // Bahr needs the door thread
     const b = talk(engine, 'bahr')

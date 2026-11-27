@@ -12,6 +12,7 @@ import './styles/organizer-visuals.css'
 import './styles/world-visuals.css'
 import './styles/polish-visuals.css'
 import './styles/juice-visuals.css'
+import './styles/clue-details.css'
 import { arabicDigits, cairoStamp, nowFromQuery } from './core/clock'
 import type { CaseEvent } from './core/caseState'
 import { CHARACTER_LIST } from './data/characters'
@@ -31,6 +32,7 @@ import { LocalStorageAdapter, MemoryStorage } from './services/storage'
 import { achievementContext, evaluateAchievements } from './game/achievements'
 import { CrashReporter } from './services/crash'
 import { CaseFileView } from './ui/casefile'
+import { LockerView } from './ui/clueDetails'
 import { DialogueView } from './ui/dialogueView'
 import { HelpView } from './ui/helpView'
 import { Hud } from './ui/hud'
@@ -209,7 +211,8 @@ async function boot(): Promise<void> {
     nextCase: () => startNextCase(),
     help: () => showHelp(),
   })
-  ui.append(shell.el, investigation.el, hud.el, story.el, arrival.el, dialogue.el, caseFile.el, letters.el, lens.el, help.el, recap.el, travel.el, saveChip.el, fx.el, tutorial.el)
+  const locker = new LockerView()
+  ui.append(shell.el, investigation.el, hud.el, story.el, arrival.el, dialogue.el, caseFile.el, letters.el, lens.el, help.el, recap.el, travel.el, saveChip.el, fx.el, tutorial.el, locker.el)
   letters.onChange = () => { investigation.refresh(); caseFile.refresh() }
   applySettings(settings.data)
 
@@ -463,8 +466,16 @@ async function boot(): Promise<void> {
     else window.setTimeout(storyCheck, 900)
   }
 
-  function handleHotspot(hotspot: Hotspot): void {
-    if (!session || !active || paused) return
+  function handleHotspot(hotspot: Hotspot, code?: string): void {
+    if (!session || !active || paused || !session.engine.hotspotAvailable(hotspot)) return
+    const lockCode = hotspot.lockCode
+    if (lockCode && code !== lockCode) {
+      const currentSession = session
+      locker.show(lockCode, () => {
+        if (session === currentSession && currentPlace === hotspot.place) handleHotspot(hotspot, lockCode)
+      })
+      return
+    }
     audio.play('ui')
     if (hotspot.kind === 'inspect') tutorial.action('inspect')
     else if (hotspot.kind === 'photo') tutorial.action('photo')
@@ -489,7 +500,7 @@ async function boot(): Promise<void> {
       investigation.refresh()
       return
     }
-    session.useHotspot(hotspot)
+    session.useHotspot(hotspot, code)
     investigation.refresh()
   }
 
@@ -578,7 +589,7 @@ async function boot(): Promise<void> {
 
   // ---- Input and timing ----------------------------------------------------------------------------------------
   window.addEventListener('keydown', event => {
-    if (investigation.destinationOpen) return
+    if (locker.el.open || investigation.destinationOpen) return
     const handled = travel.key(event) || recap.key(event) || lens.key(event) || help.key(event) || letters.key(event) || dialogue.key(event) || caseFile.key(event) || shell.key(event)
     if (handled) {
       event.preventDefault()
@@ -594,6 +605,8 @@ async function boot(): Promise<void> {
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause() })
   // Android back button: close the innermost layer first; returning false minimises the app.
   onBackButton(() => {
+    if (locker.el.open) { locker.el.close(); return true }
+    if (lens.open) { lens.hide(); return true }
     if (recap.open) return recap.key(new KeyboardEvent('keydown', { code: 'Escape' }))
     if (dialogue.open) { dialogue.close(); return true }
     if (!caseFile.el.hidden) { caseFile.close(); return true }

@@ -9,6 +9,7 @@ import type { Audio } from '../engine/audio'
 import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
 import { evidenceUrl, portraitUrl } from './art'
+import { clueDetail } from './clueDetails'
 import { h, setChildren, svg } from './dom'
 import { CHAPTERS, JOURNAL, SUSPECT_NOTES, TIMELINE } from '../data/story'
 import { LIFE_CHOICES, MAHMOUD_LIFE, PATHS, REAL_ALEX, YASSIN_LIFE, dominantPath, pathScores, type PathId } from '../data/life'
@@ -70,6 +71,7 @@ export class CaseFileView {
   private accSuspect?: string
   private accMotive?: string
   private accConfirm = false
+  private accusationReview?: 'wrong-culprit' | 'wrong-motive'
   private evidenceFilter: EvidenceFilter = 'all'
   private evidenceLayout: 'list' | 'gallery' = 'list'
   private expandedEvidence?: EvidenceId
@@ -107,6 +109,7 @@ export class CaseFileView {
       this.accSuspect = undefined
       this.accMotive = undefined
       this.accConfirm = false
+      this.accusationReview = undefined
       this.note = ''
       this.pos.clear()
     }
@@ -259,6 +262,7 @@ export class CaseFileView {
           h('small', null, `${PLACES[e.place].name} · ${e.source}`)),
         h('span', { class: 'ev-chevron', 'aria-hidden': true }, expanded ? '−' : '＋')),
       h('div', { id: `ev-record-${e.id}`, class: 'ev-record', hidden: !expanded },
+        expanded && clueDetail(e.id),
         art && h('figure', { class: 'ev-artwork' },
           h('img', { src: art.src, alt: art.alt, loading: 'lazy', decoding: 'async' }),
           h('figcaption', null, ART_NOTE),
@@ -471,8 +475,7 @@ export class CaseFileView {
     const reason = deduction?.pairReasons?.[matchIndex]
     const details = h('details', { class: 'board-compare', open: this.comparisonOpen },
       h('summary', null, 'قارن الدليلين'),
-      h('div', { class: 'board-compare-grid' }, clues.map(clue =>
-        h('article', null, h('b', null, clue.title), h('p', null, s.fill(clue.detail))))))
+      this.clueComparison(s, clues))
     details.addEventListener('toggle', () => { if (details.isConnected) this.comparisonOpen = details.open })
     return h('section', { class: 'board-link-result' },
       h('small', null, clues.map(clue => clue.title).join(' + ')),
@@ -481,6 +484,38 @@ export class CaseFileView {
         reason && h('span', null, h('strong', null, 'وجه الربط '), reason),
         h('span', null, deduction.conclusion)),
       details)
+  }
+
+  private clueComparison(s: Session, clues: Evidence[]): HTMLElement {
+    return h('div', { class: 'board-compare-grid clue-comparison' }, clues.map(clue => {
+      const art = EVIDENCE_ART[clue.id]
+      return h('article', null, h('b', null, clue.title), clueDetail(clue.id),
+        art && h('button', { class: 'tray-btn', onclick: () => this.d.lens.show(art, clue.title, clue.summary, s.fill(clue.detail)) }, 'كبّر الصورة'),
+        h('p', null, s.fill(clue.detail)))
+    }))
+  }
+
+  private reviewAccusation(s: Session): HTMLElement | undefined {
+    const result = this.accusationReview
+    if (!result) return
+    const file = s.engine.file
+    const caseOnePairs: Partial<Record<string, [EvidenceId, EvidenceId]>> = {
+      ragab: ['e_cafe_bill', 'e_hassan_testimony'],
+      hassan: ['e_hassan_testimony', 'e_boundary_stone'],
+      fathy: ['e_fathy_testimony', 'e_forged_contract'],
+    }
+    const preferred = s.caseId === 'case01' && result === 'wrong-culprit' ? caseOnePairs[this.accSuspect ?? ''] : undefined
+    const activePair = preferred?.every(id => s.engine.has(id)) ? preferred
+      : file.deductions.filter(d => file.finale.requires.deductions?.includes(d.id))
+        .sort((a, b) => Number(b.id === 'd_forgery') - Number(a.id === 'd_forgery'))
+        .flatMap(d => d.pairs).find(pair => pair.every(id => s.engine.has(id)))
+    const reason = result === 'wrong-culprit' ? file.finale.wrongCulprit : file.finale.wrongMotive
+    return h('section', { class: 'clue-review', tabindex: '-1', 'aria-label': 'راجع الاتهام' },
+      h('h5', null, 'راجع الاتهام مع الأدلة'),
+      h('p', { role: 'status' }, preferred && activePair === preferred
+        ? 'قارن الدليلين. هل الشخص اللي اخترته اتشاف وهو بيغيّر الحدود، ولا هو اللي شاف أو سجّل حاجة؟'
+        : reason),
+      activePair && this.clueComparison(s, activePair.map(id => s.engine.evidenceInfo(id))))
   }
 
   private stat(label: string, value: string, ratio: number, accent = false): HTMLElement {
@@ -615,13 +650,25 @@ export class CaseFileView {
       const art = x.id === 'unknown' ? undefined : CHARACTER_ART[x.id]
       const [name, role] = x.label.split(' – ')
       const on = this.accSuspect === x.id
-      return h('button', { class: `suspect-card${on ? ' on' : ''}`, role: 'radio', 'aria-checked': String(on), onclick: () => { this.accSuspect = x.id; this.accConfirm = false; this.d.audio.play('ui'); this.render() } },
+      return h('button', { class: `suspect-card${on ? ' on' : ''}`, role: 'radio', 'aria-checked': String(on), onclick: () => {
+        if (!on) this.accusationReview = undefined
+        this.accSuspect = x.id
+        this.accConfirm = false
+        this.d.audio.play('ui')
+        this.render()
+      } },
         art ? h('img', { src: art.src, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' }) : h('span', { class: 'suspect-unknown', 'aria-hidden': true }, '؟'),
         h('b', null, name), role && h('small', null, role))
     })
     const motiveCards = fin.motives.map(m => {
       const on = this.accMotive === m.id
-      return h('button', { class: `motive-card${on ? ' on' : ''}`, role: 'radio', 'aria-checked': String(on), onclick: () => { this.accMotive = m.id; this.accConfirm = false; this.d.audio.play('ui'); this.render() } },
+      return h('button', { class: `motive-card${on ? ' on' : ''}`, role: 'radio', 'aria-checked': String(on), onclick: () => {
+        if (!on) this.accusationReview = undefined
+        this.accMotive = m.id
+        this.accConfirm = false
+        this.d.audio.play('ui')
+        this.render()
+      } },
         h('span', { class: 'motive-mark', 'aria-hidden': true }, on ? '◉' : '○'), m.text)
     })
     const suspect = s.engine.file.suspects.find(x => x.id === this.accSuspect)
@@ -633,10 +680,10 @@ export class CaseFileView {
       this.d.audio.play('accuse')
       this.accConfirm = false
       const r = s.accuse(this.accSuspect!, this.accMotive!)
-      if (r === 'wrong-culprit') this.setNote(fin.wrongCulprit, 'fail')
-      else if (r === 'wrong-motive') this.setNote(fin.wrongMotive, 'fail')
+      this.accusationReview = r === 'wrong-culprit' || r === 'wrong-motive' ? r : undefined
       this.d.onAccused(r)
       this.render()
+      this.pageEl.querySelector<HTMLElement>('.clue-review')?.focus()
     } }, this.accConfirm ? 'أكيد، قدّم الاتهام' : ready ? 'راجع الاتهام' : 'اتّهام')
     return h('div', { class: 'accuse' }, h('h4', null, 'الاتهام النهائي'),
       h('p', { class: 'accuse-step' }, '١. مين الجاني؟'),
@@ -645,6 +692,7 @@ export class CaseFileView {
       h('div', { class: 'motive-list', role: 'radiogroup', 'aria-label': 'الدافع' }, motiveCards),
       ready && h('p', { class: 'accuse-summary' }, this.accConfirm ? 'هتقدّم الاتهام ضد ' : 'الاتهام: ', h('b', null, suspect.label.split(' – ')[0]), ' — الاتهام الغلط بيتحسب عليك.'),
       go,
+      this.reviewAccusation(s),
       this.accConfirm && h('button', { class: 'tray-btn', onclick: () => { this.accConfirm = false; this.render() } }, 'رجوع'))
   }
 
