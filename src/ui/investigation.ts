@@ -53,6 +53,7 @@ export class InvestigationView {
   private lastClock = ''
   private lastDay: boolean | undefined
   private mapKind: 'real' | 'drawn' = 'real'
+  private destination?: HTMLDialogElement
   private readonly realMap = new RealMap({
     onSelect: id => this.selectPlace(id),
     onFar: id => this.d.onFarPlace?.(id),
@@ -109,6 +110,7 @@ export class InvestigationView {
   }
 
   hide(): void {
+    this.destination?.close()
     this.el.hidden = true
     document.body.classList.remove('investigation-active')
   }
@@ -129,6 +131,7 @@ export class InvestigationView {
   /** Close the map or the mobile sheet; true if something was closed (Android back button). */
   back(): boolean {
     if (this.el.hidden) return false
+    if (this.destination?.open) { this.destination.close(); return true }
     if (this.tab === 'map') {
       this.setTab('scene')
       return true
@@ -139,6 +142,8 @@ export class InvestigationView {
     }
     return false
   }
+
+  get destinationOpen(): boolean { return this.destination?.open ?? false }
 
   setTab(tab: InvestigationTab): void {
     if (this.el.hidden) return
@@ -387,7 +392,8 @@ export class InvestigationView {
         h('span', null, where),
         thread && h('div', { class: 'inv-opening-evidence', role: 'status' },
           threadArt && h('img', { src: threadArt, alt: '', decoding: 'async' }),
-          h('div', null, h('small', null, 'الدليل اتسجل'), h('b', null, thread.title)))),
+          h('div', null, h('small', null, 'الدليل اتسجل'), h('b', null, thread.title),
+            thread.question && h('span', null, thread.question.text)))),
       h('div', { class: 'inv-guide-actions' },
         voicemail && h('button', { class: 'inv-guide-go inv-voicemail', onclick: () => this.d.onHotspot(voicemail) },
           h('span', { 'aria-hidden': true }, '▶'), voicemail.label),
@@ -453,7 +459,7 @@ export class InvestigationView {
   private previewPlace(id: PlaceId): void {
     const session = this.session
     const place = PLACES[id]
-    if (!session || place.district !== PLACES[this.placeId].district) return
+    if (this.destinationOpen || !session || place.district !== PLACES[this.placeId].district) return
     const here = id === this.placeId
     const dialog = h('dialog', { class: 'inv-destination', 'aria-labelledby': 'inv-destination-name' },
       h('img', { src: sceneUrl(id, session.clock.hour), srcset: sceneSrcSet(id, session.clock.hour), sizes: '420px', alt: '' }),
@@ -463,8 +469,12 @@ export class InvestigationView {
         h('div', { class: 'inv-destination-actions' },
           h('button', { class: 'btn ghost', onclick: () => dialog.close() }, 'رجوع للخريطة'),
           h('button', { class: 'btn primary', onclick: () => { dialog.close(); this.selectPlace(id) } }, here ? 'ارجع للمشهد' : 'روح المكان'))))
-    dialog.addEventListener('close', () => dialog.remove(), { once: true })
-    this.el.append(dialog)
+    dialog.addEventListener('close', () => {
+      if (this.destination === dialog) this.destination = undefined
+      dialog.remove()
+    }, { once: true })
+    this.destination = dialog
+    this.el.after(dialog)
     dialog.showModal()
   }
 

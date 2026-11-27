@@ -209,9 +209,9 @@ export class DialogueView {
     else this.close()
   }
 
-  choose(index: number, meta?: { confront?: boolean; lie?: boolean; present?: EvidenceId }): void {
+  choose(index: number, meta?: { confront?: boolean; lie?: boolean }): void {
     this.audio.stopVoice()
-    if (meta?.confront || meta?.present) {
+    if (meta?.confront || meta?.lie) {
       this.tense = true
       this.audio.play(meta.lie ? 'lie' : 'confront')
       this.ctx.onConfront?.(Boolean(meta.lie))

@@ -17,6 +17,20 @@
 }
 #ui > .casefile .board-link-result span { line-height: 1.55; }
 #ui > .casefile .board-link-result small { color: #efc2c5; }
+#ui > .casefile .board-link-explanation { display: grid; gap: 5px; }
+#ui > .casefile .board-link-explanation strong { color: #efc2c5; }
+#ui > .casefile .board-compare { margin: 4px 0 0; padding-top: 4px; }
+#ui > .casefile .board-compare summary { min-height: 44px; padding: 8px 0; }
+#ui > .casefile .board-compare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#ui > .casefile .board-compare-grid article { padding: 10px; background: #141e25; overflow-wrap: anywhere; border: 1px solid #53616b; }
+#ui > .casefile .board-compare-grid p { margin: 5px 0 0; line-height: 1.65; }
+#ui > .casefile .case-questions { padding: 10px 14px; background: #161e24; border-inline-start: 3px solid #f2cd93; }
+#ui > .casefile .case-questions h3 { margin: 0 0 6px; }
+#ui > .casefile .case-questions ul { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+#ui > .casefile .case-questions li { display: grid; gap: 3px; }
+#ui > .casefile .case-questions small { color: #e8bd80; }
+#ui > .casefile .ev-question { padding: 8px 10px; border-inline-start: 3px solid #e8bd80; background: #e8bd8010; }
+#ui > .casefile .ev-question strong { color: #e8bd80; }
 #ui > .casefile .sel-detail { grid-area: detail; margin: 0; background: #101a20; }
 #ui > .casefile .sel-detail summary { min-height: 32px; color: #f4e6cf; }
 #ui > .casefile .pin-card-placeholder { display: grid; place-items: center; color: #f2d9a7; }

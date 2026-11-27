@@ -40,6 +40,21 @@ export class Session {
   get caseId() { return this.progress.caseId }
   get caseFile() { return this.engine.file }
 
+  lastEvidence() {
+    const id = Array.from(this.state.evidence.keys()).at(-1)
+    return id ? this.engine.evidenceInfo(id) : undefined
+  }
+
+  openQuestions() {
+    if (this.state.flags.has('case_solved')) return []
+    return Array.from(this.state.evidence.keys()).flatMap(id => {
+      const evidence = this.engine.evidenceInfo(id)
+      const question = evidence?.question
+      return question && !question.answeredWhen.some(condition => this.engine.matches(condition))
+        ? [{ id, title: evidence.title, text: question.text }] : []
+    })
+  }
+
   gateContext(): GateContext {
     return { mode: this.progress.mode, stamp: this.clock.stamp, eventNear: (kind, stamp, pad) => this.deps.events.near(kind, stamp, pad) }
   }

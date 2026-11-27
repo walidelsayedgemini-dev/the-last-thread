@@ -31,6 +31,7 @@ const EVENT_LABEL: Record<EventKind, string> = { match_ittihad: 'مباراة ا
 const ART_NOTE = 'رسوم توضيحية أصلية مكمّلة لسجلّ الدليل النصّي.'
 const CARD_W = 150
 const CARD_H = 164
+type EvidencePair = { a: EvidenceId; b: EvidenceId; deduction?: Deduction }
 
 export type CaseFileDeps = {
   audio: Audio
@@ -52,6 +53,7 @@ export class CaseFileView {
   private readonly pageEl: HTMLElement
   private readonly tabsEl: HTMLElement
   private session?: Session
+  private shownCase?: string
   private tab: Tab = 'board'
   private selected?: EvidenceId
   private readonly pos = new Map<EvidenceId, { x: number; y: number }>()
@@ -61,7 +63,8 @@ export class CaseFileView {
   private lifeView: LifeView = 'paths'
   private noteKind: '' | 'success' | 'fail' | 'info' | 'ok' | 'bad' = ''
   private fresh?: { a: EvidenceId; b: EvidenceId; id?: DeductionId }
-  private lastLink?: { a: EvidenceId; b: EvidenceId; deduction: Deduction }
+  private lastPair?: EvidencePair
+  private comparisonOpen = false
   private freshTimer = 0
   private focusDeduction?: DeductionId
   private readonly tried = new Set<string>()
@@ -91,21 +94,24 @@ export class CaseFileView {
   }
 
   show(session: Session, tab: Tab = this.tab): void {
-    if (this.session !== session) {
+    if (this.session !== session || this.shownCase !== session.caseId) {
       this.reviewedEvidence.clear()
       this.evidenceFilter = 'all'
       this.expandedEvidence = undefined
       this.tried.clear()
       this.selected = undefined
       this.fresh = undefined
-      this.lastLink = undefined
+      this.lastPair = undefined
+      this.comparisonOpen = false
       this.focusDeduction = undefined
       this.accSuspect = undefined
       this.accMotive = undefined
       this.accConfirm = false
       this.note = ''
+      this.pos.clear()
     }
     this.session = session
+    this.shownCase = session.caseId
     this.el.hidden = false
     this.el.querySelector('#cf-case-title')!.textContent = `القضية ${session.engine.file.number}: ${session.engine.file.title}`
     this.setTab(tab)
@@ -244,6 +250,7 @@ export class CaseFileView {
           h('button', { class: 'ev-lens-btn', onclick: () => this.d.lens.show(art, e.title, e.summary, e.detail) }, h('span', { 'aria-hidden': true }, '🔍 '), 'افحص بالعدسة')),
         h('p', { class: 'ev-sum' }, e.summary),
         h('p', { class: 'ev-detail' }, e.detail),
+        e.question && h('p', { class: 'ev-question' }, h('strong', null, 'سؤال الدليل '), s.fill(e.question.text)),
         h('footer', null, at !== undefined ? `وقت العثور: ${formatDateTime(at)}` : '')))
   }
 
@@ -274,9 +281,16 @@ export class CaseFileView {
 
   private objectives(s: Session): HTMLElement {
     const items = s.engine.objectives()
+    const questions = s.openQuestions().reverse()
+    const renderQuestions = (items: typeof questions) => h('ul', null, items.map(question =>
+      h('li', null, h('small', null, question.title), h('b', null, s.fill(question.text)))))
     const quests = this.d.story.quests(s)
     const doneCount = quests.filter(q => q.done).length
     return h('div', { class: 'cf-list' },
+      questions.length > 0 && h('section', { class: 'case-questions', 'aria-label': 'أسئلة مفتوحة' },
+        h('h3', null, 'أسئلة مفتوحة'),
+        renderQuestions(questions.slice(0, 3)),
+        questions.length > 3 && h('details', null, h('summary', null, 'باقي الأسئلة المفتوحة'), renderQuestions(questions.slice(3)))),
       items.map(({ objective, done }) =>
         h('article', { class: `obj${done ? ' done' : ''}` },
           h('span', { class: 'obj-box' }, done ? '✔' : '◻'),
@@ -404,10 +418,11 @@ export class CaseFileView {
 
     const slot = (title: string, ev: Evidence | undefined, n: string) =>
       h('div', { class: `tray-slot${ev ? ' filled' : ''}` }, h('small', null, n), h('b', null, ev ? ev.title : title))
+    const pair = this.lastPair
     const tray = found.length >= 2 ? h('div', { class: 'board-tray' },
-      slot('اختار الدليل', selectedEvidence ?? (this.lastLink && s.engine.evidenceInfo(this.lastLink.a)), 'الدليل الأول'),
-      h('span', { class: 'tray-link', 'aria-hidden': true }, selectedEvidence || this.lastLink ? '⟿' : '·  ·  ·'),
-      slot('بعده الدليل التاني', this.lastLink && s.engine.evidenceInfo(this.lastLink.b), 'الدليل الثاني'),
+      slot('اختار الدليل', selectedEvidence ?? (pair && s.engine.evidenceInfo(pair.a)), 'الدليل الأول'),
+      h('span', { class: 'tray-link', 'aria-hidden': true }, selectedEvidence || pair ? '⟿' : '·  ·  ·'),
+      slot('بعده الدليل التاني', pair && s.engine.evidenceInfo(pair.b), 'الدليل الثاني'),
       h('div', { class: 'tray-actions' },
         h('button', { class: 'tray-btn', disabled: !selectedEvidence, onclick: () => { this.selected = undefined; this.note = 'اتلغى تحديد الدليل.'; this.d.audio.play('back'); this.render() } }, 'إلغاء التحديد'),
         h('button', { class: 'tray-btn board-reorder', onclick: () => { this.pos.clear(); this.d.audio.play('paper'); this.render() } }, 'ترتيب الكروت'))) : undefined
@@ -428,13 +443,29 @@ export class CaseFileView {
             h('figcaption', null, ART_NOTE)),
           h('p', null, sel.detail)),
       wrap,
-      this.lastLink && h('div', { class: 'board-link-result', role: 'status' },
-        h('small', null, `${s.engine.evidenceInfo(this.lastLink.a).title} + ${s.engine.evidenceInfo(this.lastLink.b).title}`),
-        h('b', null, this.lastLink.deduction.title), h('span', null, this.lastLink.deduction.conclusion)),
+      pair && this.comparePair(s, pair.a, pair.b, pair.deduction),
       h('div', { class: 'board-side' },
         h('h4', null, 'الاستنتاجات'),
         this.deductionList(s, tied),
         this.accuseBlock(s)))
+  }
+
+  private comparePair(s: Session, a: EvidenceId, b: EvidenceId, deduction?: Deduction): HTMLElement {
+    const clues = [s.engine.evidenceInfo(a), s.engine.evidenceInfo(b)]
+    const matchIndex = deduction?.pairs.findIndex(([x, y]) => this.pairKey(x, y) === this.pairKey(a, b)) ?? -1
+    const reason = deduction?.pairReasons?.[matchIndex]
+    const details = h('details', { class: 'board-compare', open: this.comparisonOpen },
+      h('summary', null, 'قارن الدليلين'),
+      h('div', { class: 'board-compare-grid' }, clues.map(clue =>
+        h('article', null, h('b', null, clue.title), h('p', null, s.fill(clue.detail))))))
+    details.addEventListener('toggle', () => { if (details.isConnected) this.comparisonOpen = details.open })
+    return h('section', { class: 'board-link-result' },
+      h('small', null, clues.map(clue => clue.title).join(' + ')),
+      deduction && h('div', { class: 'board-link-explanation', role: 'status' },
+        h('b', null, deduction.title),
+        reason && h('span', null, h('strong', null, 'وجه الربط '), reason),
+        h('span', null, deduction.conclusion)),
+      details)
   }
 
   private stat(label: string, value: string, ratio: number, accent = false): HTMLElement {
@@ -508,7 +539,8 @@ export class CaseFileView {
     if (!s) return
     this.d.audio.play('ui')
     this.setNote('')
-    this.lastLink = undefined
+    this.lastPair = undefined
+    this.comparisonOpen = false
     this.flash = undefined
     if (!this.selected || this.selected === id) {
       if (!this.selected) this.d.audio.play('pin')
@@ -520,10 +552,12 @@ export class CaseFileView {
     const a = this.selected
     this.selected = undefined
     const key = this.pairKey(a, id)
+    const pair: EvidencePair = { a, b: id }
+    this.lastPair = pair
     const r = s.tie(a, id)
     if (r.ok) {
       const dd = s.engine.file.deductions.find(x => x.id === r.deduction)!
-      this.lastLink = { a, b: id, deduction: dd }
+      pair.deduction = dd
       if (r.fresh) {
         this.d.audio.play('thread')
         this.fresh = { a, b: id, id: dd.id }
@@ -541,7 +575,7 @@ export class CaseFileView {
       } else this.setNote('اختار دليلين مختلفين.', 'fail')
     }
     this.render()
-    if (this.lastLink && window.matchMedia('(max-width: 720px)').matches) {
+    if (window.matchMedia('(max-width: 720px)').matches) {
       this.pageEl.querySelector('.board-link-result')?.scrollIntoView({ block: 'nearest' })
     }
   }

@@ -217,29 +217,37 @@ export class TravelView {
 }
 
 // ---- "Last time" recap ----------------------------------------------------------------------------------------
-export type RecapData = { chapter: string; kicker: string; evidence: number; total: number; letters: number; lastLetter?: string; next?: string; nextDetail?: string }
+export type RecapData = { caseTitle: string; lastEvidence?: string; lastLetter?: string; question?: string; next?: string }
 export class RecapView {
   readonly el = h('div', { class: 'recap-layer', hidden: true, role: 'dialog', 'aria-modal': 'true', 'aria-label': 'اللي فات' })
+  private onDone?: () => void
   get open(): boolean { return !this.el.hidden }
   show(d: RecapData, onDone: () => void): void {
+    this.onDone = onDone
+    const button = h('button', { class: 'btn primary', onclick: () => this.finish() }, 'كمّل التحقيق')
     setChildren(this.el,
       h('div', { class: 'help-backdrop' }),
       h('article', { class: 'help-card recap-card' },
         h('small', null, 'اللي فات'),
-        h('h2', null, 'أهلاً بيك تاني يا ياسين'),
+        h('h2', null, d.caseTitle),
         h('ul', { class: 'recap-list' },
-          h('li', null, h('b', null, 'فين وصلت؟ '), `${d.chapter} — ${d.kicker}`),
-          h('li', null, h('b', null, 'اللي معاك: '), `${d.evidence} من ${d.total} دليل${d.letters ? ` و${d.letters} جواب` : ''}`),
-          d.lastLetter && h('li', null, h('b', null, 'آخر جواب: '), d.lastLetter),
-          d.next && h('li', { class: 'recap-next' }, h('b', null, 'الخطوة الجاية: '), d.next, d.nextDetail && h('em', null, ` — ${d.nextDetail}`))),
-        h('button', { class: 'btn primary', onclick: () => { this.hide(); onDone() } }, 'كمّل التحقيق')))
+          h('li', null, h('b', null, d.lastEvidence ? 'آخر دليل: ' : 'آخر جواب: '), d.lastEvidence ?? d.lastLetter),
+          h('li', { class: 'recap-next' }, h('b', null, d.question ? 'السؤال المفتوح: ' : 'الخطوة الجاية: '),
+            d.question ?? d.next ?? 'راجع ملف القضية.')),
+        button))
     this.el.hidden = false
+    button.focus()
   }
-  hide(): void { this.el.hidden = true }
+  hide(): void { this.el.hidden = true; this.onDone = undefined }
+  private finish(): void {
+    const done = this.onDone
+    this.hide()
+    done?.()
+  }
   key(e: KeyboardEvent): boolean {
     if (!this.open) return false
-    if (e.code === 'Escape' || e.code === 'Enter') { this.hide(); return true }
-    return false
+    if (e.code === 'Escape' || e.code === 'Enter') this.finish()
+    return e.code !== 'Space'
   }
 }
 

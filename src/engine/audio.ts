@@ -60,16 +60,16 @@ export function ambientSelection(placeId: string, hour: number): readonly Ambien
   }
 }
 
-type AreaEvent = 'gull' | 'dice' | 'honk' | 'pages' | 'sew' | 'dove' | 'frog' | 'type' | 'wind' | 'none'
+type AreaEvent = 'gull' | 'cafe' | 'bus' | 'canal' | 'pages' | 'sew' | 'dove' | 'type' | 'wind' | 'none'
 const AREA_SOUND: Record<string, { type: BiquadFilterType; f: number; q: number; g: number; ev: AreaEvent }> = {
   zeinab_home: { type: 'lowpass', f: 300, q: 0.4, g: 0.02, ev: 'sew' },
   mahmoud_house: { type: 'lowpass', f: 220, q: 0.4, g: 0.015, ev: 'wind' },
-  cafe_ragab: { type: 'bandpass', f: 900, q: 0.6, g: 0.07, ev: 'dice' },
+  cafe_ragab: { type: 'bandpass', f: 900, q: 0.6, g: 0.05, ev: 'cafe' },
   abis_mosque: { type: 'lowpass', f: 260, q: 0.4, g: 0.02, ev: 'dove' },
-  canal_bridge: { type: 'bandpass', f: 500, q: 0.8, g: 0.08, ev: 'frog' },
+  canal_bridge: { type: 'lowpass', f: 640, q: 0.55, g: 0.10, ev: 'canal' },
   plot15: { type: 'bandpass', f: 380, q: 0.5, g: 0.09, ev: 'wind' },
-  abis_stop: { type: 'bandpass', f: 1100, q: 0.5, g: 0.07, ev: 'honk' },
-  raml_stop: { type: 'bandpass', f: 1000, q: 0.5, g: 0.1, ev: 'honk' },
+  abis_stop: { type: 'lowpass', f: 270, q: 0.7, g: 0.09, ev: 'bus' },
+  raml_stop: { type: 'lowpass', f: 340, q: 0.7, g: 0.10, ev: 'bus' },
   mansheya: { type: 'lowpass', f: 180, q: 0.5, g: 0.04, ev: 'type' },
   qaitbay: { type: 'lowpass', f: 420, q: 0.6, g: 0.16, ev: 'gull' },
   bibliotheca: { type: 'lowpass', f: 160, q: 0.4, g: 0.01, ev: 'pages' },
@@ -151,10 +151,17 @@ export class Audio {
   setVolumes(music: number, sfx: number, muted = false, ambient = music, voice = 0.85, voiceEnabled = true): void {
     this.volume = { music, ambient, sfx, voice, voiceEnabled, muted }
     const t = this.ctx.currentTime
-    this.ambience.gain.setTargetAtTime(muted || !this.running ? 0 : ambient * 0.6, t, 0.08)
-    this.musicBus.gain.setTargetAtTime(muted ? 0 : music * 0.6, t, 0.08)
+    this.applyBackgroundLevels()
     this.sfx.gain.setTargetAtTime(muted ? 0 : sfx * 0.9, t, 0.05)
     this.voiceBus.gain.setTargetAtTime(muted || !voiceEnabled ? 0 : voice, t, 0.05)
+  }
+
+  private applyBackgroundLevels(): void {
+    const { music, ambient, muted, voiceEnabled, voice } = this.volume
+    const speaking = Boolean(this.voice && voiceEnabled && voice > 0)
+    const time = this.ctx.currentTime
+    this.ambience.gain.setTargetAtTime(muted || !this.running ? 0 : ambient * 0.6 * (speaking ? 0.4 : 1), time, 0.08)
+    this.musicBus.gain.setTargetAtTime(muted ? 0 : music * 0.6 * (speaking ? 0.22 : 1), time, 0.08)
   }
 
   /** One shared 2 s noise buffer (~350 KB) reused by wind, sea and every percussive sound. */
@@ -309,8 +316,13 @@ export class Audio {
 
   /** Each place has its own soundscape layer on top of the district bed. */
   setArea(id: string): void {
+    const changed = id !== this.area
     this.area = id
     this.applyArea()
+    const cue = AREA_SOUND[id]?.ev
+    if (changed && this.running && !this.volume.muted && this.ctx.state === 'running' && (cue === 'cafe' || cue === 'bus' || cue === 'canal')) {
+      this.areaEvent(cue)
+    }
   }
   private applyArea(): void {
     if (!this.started) return
@@ -344,12 +356,23 @@ export class Audio {
     const a = this.ambience
     switch (ev) {
       case 'gull': this.tone(1500, 1100, 0.2, 'sine', 0.014, 0, a); this.tone(1450, 1000, 0.25, 'sine', 0.012, 0.28, a); break
-      case 'dice': for (let i = 0; i < 4; i++) this.burst(2600, 3, 0.05, 0.05, i * 0.07, a); break
-      case 'honk': this.tone(410, 390, 0.28, 'sawtooth', 0.012, 0, a); if (Math.random() > 0.5) this.tone(330, 320, 0.22, 'sawtooth', 0.01, 0.4, a); break
+      case 'cafe':
+        for (let i = 0; i < 3; i++) this.burst(2600, 3, 0.045, 0.03, i * 0.07, a)
+        this.tone(1650, 1580, 0.18, 'sine', 0.012, 0.33, a)
+        this.tone(2320, 2290, 0.12, 'sine', 0.008, 0.37, a)
+        break
+      case 'bus':
+        this.tone(78, 57, 0.8, 'triangle', 0.026, 0, a)
+        this.burst(760, 0.9, 0.3, 0.023, 0.36, a)
+        if (Math.random() > 0.55) this.tone(410, 390, 0.2, 'sawtooth', 0.009, 0.8, a)
+        break
+      case 'canal':
+        for (let i = 0; i < 4; i++) this.burst(560 + i * 90, 1.1, 0.24, 0.025, i * 0.19, a)
+        if (this.night > 0.4) this.frogs(a)
+        break
       case 'pages': this.burst(3600, 1, 0.14, 0.035, 0, a); break
       case 'sew': for (let i = 0; i < 8; i++) this.burst(1900, 2, 0.03, 0.03, i * 0.055, a); break
       case 'dove': this.tone(330, 290, 0.35, 'sine', 0.018, 0, a); this.tone(310, 270, 0.4, 'sine', 0.016, 0.45, a); break
-      case 'frog': for (let i = 0; i < 3; i++) this.tone(190, 150, 0.1, 'square', 0.006, i * 0.16, a); break
       case 'type': for (let i = 0; i < 5; i++) this.burst(2200, 4, 0.02, 0.03, i * 0.11 + Math.random() * 0.05, a); break
       case 'wind': this.tone(140, 110, 1.6, 'sine', 0.006, 0, a); break
       case 'none': break
@@ -747,9 +770,7 @@ export class Audio {
     this.voice = track
     const t = this.ctx.currentTime
     gain.gain.setTargetAtTime(1, t, 0.03)
-    const duck = this.volume.muted ? 0 : 0.28
-    this.ambience.gain.setTargetAtTime(this.running ? this.volume.ambient * 0.6 * duck : 0, t, 0.08)
-    this.musicBus.gain.setTargetAtTime(this.volume.music * 0.6 * duck, t, 0.08)
+    this.applyBackgroundLevels()
     const finish = () => { if (this.voice === track) this.stopVoice(track) }
     element.addEventListener('ended', finish, { once: true })
     element.addEventListener('error', finish, { once: true })
@@ -762,7 +783,7 @@ export class Audio {
     try { track.element.pause() } catch { /* already stopped */ }
     track.source.disconnect()
     track.gain.disconnect()
-    this.setVolumes(this.volume.music, this.volume.sfx, this.volume.muted, this.volume.ambient, this.volume.voice, this.volume.voiceEnabled)
+    this.applyBackgroundLevels()
   }
 
   private fadeOutMusic(track: MusicTrack, fade: number): void {

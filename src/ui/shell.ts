@@ -153,7 +153,7 @@ export class Shell {
         h('nav', { class: 'title-menu', 'aria-label': 'القائمة الرئيسية' },
           h('p', { class: 'title-menu-heading' }, 'ابدأ التحقيق'),
           h('div', { class: 'menu' },
-            has && action('متابعة التحقيق', 'ارجع لآخر نقطة وصلت لها', '٠١', true, () => this.go('profiles', 'title')),
+            has && action('كمّل التحقيق', 'افتح ملف الحفظ وشوف آخر دليل', '٠١', true, () => this.go('profiles', 'title')),
             action('تحقيق جديد', 'ابدأ قضية من أول الخيط', has ? '٠٢' : '٠١', !has, () => this.startCreate()),
             action('الإنجازات', 'شوف الخيوط اللي فتحتها', has ? '٠٣' : '٠٢', false, () => this.go('achievements', 'title')),
             action('الإعدادات', 'الصوت وحجم الخط والتباين', has ? '٠٤' : '٠٣', false, () => this.go('settings', 'title'))))),

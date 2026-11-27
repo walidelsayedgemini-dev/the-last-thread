@@ -15,7 +15,6 @@ import './styles/juice-visuals.css'
 import { arabicDigits, cairoStamp, nowFromQuery } from './core/clock'
 import type { CaseEvent } from './core/caseState'
 import { CHARACTER_LIST } from './data/characters'
-import { CASE_01 } from './data/case01'
 import { PATHS } from './data/life'
 import { PLACE_LIST, PLACES } from './data/places'
 import type { CharacterId, Hotspot, PlaceId } from './data/types'
@@ -263,10 +262,7 @@ async function boot(): Promise<void> {
     audio.setArea(currentPlace)
     audio.setScene(PLACES[currentPlace].district, 0.4, 0.2)
     const atOpeningDoor = session.caseId === 'case01' && currentPlace === 'mahmoud_house' && !session.state.flags.has('zeinab_talked')
-    if (!atOpeningDoor) {
-      if (!settings.data.helpSeen) window.setTimeout(() => showHelp(), 900)
-      else maybeRecap()
-    }
+    if (!maybeRecap() && !atOpeningDoor && !settings.data.helpSeen) window.setTimeout(() => showHelp(), 900)
     loopRef?.resetAccumulator()
     window.setTimeout(storyCheck, 700)
     if (!atOpeningDoor && session.caseId === 'case01' && new URLSearchParams(location.search).get('tutorial') !== '0') tutorial.start(session)
@@ -320,18 +316,19 @@ async function boot(): Promise<void> {
   }
 
   /** "Last time" card when the player comes back to a save that already has progress. */
-  function maybeRecap(): void {
-    if (!session || recapShown) return
-    recapShown = true
+  function maybeRecap(): boolean {
+    if (!session || recapShown) return false
     const s = session
-    if (s.state.evidence.size === 0 && letters.unreadCount(s) === 0) return
-    const chapter = story.current(s)
+    if (s.state.evidence.size === 0 && letters.unreadCount(s) === 0) return false
+    recapShown = true
     const delivered = letters.delivered(s)
     const next = s.engine.currentObjective()
+    const question = s.openQuestions().at(-1)
     recap.show({
-      chapter: chapter.title, kicker: chapter.kicker, evidence: s.state.evidence.size, total: CASE_01.evidence.length,
-      letters: delivered.length, lastLetter: delivered[delivered.length - 1]?.title, next: next?.title, nextDetail: next?.detail,
+      caseTitle: s.caseFile.title, lastEvidence: s.lastEvidence()?.title,
+      lastLetter: delivered.at(-1)?.title, question: question && s.fill(question.text), next: next?.title,
     }, () => window.setTimeout(storyCheck, 300))
+    return true
   }
 
   function showHelp(): void {
@@ -344,6 +341,7 @@ async function boot(): Promise<void> {
     if (!session) return
     const place = PLACES[id]
     const before = PLACES[currentPlace]?.district
+    if (place.id !== currentPlace) audio.stopVoice()
     if (place.id !== currentPlace) arrival.show(place)
     audio.setArea(place.id)
     audio.setScene(place.district, 0.4, 0.2)
@@ -582,7 +580,7 @@ async function boot(): Promise<void> {
 
   // ---- Input and timing ----------------------------------------------------------------------------------------
   window.addEventListener('keydown', event => {
-    if (investigation.el.querySelector('.inv-destination[open]')) return
+    if (investigation.destinationOpen) return
     const handled = travel.key(event) || recap.key(event) || lens.key(event) || help.key(event) || letters.key(event) || dialogue.key(event) || caseFile.key(event) || shell.key(event)
     if (handled) {
       event.preventDefault()
@@ -598,8 +596,7 @@ async function boot(): Promise<void> {
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause() })
   // Android back button: close the innermost layer first; returning false minimises the app.
   onBackButton(() => {
-    const destination = investigation.el.querySelector<HTMLDialogElement>('.inv-destination[open]')
-    if (destination) { destination.close(); return true }
+    if (recap.open) return recap.key(new KeyboardEvent('keydown', { code: 'Escape' }))
     if (dialogue.open) { dialogue.close(); return true }
     if (!caseFile.el.hidden) { caseFile.close(); return true }
     if (investigation.back()) return true

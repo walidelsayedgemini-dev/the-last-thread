@@ -143,6 +143,8 @@ export type Evidence = {
   summary: string
   /** Close inspection text (the "magnifying glass" view). */
   detail: string
+  /** A question the investigation can answer after finding this evidence. */
+  question?: { text: string; answeredWhen: Condition[] }
   /** Where it is found. */
   place: PlaceId
   source: string
@@ -163,6 +165,8 @@ export type Deduction = {
   title: string
   /** Any one of these evidence pairs creates the thread. Order does not matter. */
   pairs: [EvidenceId, EvidenceId][]
+  /** What those clues have in common, in the same order as `pairs`. */
+  pairReasons?: string[]
   conclusion: string
   /** Flags set when the thread is tied. */
   sets?: string[]

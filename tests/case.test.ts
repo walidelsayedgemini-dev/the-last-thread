@@ -27,6 +27,15 @@ const talk = (engine: CaseEngine, who: keyof typeof DIALOGUES) => {
 }
 
 describe('case data integrity', () => {
+  it('gives every clue a question and every valid pair its own reasoning', () => {
+    for (const file of [CASE_01, CASE_02, CASE_03]) {
+      for (const evidence of file.evidence) {
+        expect(evidence.question?.text, evidence.id).toBeTruthy()
+        expect(evidence.question?.answeredWhen.length, evidence.id).toBeGreaterThan(0)
+      }
+      for (const deduction of file.deductions) expect(deduction.pairReasons, deduction.id).toHaveLength(deduction.pairs.length)
+    }
+  })
   it('references only existing places, evidence, characters and hints', () => {
     const ids = new Set(CASE_01.evidence.map(e => e.id))
     for (const e of CASE_01.evidence) expect(PLACES[e.place], e.id).toBeDefined()
@@ -178,6 +187,22 @@ describe('case engine', () => {
 })
 
 describe('dialogue session', () => {
+  it('lets Zeinab respond once to each discovered clue', () => {
+    const { engine } = make()
+    const view = (s: DialogueSession) => s.view()!.choices
+    expect(view(talk(engine, 'zeinab')).some(choice => choice.present)).toBe(false)
+    engine.apply([{ type: 'evidence', id: 'e_thread_door' }])
+    const first = talk(engine, 'zeinab')
+    first.choose(view(first).find(choice => choice.present === 'e_thread_door')!.index)
+    expect(first.view()!.nodeId).toBe('z_show_thread')
+    expect(engine.state.flags.has('zeinab_thread_shown')).toBe(true)
+    expect(view(talk(engine, 'zeinab')).some(choice => choice.present)).toBe(false)
+    engine.apply([{ type: 'flag', id: 'has_key' }, { type: 'evidence', id: 'e_old_photo' }])
+    const returning = talk(engine, 'zeinab')
+    returning.choose(view(returning).find(choice => choice.present === 'e_old_photo')!.index)
+    expect(returning.view()!.nodeId).toBe('z_show_photo')
+    expect(engine.state.flags.has('zeinab_photo_shown')).toBe(true)
+  })
   it('hides once-choices and respects choice conditions', () => {
     const { engine } = make()
     const s = talk(engine, 'zeinab')

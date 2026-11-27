@@ -245,6 +245,7 @@
 .inv-map-card.goal small { color: var(--red-hot); font-weight: 700; }
 .inv-destination {
   width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 36px); padding: 0;
+  pointer-events: auto;
   border: 1px solid #637986; border-radius: 14px; background: #0b151c; color: #f6f0e7;
   box-shadow: 0 18px 56px #000b;
 }

@@ -1,4 +1,4 @@
-import type { CharacterId, Dialogue } from './types'
+import type { CharacterId, Dialogue, DialogueChoice } from './types'
 import { GATES } from './case01'
 import { VILLAGER_DIALOGUES } from './dialogues.villagers01'
 import { VILLAGER_DIALOGUES_02 } from './dialogues.villagers02'
@@ -9,6 +9,15 @@ import { VILLAGER_DIALOGUES_03 } from './dialogues.villagers03'
  * is taken. `{player}` is replaced with the player's name at runtime. The first matching `entries`
  * item decides where a conversation starts, so characters greet differently as the case evolves.
  */
+
+const showZeinabThread: DialogueChoice = {
+  text: 'ورّيها الخيط', next: 'z_show_thread', present: 'e_thread_door',
+  when: { evidence: ['e_thread_door'], notFlags: ['zeinab_thread_shown'] },
+}
+const showZeinabPhoto: DialogueChoice = {
+  text: 'اسأل زينب عن الصورة القديمة', next: 'z_show_photo', present: 'e_old_photo',
+  when: { evidence: ['e_old_photo'], notFlags: ['zeinab_photo_shown'] },
+}
 
 const zeinab: Dialogue = {
   character: 'zeinab',
@@ -27,6 +36,8 @@ const zeinab: Dialogue = {
         { text: 'هو قالك كان رايح فين؟', next: 'z_where' },
         { text: 'محتاج أدخل بيته يا ستّي.', next: 'z_key' },
         { text: 'اهدي يا ستّي… أنا هلاقيه.', next: 'z_calm' },
+        showZeinabThread,
+        showZeinabPhoto,
       ],
     },
     z_calm: {
@@ -67,7 +78,29 @@ const zeinab: Dialogue = {
         { text: 'كتب خالي اللي فوق الدولاب… ينفع أذاكر منها؟', next: 'z_books', when: { flags: ['has_key'], notFlags: ['life_study_books'] } },
         { text: 'احكيلي عن ماما والخيط الأحمر.', next: 'z_thread', when: { flags: ['zeinab_talked'], notFlags: ['zeinab_thread_story'] } },
         { text: 'سلامو عليكو يا ستّي.', next: 'z_bye' },
+        showZeinabThread,
+        showZeinabPhoto,
       ],
+    },
+    z_show_thread: {
+      id: 'z_show_thread',
+      lines: [
+        { who: 'player', text: 'بصّي يا ستّي. لقيت الخيط ده مربوط في مقبض باب خالي. تعرفي العقدة؟' },
+        { who: 'zeinab', text: 'اللون من عوايدنا، بس العقدة دي مش عقدتنا. دي شبه عقدة في حبل جابه مرة واحد من إسكندرية.' },
+        { who: 'zeinab', text: 'ماعرفتش اسمه. لو لقيت حاجة تقول خالك راح أنهي حتة في إسكندرية، اسأل هناك عن العقدة.' },
+      ],
+      effects: [{ type: 'flag', id: 'zeinab_thread_shown' }],
+      next: 'z_hub',
+    },
+    z_show_photo: {
+      id: 'z_show_photo',
+      lines: [
+        { who: 'player', text: 'مين اللي واقف جنب خالي قدّام عمود السواري؟' },
+        { who: 'zeinab', text: 'ده شوقي. وقت الصورة كانوا بيشتغلوا سوا. شوف الملف في إيده وشريط القياس في إيد محمود.' },
+        { who: 'zeinab', text: 'محمود بطّل يجيب سيرته بعد خلاف على ورق أرض. لو قابلت حد فاكر أيام العمود، اسأله عن الورق ده.' },
+      ],
+      effects: [{ type: 'flag', id: 'zeinab_photo_shown' }],
+      next: 'z_hub',
     },
     z_neighbor: {
       id: 'z_neighbor',
@@ -140,6 +173,8 @@ const zeinab: Dialogue = {
       choices: [
         { text: 'لسه بدوّر يا ستّي.', next: 'z_hub' },
         { text: 'خالي مش مخطوف… هو متخبّي.', next: 'z_hope', when: { flags: ['found_mahmoud'] } },
+        showZeinabThread,
+        showZeinabPhoto,
       ],
     },
     z_hope: {
