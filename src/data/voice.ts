@@ -5,7 +5,7 @@
 export type VoiceLineKey = `${string}:${string}:${number}`
 
 export const VOICE_LINES: Readonly<Record<VoiceLineKey, string>> = {
-
+  'case01:hs_mahmoud_voicemail:0': 'audio/voice/c01_intro_2.mp3',
   'case01:h_confront_right:0': 'audio/voice/c01_h_confront_player.mp3',
   'case01:h_confront_right:1': 'audio/voice/c01_h_confront_hassan.mp3',
   'case01:r_confront_right:0': 'audio/voice/c01_r_confront_player.mp3',
