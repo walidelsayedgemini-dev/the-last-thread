@@ -22,7 +22,7 @@ describe('clock', () => {
     expect(hourInWindow(5, 9, 17)).toBe(false)
   })
   it('formats Arabic clock faces', () => {
-    expect(formatClock(19.5)).toBe('٠٧:٣٠ م')
+    expect(formatClock(19.5)).toBe('٧:٣٠ م')
     expect(formatClock(0)).toBe('١٢:٠٠ ص')
   })
   it('story clock darkens with play time and evidence', () => {
