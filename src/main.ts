@@ -40,7 +40,7 @@ import { HelpView } from './ui/helpView'
 import { Hud } from './ui/hud'
 import { LetterView } from './ui/letterView'
 import { ArrivalCard } from './ui/worldFx'
-import { FlashFx, LensView, RecapView, SaveChip, TravelView, buzz } from './ui/extras'
+import { FlashFx, LensView, RecapView, SaveChip, TravelView, buzz, configureSpeech, speech } from './ui/extras'
 import { EVIDENCE_ART } from './ui/visualAssets'
 import { InvestigationView } from './ui/investigation'
 import { Shell } from './ui/shell'
@@ -94,6 +94,10 @@ async function boot(): Promise<void> {
 
   const applySettings = (d: Settings) => {
     audio.setVolumes(d.musicVolume, d.sfxVolume, d.muted, d.ambientVolume, d.voiceVolume, d.voiceEnabled)
+    // Read-aloud runs on Web Speech, outside the Web Audio buses, so it gets the same volume/mute
+    // settings and ducks the bed while it speaks.
+    configureSpeech({ volume: () => d.voiceVolume, muted: () => d.muted, duck: on => audio.setSpeechDuck(on) })
+    if (d.muted) speech.stop()
     document.body.classList.toggle('reduced-motion', d.reducedMotion)
     document.body.classList.toggle('clear-font', d.clearFont)
     document.body.classList.toggle('simple', d.simpleMode)
@@ -390,6 +394,10 @@ async function boot(): Promise<void> {
     story.hide()
     shell.go('pause')
     audio.play('ui')
+    // Save on the way out and hold every sound: the bed, the music element and any voice.
+    session?.save()
+    speech.stop()
+    audio.pauseAll()
   }
 
   function resume(): void {
@@ -401,6 +409,7 @@ async function boot(): Promise<void> {
     paused = false
     shell.go('none')
     hud.show(true)
+    audio.resumeAll()
     loopRef?.resetAccumulator()
     investigation.refresh()
     window.setTimeout(storyCheck, 300)
@@ -613,7 +622,10 @@ async function boot(): Promise<void> {
     else if (event.code === 'KeyM') { event.preventDefault(); investigation.setTab('map') }
     else if (event.code === 'KeyJ') { event.preventDefault(); caseFile.show(session!, 'objectives') }
   })
-  document.addEventListener('visibilitychange', () => { if (document.hidden) pause() })
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (active && !paused) pause() }
+    else if (active && !paused) audio.resumeAll()
+  })
   // Android back button: close the innermost layer first; returning false minimises the app.
   onBackButton(() => {
     if (memoryView?.open) { memoryView.close(); return true }

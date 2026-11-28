@@ -124,7 +124,7 @@ export class GameClock {
   private readonly now: () => number
   private storyMinutes = 0
   private evidenceCount = 0
-  private penaltyMs = 0
+  private penaltyMsValue = 0
 
   constructor(opts: ClockOptions) {
     this.mode = opts.mode
@@ -147,8 +147,21 @@ export class GameClock {
   /** Advance the investigation clock deliberately (for consequences such as a false accusation). */
   advanceMinutes(minutes: number): void {
     if (!Number.isFinite(minutes) || minutes <= 0) return
-    if (this.mode === 'realistic') this.penaltyMs += minutes * 60_000
+    if (this.mode === 'realistic') this.penaltyMsValue += minutes * 60_000
     else this.storyMinutes += minutes
+  }
+
+  /**
+   * Realistic-mode penalty carried by wrong accusations, in real milliseconds. It is saved with
+   * the profile so the lost hour survives closing and reopening the game.
+   */
+  get penaltyMs(): number {
+    return this.penaltyMsValue
+  }
+
+  /** Restore a saved penalty (values are clamped to a sane range). */
+  restorePenalty(ms: number): void {
+    this.penaltyMsValue = Number.isFinite(ms) ? Math.min(7 * MS_DAY, Math.max(0, ms)) : 0
   }
   get elapsedStoryMinutes(): number {
     return this.storyMinutes
@@ -156,7 +169,7 @@ export class GameClock {
 
   /** Current Cairo stamp (always the real calendar; story mode only uses it for display of dates). */
   get stamp(): number {
-    return this.now() + this.penaltyMs
+    return this.now() + this.penaltyMsValue
   }
 
   /** Hour of the in-game day, 0–24. */

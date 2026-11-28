@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CASE_01 } from '../src/data/case01'
+import { CASE_01, CASE01_SOLUTION } from '../src/data/case01'
 import { CASE_02 } from '../src/data/case02'
 import { CASE_03 } from '../src/data/case03'
 import { CHARACTERS } from '../src/data/characters'
@@ -69,8 +69,10 @@ describe('narrative layer', () => {
     }
   })
 
-  it('keeps the original critical path: three deductions and Mahmoud decide the accusation', () => {
-    expect(CASE_01.finale.requires.deductions).toEqual(['d_markers', 'd_forgery', 'd_trail'])
+  it('keeps the accusation gated on the same links the board objective shows', () => {
+    // The checklist the accusation screen draws and the board objective read one list.
+    expect(CASE_01.finale.requires.deductions).toEqual(CASE01_SOLUTION)
+    expect(CASE01_SOLUTION).toEqual(['d_markers', 'd_forgery', 'd_trail', 'd_vehicle', 'd_water_pressure', 'd_handwriting'])
     expect(CASE_01.finale.requires.flags).toEqual(['found_mahmoud'])
     expect(CASE_01.finale.culprit).toBe('shawky')
     expect(CASE_01.evidence.length).toBeGreaterThanOrEqual(15)

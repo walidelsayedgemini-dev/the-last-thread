@@ -1,4 +1,7 @@
-import type { CaseFile } from './types'
+import type { CaseFile, DeductionId } from './types'
+
+/** The links the accusation is gated on; the board hint and the accusation checklist read this list. */
+export const CASE02_SOLUTION: DeductionId[] = ['d02_route', 'd02_forgery', 'd02_betrayal']
 /** Case 02 follows the anonymous envelope and exposes the courier chain behind Shawkي. */
 export const CASE_02: CaseFile = {
   id: 'case02', number: '٢', title: 'ظرف من غير اسم', tagline: 'الظرف الأخير فتح باباً أقدم من الخيط.',
@@ -133,7 +136,7 @@ export const CASE_02: CaseFile = {
     { id: 'hs_waterwheel_wheel_c2', label: 'خشب الساقية', place: 'waterwheel', offset: { x: 18, z: 18 }, kind: 'inspect', consumable: true, text: 'الخشب مبلول بطين جديد، كأن حد وقف هنا بعد الفجر.', effects: [{ type: 'flag', id: 'case02_waterwheel_checked' }] },
   ],
   finale: {
-    requires: { deductions: ['d02_route', 'd02_forgery', 'd02_betrayal'], flags: ['case02_adham_tied', 'case02_final_confronted'] }, culprit: 'adham',
+    requires: { deductions: CASE02_SOLUTION, flags: ['case02_adham_tied', 'case02_final_confronted'] }, culprit: 'adham',
     motives: [
       { id: 'm02_money', text: 'كان بياخد نصيبه من فلوس بيع الملفات القديمة، وبيسلّمها من مخزن ٧ للبحر.', correct: true },
       { id: 'm02_fear', text: 'كان خايف من البحر فقرر ينتقم منه.', correct: false },

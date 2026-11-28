@@ -46,6 +46,8 @@ export type Progress = {
   /** Where the player stands: zone + world position + yaw. */
   position: { zone: 'abis' | 'city'; x: number; z: number; yaw: number }
   storyMinutes: number
+  /** Realistic-mode wrong-accusation penalty in real milliseconds; survives reloads. */
+  penaltyMs?: number
   playMs: number
   /** Bookkeeping for the end-of-case report. */
   stats: ProgressStats
@@ -80,7 +82,7 @@ export function newProgress(mode: GameMode, caseId = 'case01'): Progress {
     v: PROGRESS_VERSION, caseId, mode,
     case: initial, cases: { [caseId]: initial },
     position: { zone: 'abis', x: 30, z: 232, yaw: 0 },
-    storyMinutes: 0, playMs: 0, stats: { photos: 0, hints: 0, wrongAccusations: 0, hintTiers: {} },
+    storyMinutes: 0, penaltyMs: 0, playMs: 0, stats: { photos: 0, hints: 0, wrongAccusations: 0, hintTiers: {} },
     achievements: [], tutorial: { completed: false },
   }
 }
@@ -122,8 +124,10 @@ export function migrate(raw: unknown, mode: GameMode = 'story'): Progress {
       evidence: Array.isArray(x.evidence) ? x.evidence.filter(e => e && typeof e.id === 'string').map(e => ({ id: e.id, at: Number(e.at) || 0 })) : [], offended: [],
     }
   }
+  const penalty = Number(out.penaltyMs)
   return {
     ...base, ...(out as Partial<Progress>), v: PROGRESS_VERSION,
+    penaltyMs: Number.isFinite(penalty) ? Math.min(7 * 86_400_000, Math.max(0, penalty)) : 0,
     case: migratedCase, cases,
     position: { ...base.position, ...((out.position as object) ?? {}) },
     stats: { ...base.stats, ...((out.stats as object) ?? {}) },

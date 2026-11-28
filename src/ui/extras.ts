@@ -6,6 +6,20 @@ import { formatClock } from '../core/clock'
 import { h, setChildren, svg } from './dom'
 
 // ---- Read aloud (Web Speech, offline-safe: hidden when the browser has no voices) -----------------------------
+type SpeechSettings = {
+  /** 0..1, the same slider that drives dialogue voice clips. */
+  volume: () => number
+  /** When the game is muted, read-aloud stays silent too. */
+  muted: () => boolean
+  /** Duck the ambience/music while the browser voice is speaking. */
+  duck?: (on: boolean) => void
+}
+let speechSettings: SpeechSettings = { volume: () => 1, muted: () => false }
+/** Web Speech sits outside the Web Audio graph, so the game hands it its own volume/mute state. */
+export function configureSpeech(settings: SpeechSettings): void {
+  speechSettings = settings
+}
+
 export const speech = {
   supported(): boolean {
     return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'
@@ -14,10 +28,14 @@ export const speech = {
     return this.supported() && window.speechSynthesis.speaking
   },
   stop(): void {
-    if (this.supported()) window.speechSynthesis.cancel()
+    if (!this.supported()) return
+    window.speechSynthesis.cancel()
+    speechSettings.duck?.(false)
   },
   speak(text: string, onEnd?: () => void): void {
     if (!this.supported()) return
+    const volume = Math.min(1, Math.max(0, speechSettings.volume()))
+    if (speechSettings.muted() || volume <= 0) { onEnd?.(); return }
     window.speechSynthesis.cancel()
     const u = new SpeechSynthesisUtterance(text.replace(/[«»…]/g, ' '))
     const voices = window.speechSynthesis.getVoices()
@@ -25,8 +43,11 @@ export const speech = {
     if (voice) u.voice = voice
     u.lang = voice?.lang ?? 'ar-EG'
     u.rate = 0.92
-    u.onend = () => onEnd?.()
-    u.onerror = () => onEnd?.()
+    u.volume = volume
+    const finish = () => { speechSettings.duck?.(false); onEnd?.() }
+    u.onend = finish
+    u.onerror = finish
+    speechSettings.duck?.(true)
     window.speechSynthesis.speak(u)
   },
 }
