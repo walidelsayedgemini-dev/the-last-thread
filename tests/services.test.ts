@@ -47,6 +47,27 @@ describe('ProfileService', () => {
     expect(migrated.case.reviewedEvidence).toEqual(['e_thread_door'])
     expect(migrated.cases?.case02.reviewedEvidence).toEqual(['e02_black_envelope'])
   })
+  it('migrates the discovered case log per case and drops malformed entries', () => {
+    const migrated = migrate({
+      v: 7, caseId: 'case01', mode: 'story',
+      case: {
+        flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [],
+        caseLog: [
+          { kind: 'dialogue', id: 'zeinab', at: 1200, hour: 26, place: 'zeinab_home' },
+          { kind: 'evidence', id: 'e_thread_door', at: 'now', hour: 8 },
+          { kind: 'hidden-answer', id: 'future_solution', at: 1200, hour: 8 },
+        ],
+      },
+      cases: {
+        case02: {
+          flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [],
+          caseLog: [{ kind: 'evidence', id: 'e02_black_envelope', at: 3400, hour: 9, place: 'abis_market' }],
+        },
+      },
+    })
+    expect(migrated.case.caseLog).toEqual([{ kind: 'dialogue', id: 'zeinab', at: 1200, hour: 2, place: 'zeinab_home' }])
+    expect(migrated.cases?.case02.caseLog).toEqual([{ kind: 'evidence', id: 'e02_black_envelope', at: 3400, hour: 9, place: 'abis_market' }])
+  })
   it('migrates exact thread pairs while leaving legacy pair data absent for safe reconstruction', () => {
     const legacy = migrate({ v: 6, case: { flags: [], deductions: ['d_trail'], evidence: [], hotspots: [], seenChoices: [] } })
     expect(legacy.case.threads).toBeUndefined()

@@ -5,8 +5,11 @@
  * TypeScript with no DOM / three.js dependency so rules can be unit-tested and reused unchanged by
  * the AntiGravity phase.
  */
-import type { CaseFile, CharacterId, Condition, DeductionId, Effect, Evidence, EvidenceId, Hotspot, Objective } from '../data/types'
+import type { CaseFile, CharacterId, Condition, DeductionId, Effect, Evidence, EvidenceId, Hotspot, Objective, PlaceId } from '../data/types'
 import { evalGate, type GateContext } from './gates'
+
+export type CaseLogKind = 'dialogue' | 'evidence' | 'deduction'
+export type CaseLogEntry = { kind: CaseLogKind; id: string; at: number; hour: number; place?: PlaceId }
 
 /** Serializable progress snapshot (stored by ProfileService). */
 export type CaseSnapshot = {
@@ -24,6 +27,8 @@ export type CaseSnapshot = {
   threads?: { deduction: DeductionId; pair: [EvidenceId, EvidenceId] }[]
   /** Characters temporarily offended by a wrong accusation. Optional for old saves. */
   offended?: { character: CharacterId; untilEvidence: number; untilMinute: number }[]
+  /** Discovered case activity only; optional so older saves remain valid. */
+  caseLog?: CaseLogEntry[]
 }
 
 /** Recover only legacy links that are mathematically unambiguous from the old snapshot. */
@@ -48,6 +53,7 @@ export class CaseState {
   readonly reviewedEvidence = new Set<EvidenceId>()
   readonly threads = new Map<DeductionId, [EvidenceId, EvidenceId][]>()
   readonly offended = new Map<CharacterId, { untilEvidence: number; untilMinute: number }>()
+  readonly caseLog: CaseLogEntry[] = []
 
   snapshot(): CaseSnapshot {
     return {
@@ -59,6 +65,7 @@ export class CaseState {
       reviewedEvidence: [...this.reviewedEvidence],
       threads: [...this.threads].flatMap(([deduction, pairs]) => pairs.map(pair => ({ deduction, pair }))),
       offended: [...this.offended].map(([character, value]) => ({ character, ...value })),
+      caseLog: this.caseLog.map(entry => ({ ...entry })),
     }
   }
 
@@ -76,6 +83,7 @@ export class CaseState {
       s.threads.set(deduction, pairs)
     }
     for (const item of snapshot.offended ?? []) s.offended.set(item.character, { untilEvidence: item.untilEvidence, untilMinute: item.untilMinute })
+    s.caseLog.push(...(snapshot.caseLog ?? []).map(entry => ({ ...entry })))
     return s
   }
 }

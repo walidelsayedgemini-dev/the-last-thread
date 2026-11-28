@@ -3,6 +3,7 @@
  * save chip, day/night + weather and dialogue moods. All are plain DOM and keep no game state.
  */
 import { formatClock } from '../core/clock'
+import type { Place } from '../data/types'
 import { h, setChildren, svg } from './dom'
 
 // ---- Read aloud (Web Speech, offline-safe: hidden when the browser has no voices) -----------------------------
@@ -166,10 +167,10 @@ export class TravelView {
   private raf = 0
   private done?: () => void
   get open(): boolean { return !this.el.hidden }
-  play(from: 'abis' | 'city', to: 'abis' | 'city', onDone: () => void): void {
+  play(from: Place, to: Place, time: string, onDone: () => void): void {
     cancelAnimationFrame(this.raf)
     this.done = onDone
-    const toCity = from === 'abis' && to === 'city'
+    const toCity = from.district === 'abis' && to.district === 'city'
     const W = 400
     const H = 250
     const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'travel-map', 'aria-hidden': 'true' })
@@ -201,24 +202,27 @@ export class TravelView {
     const text = h('p', { class: 'travel-line' }, lines[0])
     setChildren(this.el,
       h('div', { class: 'travel-card' },
-        h('small', null, toCity ? 'من أبيس إلى الإسكندرية' : 'من الإسكندرية إلى أبيس'),
+        h('div', { class: 'travel-route' },
+          h('small', null, `من ${from.name} إلى`),
+          h('b', null, to.name),
+          h('small', { class: 'travel-time' }, `الوقت: ${time}`)),
         root, text,
         h('button', { class: 'travel-skip', onclick: () => this.finish() }, 'تخطي ▸')))
     this.el.hidden = false
     const total = road.getTotalLength()
-    const reduced = document.body.classList.contains('reduced-motion')
-    const dur = reduced ? 500 : 2800
+    const reduced = document.body.classList.contains('reduced-motion') || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const dur = reduced ? 0 : 2800
     const t0 = performance.now()
     const step = (now: number) => {
-      const k = Math.min(1, (now - t0) / dur)
+      const k = dur === 0 ? 1 : Math.min(1, (now - t0) / dur)
       const d = (toCity ? k : 1 - k) * total
       const p = road.getPointAtLength(d)
       const q = road.getPointAtLength(Math.min(total, d + 1))
       const angle = Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI
       bus.setAttribute('transform', `translate(${p.x} ${p.y}) rotate(${angle}) scale(${toCity ? 1 : -1}, 1)`)
-      text.textContent = lines[Math.min(2, Math.floor(k * 3))]
+      text.textContent = reduced ? lines.join(' ') : lines[Math.min(2, Math.floor(k * 3))]
       if (k < 1) this.raf = requestAnimationFrame(step)
-      else window.setTimeout(() => this.finish(), 350)
+      else window.setTimeout(() => this.finish(), reduced ? 1800 : 350)
     }
     this.raf = requestAnimationFrame(step)
   }
@@ -274,15 +278,20 @@ export class RecapView {
 
 // ---- Save chip ------------------------------------------------------------------------------------------------
 export class SaveChip {
-  readonly el = h('div', { class: 'save-chip', hidden: true, 'aria-live': 'polite' }, '✓ اتحفظ')
+  readonly el = h('div', { class: 'save-chip', hidden: true, role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' })
   private timer = 0
-  flash(): void {
+  flash(status: 'saved' | 'temporary' | 'error' = 'saved'): void {
     window.clearTimeout(this.timer)
+    this.el.dataset.state = status
+    this.el.textContent = status === 'saved' ? '✓ اتحفظ'
+      : status === 'temporary' ? '⚠ حفظ مؤقت — للجلسة بس'
+        : '⚠ تعذّر الحفظ'
     this.el.hidden = false
     this.el.classList.remove('in')
     void this.el.offsetWidth
     this.el.classList.add('in')
-    this.timer = window.setTimeout(() => { this.el.hidden = true }, 1800)
+    const duration = status === 'error' ? 5200 : status === 'temporary' ? 3600 : 1800
+    this.timer = window.setTimeout(() => { this.el.hidden = true }, duration)
   }
 }
 

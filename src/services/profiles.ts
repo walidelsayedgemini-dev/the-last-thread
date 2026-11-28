@@ -9,12 +9,12 @@
  * the schema keeps evolving with continuous updates without invalidating players' saves.
  */
 import type { GameMode } from '../data/types'
-import type { DeductionId, EvidenceId } from '../data/types'
-import type { CaseSnapshot } from '../core/caseState'
+import type { DeductionId, EvidenceId, PlaceId } from '../data/types'
+import type { CaseLogEntry, CaseSnapshot } from '../core/caseState'
 import type { StorageAdapter } from './storage'
 
 export const MAX_PROFILES = 3
-export const PROGRESS_VERSION = 7
+export const PROGRESS_VERSION = 8
 const INDEX_KEY = 'ltt.profiles.index'
 const profileKey = (id: string) => `ltt.profile.${id}`
 
@@ -84,7 +84,7 @@ export type ProfileSummary = {
 export const HOMES = ['عزبة ١٥ – أبيس', 'العجمي', 'المنتزه', 'سيدي بشر', 'محرم بك'] as const
 
 export function newProgress(mode: GameMode, caseId = 'case01'): Progress {
-  const initial: CaseSnapshot = { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [], reviewedEvidence: [], threads: [] }
+  const initial: CaseSnapshot = { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [], reviewedEvidence: [], threads: [], caseLog: [] }
   const stats = newProgressStats()
   return {
     v: PROGRESS_VERSION, caseId, mode,
@@ -121,6 +121,7 @@ export function migrate(raw: unknown, mode: GameMode = 'story'): Progress {
     flags: strings(c.flags), deductions: strings(c.deductions) as CaseSnapshot['deductions'],
     hotspots: strings(c.hotspots), seenChoices: strings(c.seenChoices), reviewedEvidence: strings(c.reviewedEvidence) as NonNullable<CaseSnapshot['reviewedEvidence']>,
     ...(Array.isArray(c.threads) ? { threads: cleanThreads(c.threads) } : {}),
+    caseLog: cleanCaseLog(c.caseLog),
     evidence: Array.isArray(c.evidence) ? c.evidence.filter(e => e && typeof e.id === 'string').map(e => ({ id: e.id, at: Number(e.at) || 0 })) : [],
     offended: Array.isArray(c.offended) ? c.offended.filter(x => x && typeof x.character === 'string').map(x => ({ character: x.character as never, untilEvidence: Number(x.untilEvidence) || 0, untilMinute: Number(x.untilMinute) || 0 })) : [],
   } satisfies CaseSnapshot
@@ -132,6 +133,7 @@ export function migrate(raw: unknown, mode: GameMode = 'story'): Progress {
     cases[id] = {
       flags: strings(x.flags), deductions: strings(x.deductions) as CaseSnapshot['deductions'], hotspots: strings(x.hotspots), seenChoices: strings(x.seenChoices), reviewedEvidence: strings(x.reviewedEvidence) as NonNullable<CaseSnapshot['reviewedEvidence']>,
       ...(Array.isArray(x.threads) ? { threads: cleanThreads(x.threads) } : {}),
+      caseLog: cleanCaseLog(x.caseLog),
       evidence: Array.isArray(x.evidence) ? x.evidence.filter(e => e && typeof e.id === 'string').map(e => ({ id: e.id, at: Number(e.at) || 0 })) : [], offended: [],
     }
   }
@@ -164,6 +166,19 @@ function cleanThreads(value: unknown): NonNullable<CaseSnapshot['threads']> {
     if (typeof thread.deduction !== 'string' || !Array.isArray(thread.pair) || thread.pair.length !== 2 || thread.pair.some(id => typeof id !== 'string')) return []
     return [{ deduction: thread.deduction as DeductionId, pair: [thread.pair[0] as EvidenceId, thread.pair[1] as EvidenceId] }]
   })
+}
+
+function cleanCaseLog(value: unknown): CaseLogEntry[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap(item => {
+    if (!item || typeof item !== 'object') return []
+    const entry = item as Record<string, unknown>
+    if (!['dialogue', 'evidence', 'deduction'].includes(String(entry.kind)) || typeof entry.id !== 'string' || !entry.id.trim()) return []
+    if (typeof entry.at !== 'number' || !Number.isFinite(entry.at) || typeof entry.hour !== 'number' || !Number.isFinite(entry.hour)) return []
+    const hour = ((entry.hour % 24) + 24) % 24
+    const place = typeof entry.place === 'string' && entry.place.length <= 80 ? entry.place as PlaceId : undefined
+    return [{ kind: entry.kind as CaseLogEntry['kind'], id: entry.id.slice(0, 120), at: entry.at, hour, ...(place ? { place } : {}) }]
+  }).slice(-500)
 }
 
 function normalizeStats(raw: unknown): ProgressStats {

@@ -35,13 +35,14 @@ export function ambientLayer(id: PlaceId): HTMLElement {
 export class ArrivalCard {
   readonly el = h('aside', { class: 'arrival-card', hidden: true, 'aria-live': 'polite' })
   private timer = 0
-  show(place: Place): void {
+  show(place: Place, time: string): void {
     const t = themeOf(place.id)
     window.clearTimeout(this.timer)
     setChildren(this.el,
       h('div', { class: 'arrival-inner' },
         h('small', null, place.district === 'abis' ? 'أبيس • عزبة ١٥' : 'الإسكندرية'),
         h('b', null, place.name),
+        h('span', { class: 'arrival-time' }, `وصلت الساعة ${time}`),
         h('span', { class: 'arrival-mood' }, t.mood),
         h('p', null, t.arrive)))
     this.el.hidden = false

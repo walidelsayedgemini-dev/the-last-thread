@@ -1,0 +1,166 @@
+/* Shared interaction language: clear focus, forgiving touch targets and restrained states. */
+#ui :is(button, a, [role='button'], summary) {
+  -webkit-tap-highlight-color: #ffd36e38;
+  touch-action: manipulation;
+}
+#ui :is(button, a, [role='button'], summary):focus-visible {
+  outline: 3px solid var(--gold, #ffd36e);
+  outline-offset: 3px;
+  position: relative;
+  z-index: 5;
+}
+#ui .inv-person,
+#ui .inv-actor,
+#ui .inv-pin,
+#ui .inv-map-card,
+#ui .rm-go,
+#ui .rm-chip { cursor: pointer; }
+#ui .inv-person:focus-visible .inv-person-art,
+#ui .inv-actor:focus-visible .inv-actor-photo { outline: 3px solid var(--gold, #ffd36e); outline-offset: 3px; }
+#ui .inv-pin:focus-visible { outline: 3px solid var(--gold, #ffd36e); outline-offset: 5px; }
+
+/* Current objective: collapsible without removing the objective title or revealing a solution. */
+#ui .inv-guide-toggle {
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #ffd36e75;
+  border-radius: 8px;
+  background: #ffd36e18;
+  color: var(--gold, #ffd36e);
+  font: 800 1.25rem/1 var(--font);
+  cursor: pointer;
+}
+#ui .inv-guide-toggle:hover { background: #ffd36e32; border-color: var(--gold, #ffd36e); }
+#ui .inv-guide.collapsed { gap: 10px; }
+
+/* Map status is redundant by design: color, text and shape identify current / available / remote. */
+#ui .inv-map-head { padding: 2px 2px 8px; border-bottom: 1px solid #c9aa7833; }
+#ui .inv-map-head h2 { margin: 0; color: var(--bone); font: 700 1.55rem/1.35 var(--display); }
+#ui .inv-map-head p { max-width: 76ch; margin: 5px 0 0; color: var(--muted); line-height: 1.7; }
+#ui .inv-map-legend { display: flex; flex-wrap: wrap; gap: 7px 14px; align-items: center; padding: 8px 10px; border: 1px solid #c9aa7830; background: #070d12b8; color: var(--bone); font-size: .82rem; }
+#ui .inv-map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+#ui .inv-map-legend .here { color: #ffd36e; }
+#ui .inv-map-legend .available { color: #8ee3b0; }
+#ui .inv-map-legend .remote { color: #b3c0c3; }
+#ui .inv-map-switch { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0; border: 0; }
+#ui .inv-map-switch button { min-height: 44px; border: 1px solid #c9aa7855; border-radius: 8px; }
+#ui .inv-map-switch button.on { border-color: var(--area-accent, var(--gold)); background: var(--area-accent, var(--gold)); color: #17120a; }
+#ui .inv-map-card { min-height: 44px; }
+#ui .inv-map-card.here { box-shadow: inset 0 0 0 2px #ffd36e88; }
+#ui .inv-map-card.goal { border-color: #ef7078; }
+#ui .inv-map-remote { padding: 10px 12px; border: 1px dashed #9baeb566; background: #0a1419; }
+#ui .inv-map-remote summary { min-height: 44px; display: flex; align-items: center; color: #d8dedc; font-weight: 800; cursor: pointer; }
+#ui .inv-map-remote[open] summary { border-bottom: 1px solid #ffffff1c; }
+#ui .inv-map-remote > p { margin: 6px 0 10px; color: var(--muted); line-height: 1.7; }
+#ui .inv-map-remote-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 8px; }
+#ui .inv-map-remote-card { display: grid; gap: 3px; min-width: 0; padding: 10px 12px; border: 1px dashed #8f9fa566; background: #111b20; }
+#ui .inv-map-remote-card b { color: #e7e7df; }
+#ui .inv-map-remote-card small { color: #bac4c4; }
+#ui .inv-map-remote-card span { color: #e0c98f; font-size: .82rem; line-height: 1.55; }
+
+/* Outside-region markers stay visible but look distinct from reachable places. */
+#ui .rm-pin.remote { filter: grayscale(.75) saturate(.58); opacity: .82; border-style: dashed; }
+#ui .rm-popup .rm-status { display: inline-flex; width: fit-content; padding: 2px 8px; border: 1px solid; border-radius: 999px; font-size: .76rem; font-weight: 800; }
+#ui .rm-popup .rm-status.available { color: #176a3a; border-color: #4da875; background: #e8f5ec; }
+#ui .rm-popup .rm-status.remote { color: #72520a; border-color: #c89521; background: #fff5d8; }
+#ui .rm-popup .rm-lock-reason { padding: 6px 8px; border-inline-start: 3px solid #c89521; background: #fff5d8; }
+#ui .rm-go, #ui .rm-chip { min-height: 44px; }
+
+/* Save feedback distinguishes durable save, temporary fallback and failure. */
+#ui .save-chip { z-index: 48; max-width: min(92vw, 440px); padding: 7px 12px; border-radius: 8px; font-weight: 800; line-height: 1.5; }
+#ui .save-chip[data-state='saved'] { color: #c9f4db; background: #0b1c14ef; border-color: #65c49bcc; }
+#ui .save-chip[data-state='temporary'] { color: #fff0bf; background: #261d09f2; border-color: #e8b94d; }
+#ui .save-chip[data-state='error'] { color: #ffe1e2; background: #2b0e12f5; border-color: #ef7078; }
+#ui .save-chip.in[data-state='temporary'] { animation-duration: 3.6s; }
+#ui .save-chip.in[data-state='error'] { animation-duration: 5.2s; }
+
+/* Travel transition puts exact place names and the clock before the scenic route. */
+#ui .travel-card { width: min(680px, 96vw); }
+#ui .travel-route { display: grid; justify-items: center; gap: 3px; padding: 12px 16px; border: 1px solid #c9aa7855; background: linear-gradient(120deg, #141e22, #0a1116); }
+#ui .travel-route small { color: #d2c4a2; letter-spacing: 0; font-size: .86rem; }
+#ui .travel-route b { color: #fff3d5; font: 800 clamp(1.35rem, 4vw, 2rem)/1.35 var(--display); }
+#ui .travel-route .travel-time { color: var(--gold, #ffd36e); font-variant-numeric: tabular-nums; }
+#ui .travel-skip { min-width: 144px; border-radius: 8px; color: #f1e8d7; }
+#ui .travel-skip:hover { border-color: var(--gold, #ffd36e); color: #fff; }
+#ui .travel-line { padding-inline: 8px; }
+
+/* Arrivals remain readable with reduced motion; only their fade is removed. */
+#ui .arrival-card.in { opacity: 1; }
+#ui .arrival-time { color: var(--gold, #ffd36e); font-variant-numeric: tabular-nums; font-weight: 700; }
+body.reduced-motion .arrival-card.in,
+body.reduced-motion .arrival-card.out,
+body.reduced-motion .travel-layer { animation: none !important; transition: none !important; }
+body.reduced-motion .arrival-card.in,
+body.reduced-motion .arrival-card.out { opacity: 1 !important; }
+body.reduced-motion .travel-card,
+body.reduced-motion .travel-map * { animation: none !important; transition: none !important; }
+
+/* Case activity is a separate, filterable record; legacy entries stay honest about missing timestamps. */
+#ui > .casefile .journal-page-wrap { display: grid; gap: 16px; }
+#ui > .casefile .case-activity { display: grid; gap: 10px; padding: 14px; border: 1px solid #c9aa7840; border-inline-start: 3px solid var(--gold); background: linear-gradient(145deg, #111a1f, #0a1115); }
+#ui > .casefile .case-activity > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#ui > .casefile .case-activity h3 { margin: 0; color: var(--gold); font: 800 1.2rem/1.4 var(--display); }
+#ui > .casefile .case-activity > header p { margin: 2px 0 0; color: var(--muted); font-size: .88rem; }
+#ui > .casefile .case-activity-total { display: grid; place-items: center; min-width: 40px; min-height: 40px; padding: 0 8px; border: 1px solid #c9aa7866; color: var(--gold); }
+#ui > .casefile .case-activity-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+#ui > .casefile .case-activity-filter { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 82px; min-height: 44px; padding: 5px 12px; border: 1px solid #52646a; border-radius: 7px; background: #0b1419; color: #cbd3d3; font: inherit; cursor: pointer; }
+#ui > .casefile .case-activity-filter b { color: var(--gold); }
+#ui > .casefile .case-activity-filter.on { border-color: var(--gold); background: #c9aa7820; color: #fff0c7; }
+#ui > .casefile .case-activity-filter:disabled { opacity: .48; cursor: not-allowed; }
+#ui > .casefile .case-activity-list { display: grid; gap: 6px; max-height: 34vh; overflow: auto; margin: 0; padding: 0 2px 0 0; list-style: none; }
+#ui > .casefile .case-activity-item { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 8px 10px; border: 1px solid #ffffff16; border-inline-start: 3px solid #8ea1a6; background: #ffffff08; }
+#ui > .casefile .case-activity-item.dialogue { border-inline-start-color: #73c9ce; }
+#ui > .casefile .case-activity-item.evidence { border-inline-start-color: var(--gold); }
+#ui > .casefile .case-activity-item.deduction { border-inline-start-color: #ef7078; }
+#ui > .casefile .case-activity-kind { grid-row: 1 / span 2; padding: 2px 5px; border: 1px solid #ffffff2c; color: #c8d2d4; font-size: .75rem; text-align: center; }
+#ui > .casefile .case-activity-item > b { color: #f3eee2; line-height: 1.5; }
+#ui > .casefile .case-activity-item > small { color: #b8c3c3; font-size: .78rem; line-height: 1.55; }
+#ui > .casefile .journal { align-items: start; }
+
+/* Optional accusation review: discovered facts only, with no answer-specific hint after a miss. */
+#ui > .casefile .accuse-preview { padding: 10px 12px; border: 1px dashed #c9aa7877; background: #0b1419; }
+#ui > .casefile .accuse-preview > summary { display: flex; align-items: center; min-height: 44px; color: var(--gold); font-weight: 800; cursor: pointer; }
+#ui > .casefile .accuse-preview[open] > summary { margin-bottom: 8px; border-bottom: 1px solid #ffffff1c; }
+#ui > .casefile .accuse-preview h5 { margin: 10px 0 5px; color: #d9c99f; font-size: .9rem; }
+#ui > .casefile .accuse-preview > p { margin: 5px 0; color: #c8d2d4; }
+#ui > .casefile .accuse-review-list { display: grid; gap: 5px; max-height: 28vh; overflow: auto; margin: 0; padding: 0; list-style: none; }
+#ui > .casefile .accuse-review-list li { display: grid; gap: 3px; padding: 8px 10px; border-inline-start: 2px solid #c9aa7866; background: #ffffff08; }
+#ui > .casefile .accuse-review-list li > b { color: #f4eddf; }
+#ui > .casefile .accuse-review-list li > span,
+#ui > .casefile .accuse-review-list li > small { color: #bac5c5; font-size: .82rem; line-height: 1.6; }
+#ui > .casefile .accuse-review-list .accuse-known-pair { color: #e2c988; }
+#ui > .casefile .accuse-review-note { margin: 8px 0 0; color: var(--muted); font-size: .82rem; }
+#ui > .casefile .clue-review.accuse-review { border-color: #8d6f35; background: #17140f; }
+#ui > .casefile .accuse-review-note { line-height: 1.65; }
+#ui > .casefile .cf-tab kbd { margin-inline-start: 5px; padding: 0 5px; border: 1px solid #ffffff35; border-radius: 4px; color: #c8d2d4; font: 600 .68rem var(--font); }
+
+@media (max-width: 720px) {
+  #ui .inv-map-head h2 { font-size: 1.35rem; }
+  #ui .inv-map-legend { gap: 6px 10px; font-size: .76rem; }
+  #ui .inv-map-remote-list { grid-template-columns: 1fr; }
+  #ui > .casefile .case-activity { padding: 10px; }
+  #ui > .casefile .case-activity-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #ui > .casefile .case-activity-filter { width: 100%; }
+  #ui > .casefile .case-activity-list { max-height: 38vh; }
+  #ui > .casefile .journal { grid-template-columns: minmax(0, 1fr); }
+  #ui > .casefile .accuse-preview { padding: 8px; }
+}
+@media (pointer: coarse) {
+  #ui > .casefile .cf-tab kbd { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ui .travel-layer,
+  #ui .travel-card,
+  #ui .travel-map *,
+  #ui .arrival-card.in,
+  #ui .arrival-card.out,
+  #ui .save-chip.in,
+  #ui .inv-guide-toggle { animation: none !important; transition: none !important; }
+  #ui .arrival-card.in,
+  #ui .arrival-card.out { opacity: 1 !important; }
+}

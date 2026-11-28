@@ -3,8 +3,9 @@
  * board, real-world calendar and the final accusation. Built with the safe DOM helper.
  */
 import { formatClock, formatDate, formatDateTime, arabicDigits } from '../core/clock'
+import type { CaseLogKind } from '../core/caseState'
 import { PLACES } from '../data/places'
-import type { Deduction, DeductionId, Evidence, EvidenceId, EventKind } from '../data/types'
+import type { CharacterId, Deduction, DeductionId, Evidence, EvidenceId, EventKind } from '../data/types'
 import type { Audio } from '../engine/audio'
 import type { Session } from '../game/session'
 import type { EventsDb } from '../services/eventsDb'
@@ -26,6 +27,8 @@ const TABS: [Tab, string][] = [
 ]
 const SIMPLE_HIDDEN: Tab[] = ['organizer', 'map', 'calendar']
 type EvidenceFilter = 'all' | 'new' | Evidence['kind']
+type CaseLogFilter = 'all' | CaseLogKind
+type CaseActivity = { kind: CaseLogKind; id: string; at?: number; hour?: number; place?: Evidence['place'] }
 const KIND_LABEL: Record<Evidence['kind'], string> = { object: 'جسم', testimony: 'شهادة', document: 'مستند', photo: 'صورة', trace: 'أثر' }
 const KIND_ICON: Record<Evidence['kind'], string> = { object: '▣', testimony: '“ ”', document: '▤', photo: '◉', trace: '⌁' }
 const EVENT_LABEL: Record<EventKind, string> = { match_ittihad: 'مباراة الاتحاد', match_ahly: 'مباراة الأهلي', market_day: 'سوق', friday_prayer: 'صلاة الجمعة' }
@@ -75,6 +78,7 @@ export class CaseFileView {
   private accConfirm = false
   private accusationReview?: 'wrong-culprit' | 'wrong-motive'
   private evidenceFilter: EvidenceFilter = 'all'
+  private journalFilter: CaseLogFilter = 'all'
   private evidenceLayout: 'list' | 'gallery' = 'list'
   private expandedEvidence?: EvidenceId
 
@@ -126,6 +130,7 @@ export class CaseFileView {
   show(session: Session, tab: Tab = this.tab): void {
     if (this.session !== session || this.shownCase !== session.caseId) {
       this.evidenceFilter = 'all'
+      this.journalFilter = 'all'
       this.expandedEvidence = undefined
       this.tried.clear()
       this.selected = undefined
@@ -167,7 +172,11 @@ export class CaseFileView {
       this.render()
       return true
     }
-    if (e.code === 'Escape' || e.code === 'KeyJ') {
+    if (e.code === 'KeyJ') {
+      this.setTab('objectives')
+      return true
+    }
+    if (e.code === 'Escape') {
       this.close()
       return true
     }
@@ -200,9 +209,10 @@ export class CaseFileView {
       : TABS
     if (!tabs.some(([id]) => id === this.tab)) this.tab = 'board'
     setChildren(this.tabsEl, tabs.map(([id, label]) =>
-      h('button', { class: `cf-tab${id === this.tab ? ' on' : ''}`, role: 'tab', 'aria-selected': String(id === this.tab), onclick: () => { this.d.audio.play('ui'); this.setTab(id) } },
+      h('button', { class: `cf-tab${id === this.tab ? ' on' : ''}`, role: 'tab', 'aria-selected': String(id === this.tab), 'aria-keyshortcuts': id === 'objectives' ? 'J' : undefined, onclick: () => { this.d.audio.play('ui'); this.setTab(id) } },
         label, id === 'journal' && unread > 0 && h('span', { class: 'cf-tab-badge', 'aria-label': `${arabicDigits(unread)} صفحة جديدة` }, arabicDigits(unread)),
-        id === 'letters' && mail > 0 && h('span', { class: 'cf-tab-badge mail', 'aria-label': `${arabicDigits(mail)} جواب جديد` }, arabicDigits(mail)))))
+        id === 'letters' && mail > 0 && h('span', { class: 'cf-tab-badge mail', 'aria-label': `${arabicDigits(mail)} جواب جديد` }, arabicDigits(mail)),
+        id === 'objectives' && h('kbd', null, 'J'))))
     this.tabsEl.querySelector<HTMLElement>('.cf-tab.on')?.scrollIntoView?.({ inline: 'center', block: 'nearest' })
     this.updateTabsOverflow()
     const page = { letters: () => this.d.letters.list(s), evidence: () => this.evidence(s), people: () => this.people(s), objectives: () => this.objectives(s), board: () => this.board(s), journal: () => this.journal(s), organizer: () => this.organizer(s), life: () => this.life(s), map: () => this.map(s), calendar: () => this.calendar(s) }[this.tab]()
@@ -540,27 +550,38 @@ export class CaseFileView {
     }))
   }
 
-  private reviewAccusation(s: Session): HTMLElement | undefined {
-    const result = this.accusationReview
-    if (!result) return
-    const file = s.engine.file
-    const caseOnePairs: Partial<Record<string, [EvidenceId, EvidenceId]>> = {
-      ragab: ['e_cafe_bill', 'e_hassan_testimony'],
-      hassan: ['e_hassan_testimony', 'e_boundary_stone'],
-      fathy: ['e_fathy_testimony', 'e_forged_contract'],
-    }
-    const preferred = s.caseId === 'case01' && result === 'wrong-culprit' ? caseOnePairs[this.accSuspect ?? ''] : undefined
-    const activePair = preferred?.every(id => s.engine.has(id)) ? preferred
-      : file.deductions.filter(d => file.finale.requires.deductions?.includes(d.id))
-        .sort((a, b) => Number(b.id === 'd_forgery') - Number(a.id === 'd_forgery'))
-        .flatMap(d => d.pairs).find(pair => pair.every(id => s.engine.has(id)))
-    const reason = result === 'wrong-culprit' ? file.finale.wrongCulprit : file.finale.wrongMotive
-    return h('section', { class: 'clue-review', tabindex: '-1', 'aria-label': 'راجع الاتهام' },
-      h('h5', null, 'راجع الاتهام مع الأدلة'),
-      h('p', { role: 'status' }, preferred && activePair === preferred
-        ? 'قارن الدليلين. هل الشخص اللي اخترته اتشاف وهو بيغيّر الحدود، ولا هو اللي شاف أو سجّل حاجة؟'
-        : reason),
-      activePair && this.clueComparison(s, activePair.map(id => s.engine.evidenceInfo(id))))
+  private reviewAccusation(): HTMLElement | undefined {
+    if (!this.accusationReview) return
+    return h('section', { class: 'clue-review accuse-review', tabindex: '-1', 'aria-label': 'نتيجة الاتهام' },
+      h('h5', null, 'الاختيار مش مطابق للحل'),
+      h('p', { role: 'status' }, 'قرار الاتهام اتسجّل. راجع الأدلة والاستنتاجات اللي وصلت لها، وخد قرارك التالي بنفسك.'),
+      h('p', { class: 'accuse-review-note' }, 'مش هنعرض هنا دليلًا أو رابطًا جديدًا؛ كل اللي ظاهر في المراجعة الاختيارية هو اللي اكتشفته أنت بالفعل.'))
+  }
+
+  private accusationPreview(s: Session): HTMLElement {
+    const suspect = s.engine.file.suspects.find(item => item.id === this.accSuspect)
+    const motive = s.engine.file.finale.motives.find(item => item.id === this.accMotive)
+    const evidence = [...s.state.evidence].sort((a, b) => a[1] - b[1])
+      .map(([id, at]) => ({ item: s.engine.evidenceInfo(id), at }))
+    const deductions = [...s.state.deductions]
+      .flatMap(id => s.engine.file.deductions.filter(item => item.id === id))
+    return h('details', { class: 'accuse-preview' },
+      h('summary', null, 'مراجعة اختيارية قبل التأكيد'),
+      suspect && motive && h('p', null, 'اختيارك الحالي: ', h('b', null, suspect.label.split(' – ')[0]), ' — ', motive.text),
+      h('h5', null, `الأدلة اللي اكتشفتها (${arabicDigits(evidence.length)})`),
+      evidence.length
+        ? h('ul', { class: 'accuse-review-list' }, evidence.map(({ item, at }) => h('li', null,
+          h('b', null, item.title),
+          h('span', null, `${item.place ? PLACES[item.place]?.name ?? '' : ''}${item.place && at ? ' · ' : ''}${at ? formatDateTime(at) : 'الوقت غير مسجل'}`))))
+        : h('p', { class: 'cf-empty' }, 'لسه مفيش أدلة محفوظة للمراجعة.'),
+      h('h5', null, `الاستنتاجات اللي وصلت لها (${arabicDigits(deductions.length)})`),
+      deductions.length
+        ? h('ul', { class: 'accuse-review-list' }, deductions.map(item => h('li', null,
+          h('b', null, item.title), h('span', null, item.conclusion),
+          (s.state.threads.get(item.id) ?? []).map(pair => h('small', { class: 'accuse-known-pair' },
+            `${s.engine.evidenceInfo(pair[0]).title} + ${s.engine.evidenceInfo(pair[1]).title}`)))))
+        : h('p', { class: 'cf-empty' }, 'لسه مفيش استنتاجات محفوظة للمراجعة.'),
+      h('p', { class: 'accuse-review-note' }, 'المراجعة دي بتعرض اللي اكتشفته وربطته بنفسك فقط.'))
   }
 
   private stat(label: string, value: string, ratio: number, accent = false): HTMLElement {
@@ -649,6 +670,7 @@ export class CaseFileView {
     const key = this.pairKey(a, id)
     const pair: EvidencePair = { a, b: id }
     this.lastPair = pair
+    this.comparisonOpen = true
     const r = s.tie(a, id)
     if (r.ok) {
       const dd = s.engine.file.deductions.find(x => x.id === r.deduction)!
@@ -736,19 +758,87 @@ export class CaseFileView {
       h('div', { class: 'suspect-grid', role: 'radiogroup', 'aria-label': 'المتهم' }, suspectCards),
       h('p', { class: 'accuse-step' }, '٢. إيه الدافع؟'),
       h('div', { class: 'motive-list', role: 'radiogroup', 'aria-label': 'الدافع' }, motiveCards),
-      ready && h('p', { class: 'accuse-summary' }, this.accConfirm ? 'هتقدّم الاتهام ضد ' : 'الاتهام: ', h('b', null, suspect.label.split(' – ')[0]), ' — الاتهام الغلط بيتحسب عليك.'),
+      ready && h('p', { class: 'accuse-summary' }, this.accConfirm ? 'راجع اختيارك، وبعدها قرر بنفسك إذا كنت هتقدّم الاتهام ضد ' : 'الاتهام: ', h('b', null, suspect.label.split(' – ')[0]), ' — الاتهام الغلط بيتحسب عليك.'),
+      ready && this.accConfirm && this.accusationPreview(s),
       go,
-      this.reviewAccusation(s),
-      this.accConfirm && h('button', { class: 'tray-btn', onclick: () => { this.accConfirm = false; this.render() } }, 'رجوع'))
+      this.reviewAccusation(),
+      this.accConfirm && h('button', { class: 'tray-btn', onclick: () => { this.accConfirm = false; this.render() } }, 'تعديل الاختيارات'))
   }
 
   // ---- Journal --------------------------------------------------------------------------------------------------------
+
+  private caseActivity(s: Session): CaseActivity[] {
+    const log = s.state.caseLog
+    const latest = (kind: CaseLogKind, id: string) => [...log].reverse().find(item => item.kind === kind && item.id === id)
+    const evidence = [...s.state.evidence].map(([id, stamp]) => {
+      const record = latest('evidence', id)
+      return { kind: 'evidence' as const, id, at: record?.at ?? stamp, hour: record?.hour, place: record?.place ?? s.engine.evidenceInfo(id).place }
+    })
+    const deductions = [...s.state.deductions].map(id => {
+      const record = latest('deduction', id)
+      return { kind: 'deduction' as const, id, at: record?.at, hour: record?.hour, place: record?.place }
+    })
+    const metCharacters = s.knownCharacters().filter(character => s.state.flags.has(`met_${character.id}`))
+    const knownCharacterIds = new Set(metCharacters.map(character => character.id))
+    const dialogueRecords = log.filter(item => item.kind === 'dialogue' && knownCharacterIds.has(item.id as CharacterId))
+    const dialogueIds = new Set(dialogueRecords.map(item => item.id))
+    const legacyDialogues = metCharacters.filter(character => !dialogueIds.has(character.id))
+      .map(character => ({ kind: 'dialogue' as const, id: character.id }))
+    const dialogues: CaseActivity[] = [...dialogueRecords, ...legacyDialogues]
+      .map(item => ({ kind: 'dialogue' as const, id: item.id, at: 'at' in item ? item.at : undefined, hour: 'hour' in item ? item.hour : undefined, place: 'place' in item ? item.place : undefined }))
+    return [...evidence, ...deductions, ...dialogues].sort((a, b) => (b.at ?? 0) - (a.at ?? 0))
+  }
 
   private journal(s: Session): HTMLElement {
     const at = this.d.story.chapterIndex(s)
     const unlocked = new Set(this.d.story.unlocked(s).map(entry => entry.id))
     const fresh = new Set(JOURNAL.filter(entry => unlocked.has(entry.id) && !s.state.flags.has(`j_read_${entry.id}`)).map(entry => entry.id))
     this.d.story.markRead(s)
+    const knownCharacters = s.knownCharacters()
+    const activity = this.caseActivity(s)
+    const activityCounts: Record<CaseLogFilter, number> = {
+      all: activity.length,
+      dialogue: activity.filter(item => item.kind === 'dialogue').length,
+      evidence: activity.filter(item => item.kind === 'evidence').length,
+      deduction: activity.filter(item => item.kind === 'deduction').length,
+    }
+    const activityFilters: { id: CaseLogFilter; label: string }[] = [
+      { id: 'all', label: 'الكل' }, { id: 'dialogue', label: 'حوارات' },
+      { id: 'evidence', label: 'أدلة' }, { id: 'deduction', label: 'استنتاجات' },
+    ]
+    const visibleActivity = activity.filter(item => this.journalFilter === 'all' || item.kind === this.journalFilter)
+    const kindName: Record<CaseLogKind, string> = { dialogue: 'حوار', evidence: 'دليل', deduction: 'استنتاج' }
+    const activityRows = visibleActivity.flatMap(item => {
+      const label = item.kind === 'dialogue' ? knownCharacters.find(person => person.id === item.id)?.name
+        : item.kind === 'evidence' ? s.engine.evidenceInfo(item.id as EvidenceId).title
+          : s.engine.file.deductions.find(deduction => deduction.id === item.id)?.title
+      if (!label) return []
+      const time = item.at
+        ? s.mode === 'realistic' ? formatDateTime(item.at) : item.hour !== undefined ? `ساعة القضية ${formatClock(item.hour)}` : formatDateTime(item.at)
+        : 'الوقت غير مسجل في الحفظ القديم'
+      const place = item.place ? PLACES[item.place]?.name : undefined
+      return [h('li', { class: `case-activity-item ${item.kind}` },
+        h('span', { class: 'case-activity-kind' }, kindName[item.kind]),
+        h('b', null, label),
+        h('small', null, [time, place].filter(Boolean).join(' · ') || 'المكان غير مسجل'))]
+    })
+    const activityLog = h('section', { class: 'case-activity', 'aria-label': 'سجل أنشطة القضية' },
+      h('header', null, h('div', null, h('h3', null, 'سجل القضية'), h('p', null, 'اللي قابلتهم، والأدلة والاستنتاجات اللي وصلت لها.')),
+        h('b', { class: 'case-activity-total' }, arabicDigits(activity.length))),
+      h('nav', { class: 'case-activity-filters', 'aria-label': 'تصفية سجل القضية' }, activityFilters.map(filter => h('button', {
+        type: 'button', class: `case-activity-filter${this.journalFilter === filter.id ? ' on' : ''}`,
+        'aria-pressed': String(this.journalFilter === filter.id),
+        disabled: filter.id !== 'all' && activityCounts[filter.id] === 0,
+        onclick: () => {
+          if (this.journalFilter === filter.id) return
+          this.journalFilter = filter.id
+          this.d.audio.play('ui')
+          this.render()
+          this.pageEl.querySelector<HTMLElement>('.case-activity-filter.on')?.focus({ preventScroll: true })
+        },
+      }, h('span', null, filter.label), h('b', null, arabicDigits(activityCounts[filter.id]))))),
+      activityRows.length ? h('ol', { class: 'case-activity-list' }, activityRows)
+        : h('p', { class: 'cf-empty' }, activity.length ? 'مفيش أنشطة في التصنيف ده لسه.' : 'سجل القضية هيظهر هنا لما تقابل أشخاص أو تكتشف أدلة واستنتاجات.'))
     let page = 0
     const rail = h('ol', { class: 'chapter-rail', 'aria-label': 'فصول القضية' }, CHAPTERS.map((chapter, i) =>
       h('li', { class: i < at ? 'done' : i === at ? 'now' : 'locked', 'aria-current': i === at ? 'step' : undefined },
@@ -766,12 +856,12 @@ export class CaseFileView {
           : h('p', { class: 'cf-empty' }, 'لسه ما كتبتش حاجة في الفصل ده… كمّل التحقيق.'))
     }).reverse()
     const total = JOURNAL.length
-    return h('div', { class: 'journal' },
+    return h('div', { class: 'journal-page-wrap' }, activityLog, h('div', { class: 'journal' },
       h('aside', { class: 'journal-side' },
         h('div', { class: 'journal-cover' }, h('small', null, 'دفتر خاص'), h('b', null, `يوميات ${s.profile.avatar.name}`),
           h('span', null, `${arabicDigits(unlocked.size)} من ${arabicDigits(total)} صفحة`)),
         rail),
-      h('div', { class: 'journal-pages' }, sections))
+      h('div', { class: 'journal-pages' }, sections)))
   }
 
   // ---- Organizer -------------------------------------------------------------------------------------------------------

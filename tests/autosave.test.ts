@@ -82,6 +82,26 @@ describe('autosave and restore', () => {
     expect(restored.state.reviewedEvidence.has('e02_black_envelope')).toBe(true)
   })
 
+  it('persists activity logs independently per case and restores them after reload', () => {
+    const { open } = setup('story')
+    const session = open()
+    session.recordCaseLog('dialogue', 'zeinab', 'zeinab_home')
+    expect(session.startCase('case02')).toBe(true)
+    session.recordCaseLog('evidence', 'e02_black_envelope', 'abis_market')
+    session.recordCaseLog('deduction', 'd02_route', 'abis_market')
+
+    const reopened = open()
+    expect(reopened.state.caseLog.map(({ kind, id }) => [kind, id])).toEqual([
+      ['evidence', 'e02_black_envelope'], ['deduction', 'd02_route'],
+    ])
+    expect(reopened.startCase('case01')).toBe(true)
+    expect(reopened.state.caseLog.map(({ kind, id }) => [kind, id])).toEqual([['dialogue', 'zeinab']])
+    expect(reopened.startCase('case02')).toBe(true)
+    expect(reopened.state.caseLog.map(({ kind, id }) => [kind, id])).toEqual([
+      ['evidence', 'e02_black_envelope'], ['deduction', 'd02_route'],
+    ])
+  })
+
   it('keeps the hour lost to a wrong accusation after reopening', () => {
     const { open } = setup('realistic')
     const session = open()

@@ -102,9 +102,10 @@ export class RealMap {
   }
 
   private icon(p: Place, current: boolean): L.DivIcon {
+    const remote = p.district !== PLACES[this.current].district
     return L.divIcon({
       className: 'rm-icon-wrap',
-      html: `<div class="rm-pin${p.realSite ? ' real' : ' fiction'}${current ? ' current' : ''}${p.district === 'city' ? ' city' : ' abis'}"><span>${MAP_GLYPH[p.id] ?? '●'}</span></div>`,
+      html: `<div class="rm-pin${p.realSite ? ' real' : ' fiction'}${current ? ' current' : ''}${remote ? ' remote' : ''}${p.district === 'city' ? ' city' : ' abis'}"><span>${MAP_GLYPH[p.id] ?? '●'}</span></div>`,
       iconSize: [34, 34], iconAnchor: [17, 17],
     })
   }
@@ -113,15 +114,18 @@ export class RealMap {
     if (!this.map) return
     const here = PLACES[this.current]
     const same = p.district === here.district
+    const stop = PLACES[here.district === 'city' ? 'raml_stop' : 'abis_stop']
     const body = h('div', { class: 'rm-pop' },
       h('img', { class: 'rm-preview', src: sceneUrl(p.id, this.hour), srcset: sceneSrcSet(p.id, this.hour), sizes: '260px', alt: '' }),
       h('b', null, p.name),
       h('small', null, p.realSite ? 'مكان حقيقي في الإسكندرية' : 'مكان متخيَّل جوه حي أبيس الحقيقي'),
+      h('strong', { class: `rm-status${same ? ' available' : ' remote'}` }, p.id === this.current ? 'أنت هنا' : same ? 'متاح في منطقتك' : 'خارج المنطقة الحالية'),
+      !same && h('p', { class: 'rm-lock-reason' }, `سبب عدم الإتاحة: الوصول يتطلب الذهاب إلى ${stop.name} واستخدام علامة السفر.`),
       h('p', null, p.description),
       h('div', { class: 'rm-pop-actions' },
         p.id === this.current ? h('span', { class: 'rm-here' }, 'أنت هنا') : same
           ? h('button', { class: 'rm-go', type: 'button', onclick: () => { this.map?.closePopup(); this.d.onSelect(p.id) } }, 'روح هنا')
-          : h('button', { class: 'rm-go far', type: 'button', onclick: () => { this.map?.closePopup(); this.d.onFar(p.id) } }, 'محتاج ميكروباص'),
+          : h('button', { class: 'rm-go far', type: 'button', onclick: () => { this.map?.closePopup(); this.d.onFar(p.id) } }, 'اعرض طريقة الوصول'),
         h('a', { class: 'rm-link', href: googleMapsUrl(p), target: '_blank', rel: 'noopener noreferrer' }, 'خرائط جوجل ↗'),
         p.id !== this.current && h('a', { class: 'rm-link', href: googleDirectionsUrl(here, p), target: '_blank', rel: 'noopener noreferrer' }, 'الاتجاهات ↗')))
     L.popup({ className: 'rm-popup', offset: [0, -14], maxWidth: 260 }).setLatLng([p.mapPos.lat, p.mapPos.lng]).setContent(body).openOn(this.map)

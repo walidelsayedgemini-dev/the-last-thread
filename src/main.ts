@@ -14,7 +14,8 @@ import './styles/polish-visuals.css'
 import './styles/juice-visuals.css'
 import './styles/clue-details.css'
 import './styles/memory.css'
-import { arabicDigits, cairoStamp, nowFromQuery } from './core/clock'
+import './styles/ux-states.css'
+import { arabicDigits, cairoStamp, formatClock, nowFromQuery } from './core/clock'
 import type { CaseEvent } from './core/caseState'
 import { CHARACTER_LIST } from './data/characters'
 import { PATHS } from './data/life'
@@ -169,7 +170,10 @@ async function boot(): Promise<void> {
     onPause: () => pause(),
     onMail: () => { if (session && active && !paused) caseFile.show(session, 'letters') },
     onHelp: () => showHelp(),
-    onFarPlace: (id: PlaceId) => hud.toast(`${PLACES[id].name} في ${PLACES[id].district === 'city' ? 'الإسكندرية' : 'أبيس'}… اركب الميكروباص من الموقف.`, 'info'),
+    onFarPlace: (id: PlaceId) => {
+      const stop = PLACES[PLACES[currentPlace].district === 'city' ? 'raml_stop' : 'abis_stop']
+      hud.toast(`${PLACES[id].name} خارج منطقتك الحالية. اذهب إلى ${stop.short} واستخدم علامة السفر للانتقال.`, 'info')
+    },
     onMute: () => { settings.update({ muted: !settings.data.muted }); applySettings(settings.data); investigation.refresh() },
     onTextSize: () => { const order = ['normal', 'large', 'xlarge'] as const; settings.update({ textSize: order[(order.indexOf(settings.data.textSize) + 1) % 3] }); applySettings(settings.data); hud.toast('حجم الخط: ' + ({ normal: 'عادي', large: 'كبير', xlarge: 'كبير جدًا' })[settings.data.textSize], 'info') },
     isMuted: () => settings.data.muted,
@@ -245,7 +249,10 @@ async function boot(): Promise<void> {
   shell.setBootProgress(1)
 
   // ---- Flow ----------------------------------------------------------------------------------------------------
-  const deps = () => ({ events, profiles, hints, now })
+  const deps = () => ({ events, profiles, hints, now, onSave: (status: 'saved' | 'error') => {
+    const temporary = storage instanceof MemoryStorage || (storage instanceof LocalStorageAdapter && storage.isDegraded)
+    saveChip.flash(status === 'error' ? 'error' : temporary ? 'temporary' : 'saved')
+  } })
 
   async function beginProfile(profile: Profile | undefined, intro: 'auto' | 'force' | 'skip' = 'auto'): Promise<void> {
     if (!profile) return
@@ -272,7 +279,7 @@ async function boot(): Promise<void> {
     paused = false
     active = true
     investigation.show(session, currentPlace)
-    if (session.state.flags.has(`ch_seen_${story.current(session).id}`)) arrival.show(PLACES[currentPlace])
+    if (session.state.flags.has(`ch_seen_${story.current(session).id}`)) arrival.show(PLACES[currentPlace], formatClock(session.clock.hour))
     hud.show(true)
     audio.playMusic(musicFor(currentPlace), { loop: true })
     audio.setArea(currentPlace)
@@ -358,7 +365,7 @@ async function boot(): Promise<void> {
     const place = PLACES[id]
     const before = PLACES[currentPlace]?.district
     if (place.id !== currentPlace) audio.stopVoice()
-    if (place.id !== currentPlace) arrival.show(place)
+    if (place.id !== currentPlace) arrival.show(place, formatClock(session.clock.hour))
     audio.setArea(place.id)
     audio.setScene(place.district, 0.4, 0.2)
     investigation.updateWorldTime()
@@ -366,7 +373,6 @@ async function boot(): Promise<void> {
     currentPlace = id
     session.setPosition(place.district, place.pos.x, place.pos.z, 0)
     session.save()
-    saveChip.flash()
     if (before !== place.district) audio.playMusic(musicFor(id), { loop: true })
     if (before !== place.district) tutorial.action('travel')
     hud.hideNarration()
@@ -461,6 +467,7 @@ async function boot(): Promise<void> {
   function handleCaseEvents(changes: CaseEvent[]): void {
     for (const change of changes) {
       if (change.type === 'evidence') {
+        session?.recordCaseLog('evidence', change.evidence.id, currentPlace, false)
         audio.play('found')
         haptic('medium')
         buzz(30)
@@ -471,6 +478,7 @@ async function boot(): Promise<void> {
       } else if (change.type === 'evidence-gated') {
         hud.toast(change.reason ?? 'الدليل ده لسه ماظهرش… ارجع في وقت تاني.', 'warn')
       } else if (change.type === 'deduction') {
+        session?.recordCaseLog('deduction', change.id, currentPlace, false)
         audio.play('deduction')
         haptic('success')
         hud.toast('ربطت خيطاً جديداً!', 'deduction')
@@ -505,7 +513,7 @@ async function boot(): Promise<void> {
     if (hotspot.kind === 'travel' && hotspot.to) {
       session.useHotspot(hotspot)
       const to = hotspot.to
-      travel.play(PLACES[currentPlace].district, PLACES[to].district, () => investigation.setPlace(to))
+      travel.play(PLACES[currentPlace], PLACES[to], formatClock(session.clock.hour), () => investigation.setPlace(to))
       return
     }
     if (hotspot.kind === 'photo') {
@@ -533,6 +541,8 @@ async function boot(): Promise<void> {
       hud.toast(session.dialogueUnavailableReason(id) ?? `${person.name} مش عاوز يتكلم دلوقتي.`, 'info')
       return
     }
+    session.recordCaseLog('dialogue', id, currentPlace, false)
+    session.save()
     hud.hideNarration()
     const s = session
     dialogue.start(dlg, person, s.profile.avatar.name,
@@ -653,7 +663,6 @@ async function boot(): Promise<void> {
       if (saveTimer >= 20) {
         saveTimer = 0
         session.save()
-        saveChip.flash()
       }
     },
     render: (_alpha, dt) => {

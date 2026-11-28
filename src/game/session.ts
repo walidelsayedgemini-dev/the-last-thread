@@ -1,4 +1,4 @@
-import { CaseEngine, CaseState, restoreLegacyThreads, type CaseEvent, type TieResult } from '../core/caseState'
+import { CaseEngine, CaseState, restoreLegacyThreads, type CaseEvent, type CaseLogKind, type TieResult } from '../core/caseState'
 import { GameClock, hourInWindow } from '../core/clock'
 import { DialogueSession, fillText } from '../core/dialogue'
 import type { GateContext } from '../core/gates'
@@ -12,7 +12,7 @@ import type { EventsDb } from '../services/eventsDb'
 import type { Hint, HintService } from '../services/hints'
 import { newProgressStats, type Profile, type ProfileService, type Progress } from '../services/profiles'
 
-export type SessionDeps = { events: EventsDb; profiles: ProfileService; hints: HintService; now: () => number }
+export type SessionDeps = { events: EventsDb; profiles: ProfileService; hints: HintService; now: () => number; onSave?: (status: 'saved' | 'error') => void }
 type Listener = (events: CaseEvent[]) => void
 
 export class Session {
@@ -200,6 +200,11 @@ export class Session {
   }
   tick(seconds: number): void { this.clock.tick(seconds); this.progress.playMs += seconds * 1000 }
   setPosition(zone: 'abis' | 'city', x: number, z: number, yaw: number): void { this.progress.position = { zone, x, z, yaw } }
+  recordCaseLog(kind: CaseLogKind, id: string, place?: PlaceId, persist = true): void {
+    this.state.caseLog.push({ kind, id, at: this.clock.stamp, hour: this.clock.hour, ...(place ? { place } : {}) })
+    if (this.state.caseLog.length > 500) this.state.caseLog.splice(0, this.state.caseLog.length - 500)
+    if (persist) this.save()
+  }
   save(): void {
     this.progress.case = this.state.snapshot()
     this.progress.cases ??= {}
@@ -208,7 +213,12 @@ export class Session {
     this.progress.caseStats[this.caseId] = this.progress.stats
     this.progress.storyMinutes = this.clock.elapsedStoryMinutes
     this.progress.penaltyMs = this.clock.penaltyMs
-    this.deps.profiles.save(this.progress)
+    try {
+      this.deps.profiles.save(this.progress)
+      this.deps.onSave?.('saved')
+    } catch {
+      this.deps.onSave?.('error')
+    }
   }
   knownCharacters(): CharacterProfile[] {
     const opening = this.caseId === 'case01' ? ['mahmoud', 'zeinab'] : []

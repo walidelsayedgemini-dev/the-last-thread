@@ -44,6 +44,8 @@ export class InvestigationView {
   private placeId: PlaceId = 'zeinab_home'
   private tab: InvestigationTab = 'scene'
   private visit = 0
+  private guideCollapsed = false
+  private guideObjectiveId?: string
   /** Desktop side drawer / mobile bottom sheet. */
   private drawerOpen = false
   private lastScene = ''
@@ -289,17 +291,17 @@ export class InvestigationView {
       h('nav', { class: 'inv-actions', 'aria-label': 'أوامر التحقيق' },
         h('button', { class: `inv-act inv-nav-btn${!map ? ' active' : ''}`, 'aria-pressed': String(!map), onclick: () => this.setTab('scene') },
           h('span', { class: 'ico', 'aria-hidden': true }, '◉'), h('span', null, 'المشهد')),
-        h('button', { class: `inv-act inv-nav-btn${map ? ' active' : ''}`, 'aria-pressed': String(map), onclick: () => this.setTab('map') },
-          h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة'), h('kbd', null, 'M')),
-        h('button', { class: 'inv-act inv-file-btn', 'data-case-file': '', onclick: this.d.onCaseFile },
+          h('button', { class: `inv-act inv-nav-btn${map ? ' active' : ''}`, 'aria-pressed': String(map), 'aria-keyshortcuts': 'M', onclick: () => this.setTab('map') },
+            h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة'), h('kbd', null, 'M')),
+        h('button', { class: 'inv-act inv-file-btn', 'data-case-file': '', 'aria-keyshortcuts': 'F', onclick: this.d.onCaseFile },
           h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'ملف القضية'), h('kbd', null, 'F'),
           h('em', { class: 'inv-badge', 'aria-label': `${found} دليل` }, arabicDigits(found))),
         mail > 0 && h('button', { class: 'inv-act inv-file-btn', onclick: this.d.onMail },
           h('span', { class: 'ico', 'aria-hidden': true }, '✉'), h('span', null, 'الجوابات'),
           h('em', { class: 'inv-badge' }, arabicDigits(mail))),
-        h('button', { class: 'inv-act', 'data-action': 'hint', onclick: this.d.onHint },
+        h('button', { class: 'inv-act', 'data-action': 'hint', 'aria-keyshortcuts': 'H', onclick: this.d.onHint },
           h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح'), h('kbd', null, 'H')),
-        h('button', { class: 'inv-act inv-pause-action', 'aria-label': 'القائمة', onclick: this.d.onPause },
+        h('button', { class: 'inv-act inv-pause-action', 'aria-label': 'القائمة', 'aria-keyshortcuts': 'Escape', onclick: this.d.onPause },
           h('span', { class: 'ico', 'aria-hidden': true }, '☰'), h('span', { class: 'lbl' }, 'القائمة'))))
   }
 
@@ -341,6 +343,10 @@ export class InvestigationView {
         h('div', { class: 'inv-guide-copy' }, h('small', null, 'الخطوة الجاية'), h('b', null, 'افتح ملف القضية واربط الخيوط')),
         h('button', { class: 'inv-guide-go', onclick: this.d.onCaseFile }, 'الملف', h('span', { 'aria-hidden': true }, '←')))
     }
+    if (this.guideObjectiveId !== objective.id) {
+      this.guideObjectiveId = objective.id
+      this.guideCollapsed = false
+    }
     const thread = opening && s.state.evidence.has('e_thread_door') ? s.engine.evidenceInfo('e_thread_door') : undefined
     const threadArt = thread && evidenceUrl(thread.id)
     const target = objective.place ? PLACES[objective.place] : undefined
@@ -358,20 +364,23 @@ export class InvestigationView {
     } else if (target && things > 0 && !opening) {
       where = 'انت في المكان الصح. افحص العلامات أو كلّم اللي موجود.'
     }
-    return h('div', { class: `inv-guide${opening ? ' opening' : ''}` },
+    return h('div', { class: `inv-guide${opening ? ' opening' : ''}${this.guideCollapsed ? ' collapsed' : ''}` },
       h('span', { class: 'inv-guide-mark', 'aria-hidden': true }, '⌖'),
       h('div', { class: 'inv-guide-copy', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
         h('small', null, 'الخطوة الجاية'),
         h('b', null, objective.title),
-        h('span', null, where),
-        thread && h('div', { class: 'inv-opening-evidence', role: 'status' },
+        !this.guideCollapsed && h('span', null, where),
+        !this.guideCollapsed && thread && h('div', { class: 'inv-opening-evidence', role: 'status' },
           threadArt && h('img', { src: threadArt, alt: '', decoding: 'async' }),
           h('div', null, h('small', null, 'الدليل اتسجل'), h('b', null, thread.title),
             thread.question && h('span', null, thread.question.text)))),
-      h('div', { class: 'inv-guide-actions' },
+      !this.guideCollapsed && h('div', { class: 'inv-guide-actions' },
         voicemail && h('button', { class: 'inv-guide-go inv-voicemail', onclick: () => this.d.onHotspot(voicemail) },
           h('span', { 'aria-hidden': true }, '▶'), voicemail.label),
-        action))
+        action),
+      h('button', { class: 'inv-guide-toggle', type: 'button', 'aria-expanded': String(!this.guideCollapsed),
+        'aria-label': this.guideCollapsed ? 'إظهار تفاصيل الخطوة الحالية' : 'طيّ تفاصيل الخطوة الحالية',
+        onclick: () => { this.guideCollapsed = !this.guideCollapsed; this.refresh() } }, this.guideCollapsed ? '＋' : '−'))
   }
 
   private pin(hotspot: Hotspot, index: number, count: number): HTMLButtonElement {
@@ -408,11 +417,18 @@ export class InvestigationView {
   // ---- Map ---------------------------------------------------------------------------------------------------------
   private mapPage(s: Session, place: Place): HTMLElement {
     const districtPlaces = PLACE_LIST.filter(p => p.district === place.district)
+    const remotePlaces = PLACE_LIST.filter(p => p.district !== place.district)
     const goal = s.engine.currentObjective()?.place
+    const transferStop = PLACES[STOPS[place.district]]
+    const remoteGoal = goal ? PLACES[goal].district !== place.district : false
     return h('div', { class: 'inv-map' },
       h('div', { class: 'inv-map-head' },
         h('h2', null, place.district === 'abis' ? 'خريطة أبيس' : 'خريطة الإسكندرية'),
-        h('p', null, 'اختار مكان تروحه. السفر بين أبيس وإسكندرية بيبقى من موقف الميكروباص.')),
+        h('p', null, 'أنت هنا مميّز بالذهبي. الأماكن في منطقتك متاحة مباشرة؛ المناطق التانية تحتاج السفر من موقف الميكروباص.')),
+      h('div', { class: 'inv-map-legend', 'aria-label': 'دليل حالات الوجهات' },
+        h('span', { class: 'here' }, '● أنت هنا'),
+        h('span', { class: 'available' }, '● متاح في منطقتك'),
+        h('span', { class: 'remote' }, '● خارج المنطقة الحالية')),
       h('div', { class: 'inv-map-switch', role: 'group', 'aria-label': 'نوع الخريطة' },
         h('button', { class: this.mapKind === 'real' ? 'on' : '', type: 'button', onclick: () => { this.mapKind = 'real'; this.render() } }, 'خريطة حقيقية'),
         h('button', { class: this.mapKind === 'drawn' ? 'on' : '', type: 'button', onclick: () => { this.mapKind = 'drawn'; this.render() } }, 'خريطة مرسومة')),
@@ -423,11 +439,20 @@ export class InvestigationView {
         return h('button', {
           class: `inv-map-card${here ? ' here' : ''}${isGoal ? ' goal' : ''}`,
           'aria-current': here ? 'location' : undefined,
+          'aria-label': `${p.name}: ${here ? 'أنت هنا' : isGoal ? 'الخطوة الجاية، متاح في منطقتك' : 'متاح في منطقتك'}`,
           onclick: () => this.previewPlace(p.id),
         },
         h('img', { src: sceneUrl(p.id, s.clock.hour), srcset: sceneSrcSet(p.id, s.clock.hour), sizes: '220px', alt: '', loading: 'lazy', decoding: 'async' }),
-        h('span', null, h('b', null, p.name), h('small', null, here ? 'انت هنا' : isGoal ? 'الخطوة الجاية هنا' : p.short)))
-      })))
+        h('span', null, h('b', null, p.name), h('small', null, here ? 'أنت هنا' : isGoal ? 'الخطوة الجاية · متاح' : 'متاح في منطقتك')))
+      })),
+      h('details', { class: 'inv-map-remote', open: remoteGoal },
+        h('summary', null, `وجهات خارج المنطقة الحالية · ${remotePlaces.length}`),
+        h('p', null, `الوصول إليها يحتاج الذهاب إلى ${transferStop.name} ثم استخدام علامة السفر.`,
+          ' مش مقفولة من التحقيق؛ هي فقط خارج نطاق تنقلك الحالي.'),
+        h('div', { class: 'inv-map-remote-list' }, remotePlaces.map(p =>
+          h('article', { class: 'inv-map-remote-card', 'aria-label': `${p.name}: خارج المنطقة الحالية` },
+            h('b', null, p.name), h('small', null, `${p.district === 'city' ? 'الإسكندرية' : 'أبيس'} · غير متاحة مباشرة`),
+            h('span', null, `سبب عدم الإتاحة: تحتاج للسفر من ${transferStop.short}.`))))))
   }
 
   private previewPlace(id: PlaceId): void {

@@ -28,7 +28,7 @@ body[data-area] .btn.primary { background: linear-gradient(180deg, color-mix(in 
 @keyframes amb-sea { 0% { transform: translateX(-30px); opacity: 0; } 30% { opacity: .75; } 100% { transform: translateX(var(--dx)); opacity: 0; } }
 @keyframes amb-mist { 0% { transform: translateX(-40px); opacity: 0; } 40% { opacity: .22; } 100% { transform: translateX(120px); opacity: 0; } }
 @keyframes amb-leaf { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 15% { opacity: .8; } 100% { transform: translate(var(--dx), 440px) rotate(260deg); opacity: 0; } }
-.reduced-motion .inv-ambient, .reduced-motion .arrival-card { display: none; }
+.reduced-motion .inv-ambient { display: none; }
 @media (prefers-reduced-motion: reduce) { .inv-ambient { display: none; } }
 
 /* ---- Arrival card -------------------------------------------------------------------------------------------- */
