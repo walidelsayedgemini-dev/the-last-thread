@@ -126,6 +126,10 @@ export class Audio {
   private area = 'zeinab_home'
   private volume = { music: 0.7, ambient: 0.65, sfx: 0.8, voice: 0.85, voiceEnabled: true, muted: false }
   private lastTypewriterAt = -Infinity
+  /** True while the read-aloud voice (Web Speech) is speaking, so the bed can duck under it. */
+  private speechDuck = false
+  /** True while the game is paused: music elements are held, not just faded. */
+  private held = false
 
   constructor() {
     this.ctx = new AudioContext()
@@ -158,7 +162,7 @@ export class Audio {
 
   private applyBackgroundLevels(): void {
     const { music, ambient, muted, voiceEnabled, voice } = this.volume
-    const speaking = Boolean(this.voice && voiceEnabled && voice > 0)
+    const speaking = this.speechDuck || Boolean(this.voice && voiceEnabled && voice > 0)
     const time = this.ctx.currentTime
     this.ambience.gain.setTargetAtTime(muted || !this.running ? 0 : ambient * 0.6 * (speaking ? 0.4 : 1), time, 0.08)
     this.musicBus.gain.setTargetAtTime(muted ? 0 : music * 0.6 * (speaking ? 0.22 : 1), time, 0.08)
@@ -265,6 +269,7 @@ export class Audio {
   /** Fade the bed out and cancel scheduled events (pause / back to title). */
   stopAmbience(): void {
     this.running = false
+    this.held = false
     this.stopVoice()
     this.timers.forEach(clearTimeout)
     this.timers.clear()
@@ -273,6 +278,37 @@ export class Audio {
     this.placeLayer = undefined
     if (old) this.fadeOutPlace(old)
     this.ambience.gain.setTargetAtTime(0, this.ctx.currentTime, 0.2)
+  }
+
+  /**
+   * Hold every sound for a pause screen or a hidden tab: the ambience bed fades out, scheduled
+   * one-shots are cancelled, the music element is actually paused and any voice stops.
+   * `resumeAll()` brings the same bed back without a rebuild.
+   */
+  pauseAll(): void {
+    if (this.held) return
+    this.stopAmbience()
+    this.held = true
+    if (this.music) {
+      try { this.music.element.pause() } catch { /* already paused */ }
+    }
+  }
+
+  /** Undo `pauseAll()`. Safe to call when nothing was held. */
+  resumeAll(): void {
+    if (!this.held) return
+    this.held = false
+    if (this.music) {
+      try { void this.music.element.play().catch(() => undefined) } catch { /* element gone */ }
+    }
+    this.startAmbience()
+  }
+
+  /** Duck the ambience and music while the browser reads a line aloud. */
+  setSpeechDuck(on: boolean): void {
+    if (this.speechDuck === on) return
+    this.speechDuck = on
+    this.applyBackgroundLevels()
   }
 
   /** Update the mood: district, darkness (0 day … 1 night) and tension (0..1). */

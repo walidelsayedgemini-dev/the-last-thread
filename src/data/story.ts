@@ -96,9 +96,9 @@ export const JOURNAL: JournalEntry[] = [
     when: { flags: ['found_mahmoud'] } },
   { id: 'j_weight', chapter: 'ch_verdict', title: 'وزن الاسم',
     text: 'كل الخيوط في إيدي، والاسم على طرف لساني. الغلط هنا مش درجة بتنقص… ده ظلم لراجل أو هروب لتاني. هفكّر في كل خيط قبل ما أنطق.',
-    when: { deductions: ['d_markers', 'd_forgery', 'd_trail'] } },
+    when: { deductions: ['d_markers', 'd_forgery', 'd_trail', 'd_vehicle', 'd_water_pressure', 'd_handwriting'] } },
   { id: 'j_end', chapter: 'ch_verdict', title: 'الخيط الأخير',
-    text: 'القضية اتقفلت، وخالي رجع، وستّي نامت أول ليلة من تلات أسابيع. بس الظرف اللي على المكتب… بدون اسم ولا طابع. حاسس إن الخيط ده ماكانش الأخير بجد.',
+    text: 'القضية اتقفلت، وخالي رجع، وستّي نامت أول ليلة مرتاحة بعد تلات أيام. بس الظرف اللي على المكتب… بدون اسم ولا طابع. حاسس إن الخيط ده ماكانش الأخير بجد.',
     when: { flags: ['case_solved'] } },
 ]
 

@@ -1,5 +1,11 @@
-import type { CaseFile, Gate } from './types'
+import type { CaseFile, DeductionId, Gate } from './types'
 import { ARCHIVE_DEDUCTION, ARCHIVE_EVIDENCE, ARCHIVE_HOTSPOTS, ARCHIVE_OBJECTIVES } from './amnaArchive'
+
+/**
+ * The links the accusation is gated on. Objectives, hints and the finale all read this one list,
+ * so the board target can never drift away from the checklist the accusation screen shows.
+ */
+export const CASE01_SOLUTION: DeductionId[] = ['d_markers', 'd_forgery', 'd_trail', 'd_vehicle', 'd_water_pressure', 'd_handwriting']
 
 /** Gates reused by evidence, hotspots and dialogue. Only BONUS content is gated in realistic mode. */
 export const GATES = {
@@ -230,8 +236,8 @@ export const CASE_01: CaseFile = {
     { id: 'o_shawky', title: 'واجه المعلم شوقي', detail: 'في المنشية. ومعاك المظروف.', place: 'mansheya',
       when: { evidence: ['e_library_envelope'] }, doneWhen: { evidence: ['e_forged_contract'] } },
     { id: 'o_board', title: 'اربط الخيوط', detail: 'افتح ملف القضية (Tab) واربط الأدلة على اللوحة.', when: { evidence: ['e_forged_contract'] },
-      doneWhen: { deductions: ['d_markers', 'd_forgery', 'd_trail', 'd_vehicle', 'd_water_pressure', 'd_handwriting'] } },
-    { id: 'o_accuse', title: 'اتّهم الجاني', detail: 'كل الخيوط اتربطت: العربية، المية، والخط. من لوحة التحقيق اختار المتهم والدافع.', when: { deductions: ['d_markers', 'd_forgery', 'd_trail', 'd_vehicle', 'd_water_pressure', 'd_handwriting'] },
+      doneWhen: { deductions: CASE01_SOLUTION } },
+    { id: 'o_accuse', title: 'اتّهم الجاني', detail: 'كل الخيوط اتربطت: العربية، المية، والخط. من لوحة التحقيق اختار المتهم والدافع.', when: { deductions: CASE01_SOLUTION },
       doneWhen: { flags: ['case_solved'] } },
     ...ARCHIVE_OBJECTIVES,
   ],
@@ -386,7 +392,7 @@ export const CASE_01: CaseFile = {
       effects: [{ type: 'flag', id: 'tamanyat_street_seen' }] },
   ],
   finale: {
-    requires: { deductions: ['d_markers', 'd_forgery', 'd_trail'], flags: ['found_mahmoud'] },
+    requires: { deductions: CASE01_SOLUTION, flags: ['found_mahmoud'] },
     culprit: 'shawky',
     motives: [
       { id: 'm_road', text: 'تعويضات الطريق الجديد: زحزح الحدود وزوّر العقد علشان يستولي على تعويض القطعة ١٥.', correct: true },

@@ -1,4 +1,10 @@
-import type { CaseFile } from './types'
+import type { CaseFile, DeductionId } from './types'
+
+/** The links the accusation is gated on; the board hint and the accusation checklist read this list. */
+export const CASE03_SOLUTION: DeductionId[] = [
+  'd03_route', 'd03_records', 'd03_witness', 'd03_motive', 'd03_confrontation',
+  'd03_village_chain', 'd03_pump_route', 'd03_rail_witness', 'd03_village_records', 'd03_old_marks',
+]
 
 /** Case 03 — the water route beneath the land files. */
 export const CASE_03: CaseFile = {
@@ -81,7 +87,7 @@ export const CASE_03: CaseFile = {
     { id: 'o03_staple', title: 'افحص المشبك الأحمر', detail: 'الصورة المرفقة بمحمود سايبة رقم بوابة.', place: 'mahmoud_house', doneWhen: { evidence: ['e03_red_staple'] } },
     { id: 'o03_mud', title: 'اتبع الأثر في القطعة ١٥', detail: 'الطين خارج من الأرض ناحية الترعة.', place: 'plot15', when: { evidence: ['e03_red_staple'] }, doneWhen: { evidence: ['e03_mud_prints'] } },
     { id: 'o03_register', title: 'دور على سجل الجمعية', detail: 'رجب خبّى دفتر قديم في درج القهوة.', place: 'cafe_ragab', when: { evidence: ['e03_mud_prints'] }, doneWhen: { evidence: ['e03_coop_register'] } },
-    { id: 'o03_bus', title: 'راجع علامة الموقف', detail: 'رقم البوابة ظهر على قطعة نحاس في موقف أبيس.', place: 'abis_stop', when: { evidence: ['e03_pigeon_note'] }, doneWhen: { evidence: ['e03_bus_token'] } },
+    { id: 'o03_bus', title: 'راجع علامة الموقف', detail: 'رقم البوابة ظهر على قطعة نحاس في موقف أبيس.', place: 'abis_stop', when: { evidence: ['e03_coop_register'] }, doneWhen: { evidence: ['e03_bus_token'] } },
     { id: 'o03_lantern', title: 'قابل عمر عند الترعة', detail: 'الفانوس المكسور يشرح اللي حصل بعد نص الليل.', place: 'canal_bridge', when: { evidence: ['e03_bus_token'] }, doneWhen: { evidence: ['e03_broken_lantern', 'e03_river_note'] } },
     { id: 'o03_city', title: 'اركب لإسكندرية', detail: 'خالد شاف العربية من ناحية البحر. اطلع من موقف أبيس.', place: 'abis_stop', when: { evidence: ['e03_river_note'] }, doneWhen: { flags: ['visited_city'] } },
     { id: 'o03_negative', title: 'هات نيجاتيف خالد', detail: 'المصور واقف على الكورنيش ومعاه آخر نسخة من الصورة.', place: 'corniche', when: { flags: ['visited_city'] }, doneWhen: { evidence: ['e03_negative', 'e03_camera_roll'] } },
@@ -101,7 +107,7 @@ export const CASE_03: CaseFile = {
     { id: 'hs03_staple', label: 'المشبك الأحمر', place: 'mahmoud_house', offset: { x: -2, z: 7 }, kind: 'inspect', consumable: true, text: 'المشبك ماسك صورة مجرى الترعة في ورقة محمود.', effects: [{ type: 'evidence', id: 'e03_red_staple' }] },
     { id: 'hs03_mud', label: 'آثار العجل في الطين', place: 'plot15', offset: { x: 13, z: 12 }, kind: 'inspect', when: { evidence: ['e03_red_staple'] }, consumable: true, text: 'العجل خرج من الأرض ولف ناحية بوابة الترعة.', effects: [{ type: 'evidence', id: 'e03_mud_prints' }] },
     { id: 'hs03_register', label: 'درج سجل الجمعية', place: 'cafe_ragab', offset: { x: -5, z: 5 }, kind: 'inspect', when: { evidence: ['e03_mud_prints'] }, consumable: true, text: 'رجب فتح درجاً مقفولاً وطلع دفتر عليه تراب أخضر.', effects: [{ type: 'evidence', id: 'e03_coop_register' }] },
-    { id: 'hs03_bus_city', label: 'اركب لإسكندرية', place: 'abis_stop', offset: { x: 0, z: 0 }, kind: 'travel', to: 'raml_stop', when: { evidence: ['e03_pigeon_note'] }, effects: [{ type: 'flag', id: 'visited_city' }, { type: 'evidence', id: 'e03_bus_token' }], text: 'الميكروباص دخل المدينة، وقطعة النحاس فضلت في إيدك.' },
+    { id: 'hs03_bus_city', label: 'اركب لإسكندرية', place: 'abis_stop', offset: { x: 0, z: 0 }, kind: 'travel', to: 'raml_stop', when: { evidence: ['e03_coop_register'] }, effects: [{ type: 'flag', id: 'visited_city' }, { type: 'evidence', id: 'e03_bus_token' }], text: 'الميكروباص دخل المدينة، وقطعة النحاس فضلت في إيدك.' },
     { id: 'hs03_bus_abis', label: 'ارجع أبيس', place: 'raml_stop', offset: { x: 0, z: 0 }, kind: 'travel', to: 'abis_stop' },
     { id: 'hs03_lantern', label: 'الفانوس المكسور', place: 'canal_bridge', offset: { x: 6, z: 8 }, kind: 'inspect', when: { flags: ['visited_city'] }, consumable: true, text: 'الفانوس واقع جنب البوابة والزجاج مكسور للداخل.', effects: [{ type: 'evidence', id: 'e03_broken_lantern' }] },
     { id: 'hs03_note', label: 'دفتر عمر', place: 'canal_bridge', offset: { x: -8, z: 10 }, kind: 'inspect', when: { evidence: ['e03_broken_lantern'] }, consumable: true, text: 'بين صفحات دفتر عمر سهم قديم ورقم الساعة.', effects: [{ type: 'evidence', id: 'e03_river_note' }] },
@@ -135,7 +141,7 @@ export const CASE_03: CaseFile = {
     { id: 'hs_waterwheel_trough_c3', label: 'حوض الساقية', place: 'waterwheel', offset: { x: 18, z: 18 }, kind: 'inspect', consumable: true, text: 'السهم والحرف على الحجر يربطوا القناية القديمة بالأرض.', effects: [{ type: 'evidence', id: 'e03_waterwheel_trough' }] },
   ],
   finale: {
-    requires: { deductions: ['d03_route', 'd03_records', 'd03_witness', 'd03_motive', 'd03_confrontation', 'd03_village_chain', 'd03_pump_route', 'd03_rail_witness', 'd03_village_records', 'd03_old_marks'], flags: ['case03_confronted'] }, culprit: 'hoda',
+    requires: { deductions: CASE03_SOLUTION, flags: ['case03_confronted'] }, culprit: 'hoda',
     motives: [
       { id: 'm03_water', text: 'حوّلت الميّه مؤقتاً علشان تمرّر عقد تأجير المجرى وتمنع إفلاس الجمعية.', correct: true },
       { id: 'm03_revenge', text: 'غيّرت المجرى انتقاماً من فلاح رفض يبيع أرضه.', correct: false },

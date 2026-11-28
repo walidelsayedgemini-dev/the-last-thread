@@ -31,6 +31,7 @@ export class Session {
     this.progress.cases[this.progress.caseId] = snapshot
     this.clock = new GameClock({ mode: this.progress.mode, now: deps.now })
     this.clock.restore(this.progress.storyMinutes)
+    this.clock.restorePenalty(this.progress.penaltyMs ?? 0)
     this.state = CaseState.from(snapshot)
     this.engine = new CaseEngine(getCase(this.progress.caseId), this.state, () => this.gateContext())
     this.clock.setEvidenceCount(this.state.evidence.size)
@@ -147,9 +148,10 @@ export class Session {
       if (culprit in CHARACTERS && culprit !== 'yassin') this.state.offended.set(culprit as CharacterId, { untilEvidence: this.state.evidence.size + 1, untilMinute })
       this.save()
     } else if (result === 'ok') {
+      // `case_solved` is the shared flag; `<caseId>_solved` is what that case's last objective waits for.
       this.state.flags.add('case_solved')
-      if (this.caseId === 'case02') this.state.flags.add('case02_solved')
-      this.emit([{ type: 'flag', id: 'case_solved' }, ...(this.caseId === 'case02' ? [{ type: 'flag', id: 'case02_solved' } as CaseEvent] : [])])
+      this.state.flags.add(`${this.caseId}_solved`)
+      this.emit([{ type: 'flag', id: 'case_solved' }, { type: 'flag', id: `${this.caseId}_solved` }])
     }
     return result
   }
@@ -179,6 +181,7 @@ export class Session {
     this.progress.cases ??= {}
     this.progress.cases[this.caseId] = this.progress.case
     this.progress.storyMinutes = this.clock.elapsedStoryMinutes
+    this.progress.penaltyMs = this.clock.penaltyMs
     this.deps.profiles.save(this.progress)
   }
   knownCharacters(): CharacterProfile[] {

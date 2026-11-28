@@ -504,6 +504,19 @@ body.investigation-active #ui::after { opacity: .025; animation: none; }
   .inv-act.inv-pause-action .lbl { display: none; }
 }
 
+/*
+ * A sixth action appears once letters arrive (✉ الجوابات). At tablet widths the header used to
+ * wrap onto a second line and clip the place name; keep six actions on one row.
+ */
+@media (max-width: 900px) and (min-width: 761px) {
+  .inv-header { gap: 8px; padding: 8px 12px; }
+  .inv-actions { flex-wrap: nowrap; gap: 4px; min-width: 0; }
+  .inv-act { padding: 6px 8px; gap: 5px; font-size: .86rem; white-space: nowrap; }
+  .inv-act .ico { font-size: .95rem; }
+  .inv-badge { min-width: 18px; height: 18px; font-size: .7rem; }
+  .inv-where b { font-size: 1.15rem; }
+}
+
 @media (max-height: 520px) and (min-width: 761px) {
   .inv-header { padding: 6px 14px; }
   .inv-person-art { width: 96px; height: 110px; }
