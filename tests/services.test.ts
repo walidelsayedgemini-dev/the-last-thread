@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { HintService, type HintProvider } from '../src/services/hints'
 import { MAX_PROFILES, PROGRESS_VERSION, ProfileService, migrate, newProgress } from '../src/services/profiles'
 import { MemoryStorage } from '../src/services/storage'
-import { parseSettings, SettingsStore } from '../src/engine/save'
+import { parseSettings, rootFontSize, SettingsStore } from '../src/engine/save'
 import { CrashReporter } from '../src/services/crash'
 
 describe('ProfileService', () => {
@@ -74,6 +74,13 @@ describe('HintService', () => {
 })
 
 describe('settings', () => {
+  it('maps the selected text size to a larger rendered root font size', () => {
+    expect(rootFontSize({ textSize: 'normal', textScale: 1 })).toBe(16)
+    expect(rootFontSize({ textSize: 'large', textScale: 1 })).toBe(20)
+    expect(rootFontSize({ textSize: 'xlarge', textScale: 1 })).toBe(22)
+    expect(rootFontSize({ textSize: 'large', textScale: 1.2 })).toBe(24)
+  })
+
   it('sanitises stored data', () => {
     const s = parseSettings(JSON.stringify({ musicVolume: 9, hintEndpoint: 'javascript:alert(1)', eventsUrl: 'https://x.test/e', textScale: 7 }))
     expect(s.musicVolume).toBe(1)

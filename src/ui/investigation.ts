@@ -287,7 +287,7 @@ export class InvestigationView {
         h('button', { class: `inv-act inv-nav-btn${map ? ' active' : ''}`, 'aria-pressed': String(map), onclick: () => this.setTab('map') },
           h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة'), h('kbd', null, 'M')),
         h('button', { class: 'inv-act inv-file-btn', 'data-case-file': '', onclick: this.d.onCaseFile },
-          h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'ملف القضية'),
+          h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'ملف القضية'), h('kbd', null, 'F'),
           h('em', { class: 'inv-badge', 'aria-label': `${found} دليل` }, arabicDigits(found))),
         mail > 0 && h('button', { class: 'inv-act inv-file-btn', onclick: this.d.onMail },
           h('span', { class: 'ico', 'aria-hidden': true }, '✉'), h('span', null, 'الجوابات'),

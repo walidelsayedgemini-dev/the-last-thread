@@ -658,8 +658,8 @@ body.investigation-active #ui::after { opacity: .025; animation: none; }
   .hud .narration { bottom: calc(118px + var(--safe-b)); padding: 12px 14px 8px; }
   .hud .hint-bubble { top: auto; bottom: calc(118px + var(--safe-b)); inset-inline: 4vw; width: auto; }
 }
-@media (max-width: 420px) {
-  /* The SVG viewBox scales labels too far down at phone width; cards are the readable fallback. */
+@media (max-width: 560px) {
+  /* Dense SVG hit circles overlap at phone widths; the full-width cards are distinct touch targets. */
   .inv-map-svg { display: none; }
   .inv-map-list { grid-template-columns: 1fr; gap: 8px; }
   .inv-map-card { grid-template-columns: 82px minmax(0, 1fr); grid-template-rows: 82px; }

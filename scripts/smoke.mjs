@@ -83,6 +83,49 @@ try {
   assert((await snap(page)).place === 'zeinab_home', 'new story did not start at Zeinab’s house')
   assert(await page.locator('.inv-photo').evaluate(img => img.complete && img.naturalWidth > 0), '2D scene artwork did not load')
   assert(await page.locator('.inv-nav-btn').count() === 2, 'scene and map navigation are missing')
+  const sceneButton = page.locator('.inv-nav-btn').first()
+  const mapButton = page.locator('.inv-nav-btn').nth(1)
+  await sceneButton.focus()
+  await page.keyboard.press('Tab')
+  assert(await mapButton.evaluate(el => el === document.activeElement), 'Tab should move focus to the next control')
+  assert(await page.locator('.casefile').isHidden(), 'Tab must not open the case file')
+  await page.keyboard.press('Shift+Tab')
+  assert(await sceneButton.evaluate(el => el === document.activeElement), 'Shift+Tab should move focus to the previous control')
+  const recapKeyboard = await page.evaluate(() => {
+    const recap = window.__ltt.recap
+    recap.show({ caseTitle: 'اختبار', next: 'اختبار' }, () => {})
+    const tabPrevented = [false, true].map(shiftKey => {
+      const event = new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', shiftKey, bubbles: true, cancelable: true })
+      document.dispatchEvent(event)
+      return event.defaultPrevented
+    })
+    const fEvent = new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', bubbles: true, cancelable: true })
+    document.dispatchEvent(fEvent)
+    const fileStayedClosed = Boolean(document.querySelector('.casefile')?.hidden)
+    recap.hide()
+    return { tabPrevented, fPrevented: fEvent.defaultPrevented, fileStayedClosed }
+  })
+  assert(recapKeyboard.tabPrevented.every(prevented => !prevented), 'Tab and Shift+Tab must not be consumed by the recap dialog')
+  assert(recapKeyboard.fPrevented && recapKeyboard.fileStayedClosed, 'the recap dialog must consume gameplay shortcuts without opening the case file')
+  await page.keyboard.press('F')
+  await page.waitForSelector('.casefile:not([hidden])')
+  await page.keyboard.press('Escape')
+  await page.locator('.casefile').waitFor({ state: 'hidden' })
+  await page.evaluate(() => window.__ltt.investigation.setTab('map'))
+  await page.locator('.inv-map-switch button').filter({ hasText: 'خريطة مرسومة' }).click()
+  for (const width of [421, 480, 560]) {
+    await page.setViewportSize({ width, height: 900 })
+    const mapTargets = await page.evaluate(() => {
+      const svg = document.querySelector('.inv-map-svg')
+      const cards = [...document.querySelectorAll('.inv-map-card')].map(el => el.getBoundingClientRect())
+      const overlaps = cards.some((a, i) => cards.slice(i + 1).some(b => Math.min(a.right, b.right) > Math.max(a.left, b.left) && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)))
+      return { svgDisplay: svg ? getComputedStyle(svg).display : 'missing', count: cards.length, tooSmall: cards.some(r => r.width < 44 || r.height < 44), overlaps }
+    })
+    assert(mapTargets.svgDisplay === 'none' && mapTargets.count > 0 && !mapTargets.tooSmall && !mapTargets.overlaps,
+      `map touch targets overlap or are too small at ${width}px: ${JSON.stringify(mapTargets)}`)
+  }
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.evaluate(() => window.__ltt.investigation.setTab('scene'))
   assert(await page.locator('.inv-guide .inv-guide-go').count() === 1, 'the current objective has no direct action')
   assert((await page.locator('.inv-photo').getAttribute('src')).includes('zeinab-home'), 'Zeinab scene still reuses generic fields')
   assert(await page.locator('.inv-drawer').count() === 1, 'the case details drawer is missing')
@@ -258,10 +301,14 @@ try {
   const pauseCopy = await page.locator('.controls').textContent()
   assert(/الخريطة/.test(pauseCopy) && !/WASD|كاميرا|زاوية الكاميرا/.test(pauseCopy), 'pause menu still gives obsolete 3D controls')
   await page.evaluate(() => window.__ltt.shell.go('settings', 'pause'))
+  const normalFontSize = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
+  await page.locator('.size-opt[data-size="large"]').click()
+  const largeFontSize = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
+  assert(largeFontSize > normalFontSize, 'large text setting did not increase rendered font size')
   await page.locator('.size-opt[data-size="xlarge"]').click()
   assert(await page.evaluate(() => document.documentElement.dataset.textSize) === 'xlarge', 'text size setting was not applied')
-  // NOTE: main.ts applySettings sets an inline html font-size from textScale, which overrides the data-text-size CSS rule,
-  // so the computed size is not asserted here (see PR description).
+  const xlargeFontSize = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
+  assert(xlargeFontSize > largeFontSize, 'very large text setting did not increase rendered font size')
   await page.locator('.size-opt[data-size="normal"]').click()
   await page.locator('.settings .back').click()
   await page.waitForFunction(() => window.__ltt.shell.screen === 'pause')

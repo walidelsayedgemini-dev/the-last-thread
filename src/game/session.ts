@@ -148,9 +148,8 @@ export class Session {
     const result = this.engine.accuse(culprit, motive)
     if (result === 'wrong-culprit' || result === 'wrong-motive') {
       this.progress.stats.wrongAccusations++
-      const realisticUntil = this.progress.mode === 'realistic' ? this.clock.stamp / 60_000 + 60 : undefined
       this.clock.advanceMinutes(60)
-      const untilMinute = realisticUntil ?? this.clock.elapsedStoryMinutes + 60
+      const untilMinute = this.progress.mode === 'realistic' ? this.clock.stamp / 60_000 + 60 : this.clock.elapsedStoryMinutes + 60
       if (culprit in CHARACTERS && culprit !== 'yassin') this.state.offended.set(culprit as CharacterId, { untilEvidence: this.state.evidence.size + 1, untilMinute })
       this.save()
     } else if (result === 'ok') {

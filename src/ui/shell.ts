@@ -365,7 +365,7 @@ export class Shell {
         h('button', { class: 'btn', onclick: () => this.go('achievements', 'pause') }, 'الإنجازات'),
         h('button', { class: 'btn', onclick: () => this.go('settings', 'pause') }, 'الإعدادات'),
         h('button', { class: 'btn ghost', onclick: () => this.act.quit() }, 'حفظ والخروج')),
-      h('p', { class: 'controls' }, 'اضغط على العلامات اللي على الصورة أو على الشخص اللي عاوز تكلّمه. من الخريطة اتنقّل بين أماكن المنطقة، والميكروباص بيوصّل أبيس بإسكندرية. ملف القضية: Tab • الخريطة: M • تلميح: H • القائمة: Esc'))
+      h('p', { class: 'controls' }, 'اضغط على العلامات اللي على الصورة أو على الشخص اللي عاوز تكلّمه. من الخريطة اتنقّل بين أماكن المنطقة، والميكروباص بيوصّل أبيس بإسكندرية. ملف القضية: F • الخريطة: M • تلميح: H • القائمة: Esc'))
   }
 
   private settingsPage(): HTMLElement {

@@ -267,8 +267,8 @@ export class RecapView {
   }
   key(e: KeyboardEvent): boolean {
     if (!this.open) return false
-    if (e.code === 'Escape' || e.code === 'Enter') this.finish()
-    return e.code !== 'Space'
+    if (e.code === 'Escape' || e.code === 'Enter') { this.finish(); return true }
+    return e.code !== 'Tab'
   }
 }
 

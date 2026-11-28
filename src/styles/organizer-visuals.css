@@ -1,6 +1,6 @@
 /* Readability: bigger base size, brighter secondary text and an optional plain heading font. */
-html { font-size: 17px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-html[data-text-size='large'] { font-size: 19.5px; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html[data-text-size='large'] { font-size: 20px; }
 html[data-text-size='xlarge'] { font-size: 22px; }
 :root { --muted: #b3c0c3; }
 body { text-rendering: optimizeLegibility; font-kerning: normal; }

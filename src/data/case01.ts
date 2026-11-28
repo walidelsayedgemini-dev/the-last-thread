@@ -1,5 +1,6 @@
 import type { CaseFile, DeductionId, Gate } from './types'
 import { ARCHIVE_DEDUCTION, ARCHIVE_EVIDENCE, ARCHIVE_HOTSPOTS, ARCHIVE_OBJECTIVES } from './amnaArchive'
+import { BOUNDARY_STONE_SHIFT_TEXT } from './boundaryStone'
 
 /**
  * The links the accusation is gated on. Objectives, hints and the finale all read this one list,
@@ -50,7 +51,7 @@ export const CASE_01: CaseFile = {
       question: { text: 'مين في أبيس يعرف العقدة دي؟', answeredWhen: [{ flags: ['zeinab_thread_shown'] }, { deductions: ['d_trail'] }] } },
     { id: 'e_survey_book', title: 'دفتر المساحة', kind: 'document', place: 'mahmoud_house', source: 'مكتب بيت الخال',
       summary: 'رسم القطعة ١٥ بخط محمود، وعلامة بالأحمر على الحجر الجنوبي.',
-      detail: 'مكتوب بخط صغير: «الحجر الجنوبي اتزحزح ٣ متر شرقاً». آخر صفحة مقطوعة، وعلى الصفحة اللي تحتها أثر قلم: «الأمانة عند اللي بيحفظ الحروف». رسمة قرص مايل جنب السطر.',
+      detail: `مكتوب بخط صغير: «الحجر الجنوبي اتزحزح ${BOUNDARY_STONE_SHIFT_TEXT} متر شرقاً». آخر صفحة مقطوعة، وعلى الصفحة اللي تحتها أثر قلم: «الأمانة عند اللي بيحفظ الحروف». رسمة قرص مايل جنب السطر.`,
       question: { text: 'هل مكان الحجر في الأرض يطابق اللي محمود سجّله؟', answeredWhen: [{ deductions: ['d_markers'] }] } },
     { id: 'e_microbus_ticket', title: 'تذكرة ميكروباص', kind: 'document', place: 'mahmoud_house', source: 'جيب المعطف على الشماعة',
       summary: 'تذكرة «أبيس – محطة الرمل» الساعة ٦:٤٠ مساءً.',
@@ -175,7 +176,7 @@ export const CASE_01: CaseFile = {
   ],
   deductions: [
     ARCHIVE_DEDUCTION,
-    { id: 'd_markers', title: 'الحدود اتحرّكت', conclusion: 'دفتر محمود بيقول إن الحجر الجنوبي اتزحزح ٣ متر، والحجر نفسه كده فعلاً: حد حرّك الحدود بإيده.',
+    { id: 'd_markers', title: 'الحدود اتحرّكت', conclusion: `دفتر محمود بيقول إن الحجر الجنوبي اتزحزح ${BOUNDARY_STONE_SHIFT_TEXT} متر، والحجر نفسه كده فعلاً: حد حرّك الحدود بإيده.`,
       pairReasons: ['الدفتر بيحدد الحجر الجنوبي، ونفس رقم القطعة محفور على الحجر اللي حواليه طين طازة.'],
       pairs: [['e_boundary_stone', 'e_survey_book']], sets: ['markers_tied'] },
     { id: 'd_trail', title: 'الخيط وصل للبحر', conclusion: 'العقدة البحّارة على الباب هي نفسها اللي على سلم العشة: محمود مش مخطوف… هو متخبّي، وعم بحر هو اللي خبّاه.',
@@ -235,7 +236,7 @@ export const CASE_01: CaseFile = {
       when: { flags: ['shed_known'] }, doneWhen: { flags: ['found_mahmoud'] } },
     { id: 'o_shawky', title: 'واجه المعلم شوقي', detail: 'في المنشية. ومعاك المظروف.', place: 'mansheya',
       when: { evidence: ['e_library_envelope'] }, doneWhen: { evidence: ['e_forged_contract'] } },
-    { id: 'o_board', title: 'اربط الخيوط', detail: 'افتح ملف القضية (Tab) واربط الأدلة على اللوحة.', when: { evidence: ['e_forged_contract'] },
+    { id: 'o_board', title: 'اربط الخيوط', detail: 'افتح ملف القضية (F) واربط الأدلة على اللوحة.', when: { evidence: ['e_forged_contract'] },
       doneWhen: { deductions: CASE01_SOLUTION } },
     { id: 'o_accuse', title: 'اتّهم الجاني', detail: 'كل الخيوط اتربطت: العربية، المية، والخط. من لوحة التحقيق اختار المتهم والدافع.', when: { deductions: CASE01_SOLUTION },
       doneWhen: { flags: ['case_solved'] } },

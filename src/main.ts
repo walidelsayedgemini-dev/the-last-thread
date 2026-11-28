@@ -22,7 +22,7 @@ import { PLACE_LIST, PLACES } from './data/places'
 import type { CharacterId, Hotspot, PlaceId } from './data/types'
 import { Audio } from './engine/audio'
 import { GameLoop } from './engine/loop'
-import { SettingsStore, type Settings } from './engine/save'
+import { rootFontSize, SettingsStore, type Settings } from './engine/save'
 import { Session } from './game/session'
 import { haptic, onBackButton } from './services/native'
 import { EventsDb, JsonUrlProvider, type EventsDocument } from './services/eventsDb'
@@ -104,7 +104,7 @@ async function boot(): Promise<void> {
     document.body.classList.toggle('high-contrast', d.highContrast)
     document.documentElement.dataset.textSize = d.textSize
     document.documentElement.style.setProperty('--text-scale', String(d.textScale))
-    document.documentElement.style.fontSize = `${Math.round(16 * Math.min(1.2, d.textScale))}px`
+    document.documentElement.style.fontSize = `${rootFontSize(d)}px`
   }
   const MUSIC = {
     title: new URL('audio/title.mp3', document.baseURI).href,
@@ -615,9 +615,10 @@ async function boot(): Promise<void> {
       return
     }
     if (!active || paused) return
-    if (event.code === 'Tab' && caseFile.open) return
+    const editing = event.target instanceof HTMLElement && Boolean(event.target.closest('input, textarea, select, [contenteditable="true"]'))
+    if (editing) return
     if (event.code === 'Escape') { event.preventDefault(); pause() }
-    else if (event.code === 'Tab') { event.preventDefault(); openCaseFile() }
+    else if (event.code === 'KeyF') { event.preventDefault(); openCaseFile() }
     else if (event.code === 'KeyH') { event.preventDefault(); void askHint() }
     else if (event.code === 'KeyM') { event.preventDefault(); investigation.setTab('map') }
     else if (event.code === 'KeyJ') { event.preventDefault(); caseFile.show(session!, 'objectives') }

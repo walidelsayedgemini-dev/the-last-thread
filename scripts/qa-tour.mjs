@@ -119,6 +119,10 @@ for (const vp of VIEWPORTS) {
     page.on('console', m => (m.type() === 'error' || m.type() === 'warning') && note(vp.name, 'console', m.type(), m.text().slice(0, 300)))
     page.on('pageerror', e => note(vp.name, 'pageerror', 'error', String(e.stack ?? e).slice(0, 400)))
     page.on('response', r => r.status() >= 400 && note(vp.name, 'http', String(r.status()), r.url()))
+    page.on('requestfailed', request => {
+      const failure = request.failure()?.errorText ?? 'unknown network error'
+      if (failure !== 'net::ERR_ABORTED') note(vp.name, 'requestfailed', failure, request.url())
+    })
   }
   // ---- shell screens --------------------------------------------------------------------------------------------
   {
@@ -210,7 +214,7 @@ writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 1))
 const byKind = {}
 for (const r of report) (byKind[r.kind] ??= []).push(`${r.vp}/${r.where}: ${r.detail}`)
 for (const [k, v] of Object.entries(byKind)) { console.log(`\n## ${k} (${v.length})`); for (const l of [...new Set(v)].slice(0, 60)) console.log('  ' + l) }
-const serious = new Set(['pin-offscreen', 'button-outside', 'pageerror'])
+const serious = new Set(['pin-offscreen', 'button-outside', 'pageerror', 'http', 'requestfailed'])
 const seriousCount = report.filter(item => serious.has(item.kind)).length
 console.log(`\nqa-tour: ${report.length} total findings; ${seriousCount} serious findings`)
 if (seriousCount > 0) process.exitCode = 1
