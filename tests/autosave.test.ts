@@ -56,6 +56,24 @@ describe('autosave and restore', () => {
     expect(reopened.progress.playMs).toBeCloseTo(600_000, 0)
   })
 
+  it.each(['realistic', 'story'] as const)('uses the same post-penalty one-hour cooldown in %s mode', mode => {
+    const { open } = setup(mode)
+    const session = open()
+    CASE01_SOLUTION.forEach(id => session.state.deductions.add(id))
+    session.state.flags.add('found_mahmoud')
+    expect(session.accuse('hassan', 'm_road')).toBe('wrong-culprit')
+    if (mode === 'realistic') expect(session.clock.stamp).toBe(NOW + HOUR)
+    else expect(session.clock.elapsedStoryMinutes).toBe(60)
+    expect(session.dialogueUnavailableReason('hassan')).toContain('متضايق')
+    session.save()
+
+    const reopened = open()
+    expect(reopened.dialogueUnavailableReason('hassan')).toContain('متضايق')
+    reopened.clock.advanceMinutes(60)
+    reopened.dialogueUnavailableReason('hassan')
+    expect(reopened.state.offended.has('hassan')).toBe(false)
+  })
+
   it('does not carry a penalty into a fresh realistic session', () => {
     const { open } = setup('realistic')
     expect(open().clock.penaltyMs).toBe(0)

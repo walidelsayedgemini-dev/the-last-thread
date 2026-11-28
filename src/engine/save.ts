@@ -31,6 +31,11 @@ export type Settings = {
   eventsUrl: string
 }
 
+const ROOT_FONT_SIZE: Record<TextSize, number> = { normal: 16, large: 20, xlarge: 22 }
+export function rootFontSize(settings: Pick<Settings, 'textSize' | 'textScale'>): number {
+  return Math.round(ROOT_FONT_SIZE[settings.textSize] * Math.min(1.2, Math.max(0.85, settings.textScale)))
+}
+
 const SETTINGS_KEY = 'ltt.settings.v1'
 
 function defaultSettings(): Settings {

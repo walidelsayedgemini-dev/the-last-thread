@@ -1,4 +1,5 @@
 import type { Condition } from './types'
+import { BOUNDARY_STONE_SHIFT_TEXT } from './boundaryStone'
 
 /**
  * Narrative layer for case 01. It only READS the case state (flags / evidence / deductions);
@@ -17,7 +18,7 @@ export const CHAPTERS: Chapter[] = [
   { id: 'ch_door', title: 'الباب المقفول', kicker: 'تلات أيام من الصمت',
     text: 'خيط أحمر على مقبض باب… وراجل مش بيسيب حاجة للصدفة.', when: {} },
   { id: 'ch_stone', title: 'الحجر اللي اتحرّك', kicker: 'الأرض بتتكلم لمين يعرف يقيسها',
-    text: 'الدفتر بيقول ٣ متر. والتراب الطازة بيقول إن حد استعجل.', when: { evidence: ['e_survey_book'] } },
+    text: `الدفتر بيقول ${BOUNDARY_STONE_SHIFT_TEXT} متر. والتراب الطازة بيقول إن حد استعجل.`, when: { evidence: ['e_survey_book'] } },
   { id: 'ch_bus', title: 'آخر ميكروباص', kicker: 'أبيس ← الإسكندرية',
     text: 'المدينة كبيرة… والخيط رفيع. بس خالك سابله علامات.', when: { flags: ['visited_city'] } },
   { id: 'ch_letters', title: 'اللي بيحفظ الحروف', kicker: 'جدار المكتبة',
@@ -53,7 +54,7 @@ export const JOURNAL: JournalEntry[] = [
     text: 'شفت خالي في الصورة وهو شاب، ماسك الشريط وعينه فيها ثقة ماشفتهاش من سنين. جنبه شوقي ماسك ملف وبيضحك. الاتنين كانوا شركاء… والضحكة دي بقت تخوّفني.',
     when: { evidence: ['e_old_photo'] } },
   { id: 'j_book', chapter: 'ch_stone', title: 'الدفتر ما بيجمّلش',
-    text: 'خط خالي صغير ومنظّم زي ما هو. «الحجر الجنوبي اتزحزح ٣ متر شرقاً». مفيش تهويل ولا خوف في الكلام… بس الصفحة الأخيرة مقطوعة. اللي قطعها عارف إن الصفحة دي تكفي تقلب القطعة كلها.',
+    text: `خط خالي صغير ومنظّم زي ما هو. «الحجر الجنوبي اتزحزح ${BOUNDARY_STONE_SHIFT_TEXT} متر شرقاً». مفيش تهويل ولا خوف في الكلام… بس الصفحة الأخيرة مقطوعة. اللي قطعها عارف إن الصفحة دي تكفي تقلب القطعة كلها.`,
     when: { evidence: ['e_survey_book'] } },
   { id: 'j_stone', chapter: 'ch_stone', title: 'تراب طازة',
     text: 'وقفت قدام الحجر وحسّيت إن الأرض بتبصلي. أثر جزمة جلد مصقولة في طين الغيط… مفيش فلاح بيلبس كده. اللي جه هنا ماكانش عارف يمشي بين الزرع، بس كان عارف بالظبط هو جاي ياخد إيه.',
@@ -215,7 +216,7 @@ export const TIMELINE: { time: string; title: string; text: string; when: Condit
   { time: 'بعد المغرب', title: 'العشة', text: 'محمود بيوصل لعم بحر مرعوب، ويستخبّى تحت القلعة.', when: { evidence: ['e_bahr_testimony'] } },
   { time: '١١:٠٥ م', title: 'فاتورة غريبة', text: 'سيّد سواق شوقي بيطلب فاتورة في قهوة رجب لأول مرة.', when: { evidence: ['e_cafe_bill'] } },
   { time: 'قرب نص الليل', title: 'مرسيدس عند الكوبري', text: 'اتنين بعتلة وكشاف رايحين ناحية القطعة ١٥.', when: { evidence: ['e_hassan_testimony'] } },
-  { time: 'نص الليل', title: 'الحجر بيتزحزح', text: 'الحجر الجنوبي بيتنقل ٣ متر شرقاً. أثر جزمة جلد وعجلات تقيلة.', when: { evidence: ['e_boundary_stone'] } },
+  { time: 'نص الليل', title: 'الحجر بيتزحزح', text: `الحجر الجنوبي بيتنقل ${BOUNDARY_STONE_SHIFT_TEXT} متر شرقاً. أثر جزمة جلد وعجلات تقيلة.`, when: { evidence: ['e_boundary_stone'] } },
   { time: 'ليلة الماتش', title: 'الصورة اللي في الخلفية', text: 'شوقي بنفسه بيكلّم سيّد قدام المرسيدس.', when: { evidence: ['e_match_night_photo'] } },
   { time: 'بعد نص الليل', title: 'صندوق الموقع', text: 'شوقي بيرمي ورقة ممزقة عند عمود السواري.', when: { evidence: ['e_fathy_testimony'] } },
   { time: 'بعد يومين', title: 'تاريخ العقد', text: 'العقد المزوّر متأرّخ بعد اختفاء محمود بيومين.', when: { evidence: ['e_forged_contract'] } },

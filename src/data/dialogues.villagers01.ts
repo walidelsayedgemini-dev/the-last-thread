@@ -1,4 +1,5 @@
 import type { CharacterId, Dialogue } from './types'
+import { BOUNDARY_STONE_SHIFT_TEXT } from './boundaryStone'
 
 /** Case01 village cast. Each tree keeps the optional errand in dialogue/hotspot flags so it never blocks the main objective HUD. */
 
@@ -390,7 +391,7 @@ const alaa_emad: Dialogue = {
       lines: [
         { who: 'alaa_emad', text: 'أهلاً يا ياسين. كنت متأكد إنك هتوصل هنا لقرية ٥/٨ التمنيات، خالك محمود لسه سايب عندي كراسة مقارنة الأحواض.' },
         { who: 'player', text: 'علاء، خالي لاحظ إيه في القياس الجديد قبل ما يختفي؟' },
-        { who: 'alaa_emad', text: 'قعدنا هنا يوم الجمعة نطابق إحداثيات أحواض التمنيات وقرية ١٥ مع لوح الأرشيف القديمة اللي فضلت بعد نقل ملفات زلزال ٩٢. لقينا حجر القطعة ١٥ الجنوبي اتنقل ١٤ متر ناحية الترعة علشان يوسّع أرض التعويضات لملف شوقي.' },
+        { who: 'alaa_emad', text: `قعدنا هنا يوم الجمعة نطابق إحداثيات أحواض التمنيات وقرية ١٥ مع لوح الأرشيف القديمة اللي فضلت بعد نقل ملفات زلزال ٩٢. لقينا حجر القطعة ١٥ الجنوبي اتنقل ${BOUNDARY_STONE_SHIFT_TEXT} متر ناحية الترعة علشان يوسّع أرض التعويضات لملف شوقي.` },
       ],
       choices: [
         { text: 'والنسخة الأصلية السليمة فين دلوقتي؟', next: 'al_copy' },

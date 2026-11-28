@@ -1,6 +1,6 @@
 const CACHE_NAME = 'ltt-cache-v2'
-// Runtime cache only: scene and portrait bytes enter this cache when the player sees them.
-const ASSET_CACHE = /\/(?:assets\/[^/]+-[A-Za-z0-9_-]{6,}\.[^/]+|audio\/[^/]+\.(?:mp3|ogg)|fonts\/[^/]+\.woff2)$/
+// Runtime cache: scene art, voice clips (including audio/voice/), music and fonts enter when requested.
+const ASSET_CACHE = /\/(?:assets\/[^/]+-[A-Za-z0-9_-]{6,}\.[^/]+|audio\/(?:voice\/)?[^/]+\.(?:mp3|ogg|wav)|fonts\/[^/]+\.woff2)$/
 
 self.addEventListener('install', event => {
   event.waitUntil(self.skipWaiting())
