@@ -106,6 +106,31 @@ describe('solution conditions are one list', () => {
   })
 })
 
+describe('case-scoped report statistics', () => {
+  it('does not carry photos, hints, or false accusations into another case and restores each report', () => {
+    const session = sessionFor(CASE_01)
+    session.progress.stats.photos = 3
+    session.progress.stats.hints = 2
+    session.progress.stats.wrongAccusations = 1
+    session.progress.stats.hintTiers = { 1: 1, 2: 1 }
+    session.save()
+    expect(session.gradeReport().breakdown).toContainEqual({ label: 'الصور', delta: 6 })
+    expect(session.gradeReport().breakdown).toContainEqual({ label: 'خصم الاتهامات الغلط', delta: -8 })
+
+    expect(session.startCase('case02')).toBe(true)
+    expect(session.progress.stats).toMatchObject({ photos: 0, hints: 0, wrongAccusations: 0 })
+    expect(session.gradeReport().breakdown).toContainEqual({ label: 'الصور', delta: 0 })
+    expect(session.gradeReport().breakdown).toContainEqual({ label: 'خصم الاتهامات الغلط', delta: 0 })
+    session.progress.stats.photos = 1
+    session.save()
+
+    expect(session.startCase('case01')).toBe(true)
+    expect(session.progress.stats).toMatchObject({ photos: 3, hints: 2, wrongAccusations: 1, hintTiers: { 1: 1, 2: 1 } })
+    expect(session.gradeReport().breakdown).toContainEqual({ label: 'الصور', delta: 6 })
+    expect(session.gradeReport().breakdown).toContainEqual({ label: 'خصم الاتهامات الغلط', delta: -8 })
+  })
+})
+
 describe('case 03 route order', () => {
   it('opens the bus stop after the association record, not after the pigeon note', () => {
     const state = new CaseState()
