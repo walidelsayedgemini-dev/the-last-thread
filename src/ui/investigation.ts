@@ -355,7 +355,7 @@ export class InvestigationView {
     }
     return h('div', { class: `inv-guide${opening ? ' opening' : ''}` },
       h('span', { class: 'inv-guide-mark', 'aria-hidden': true }, '⌖'),
-      h('div', { class: 'inv-guide-copy' },
+      h('div', { class: 'inv-guide-copy', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
         h('small', null, 'الخطوة الجاية'),
         h('b', null, objective.title),
         h('span', null, where),

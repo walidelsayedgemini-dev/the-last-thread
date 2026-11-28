@@ -22,11 +22,12 @@ export class Hud {
   private hintTimer = 0
 
   constructor() {
-    this.narration = h('aside', { class: 'narration', hidden: true, onclick: () => this.hideNarration() },
+    this.narration = h('aside', { class: 'narration', hidden: true, role: 'status', 'aria-live': 'polite' },
       h('span', { class: 'narration-mark', 'aria-hidden': true }, '❝'), this.narrationText,
-      h('small', { class: 'narration-close' }, 'اضغط للإغلاق'))
-    this.hintBubble = h('aside', { class: 'hint-bubble', hidden: true, role: 'note', onclick: () => (this.hintBubble.hidden = true) },
-      h('span', { class: 'hint-mark', 'aria-hidden': true }, '✦'), h('div', null, this.hintMeta, this.hintText))
+      h('button', { class: 'narration-close', type: 'button', onclick: () => this.hideNarration() }, 'اقفل النص'))
+    this.hintBubble = h('aside', { class: 'hint-bubble', hidden: true, role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
+      h('span', { class: 'hint-mark', 'aria-hidden': true }, '✦'), h('div', null, this.hintMeta, this.hintText),
+      h('button', { class: 'hint-close', type: 'button', 'aria-label': 'إغلاق التلميح', onclick: () => this.hideHint() }, '×'))
     this.el = h('div', { class: 'hud', hidden: true }, this.toasts, this.narration, this.hintBubble)
   }
 
@@ -35,7 +36,7 @@ export class Hud {
     this.el.hidden = !on
     if (!on) {
       this.hideNarration()
-      this.hintBubble.hidden = true
+      this.hideHint()
     }
   }
 
@@ -46,7 +47,7 @@ export class Hud {
     const t = h('div', { class: `toast ${kind}` }, h('span', { class: 'toast-ico', 'aria-hidden': true }, ICON[kind]), h('span', null, text))
     this.toasts.append(t)
     while (this.toasts.children.length > 2) this.toasts.firstElementChild?.remove()
-    const life = kind === 'info' ? 2600 : 3800
+    const life = kind === 'info' ? 3400 : 5200
     window.setTimeout(() => t.classList.add('out'), life)
     window.setTimeout(() => t.remove(), life + 450)
   }
@@ -72,6 +73,11 @@ export class Hud {
     this.hintMeta.textContent = `${TIER_NAME[tier] ?? 'تلميح'}${source === 'remote' ? ' • ذكي' : ''}${cost ? ` • خصم ${arabicDigits(cost)} من التقدير` : ''}`
     this.hintBubble.dataset.tier = String(tier)
     clearTimeout(this.hintTimer)
-    this.hintTimer = window.setTimeout(() => (this.hintBubble.hidden = true), 12000)
+    this.hintTimer = window.setTimeout(() => this.hideHint(), 12000)
+  }
+
+  private hideHint(): void {
+    clearTimeout(this.hintTimer)
+    this.hintBubble.hidden = true
   }
 }

@@ -216,13 +216,20 @@ export class Shell {
     return h('section', { class: 'page create' },
       h('h2', null, 'اختار شخصيتك'),
       h('div', { class: 'cards' },
-        h('button', { class: `card${!custom ? ' on' : ''}`, onclick: () => { a.kind = 'yassin'; a.name = 'ياسين'; a.gender = 'male'; this.go('create', this.back) } },
-          h('div', { class: 'portrait has-img', style: { '--body': yassin.figure.body, '--accent': yassin.figure.accent } },
-            h('img', { class: 'character-portrait-image', src: CHARACTER_ART.yassin?.src ?? portraitUrl('yassin'), alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' })),
-          h('b', null, 'ياسين'), h('small', null, `${yassin.role} • ${yassin.home}`), h('p', null, yassin.appearance), h('blockquote', null, yassin.quote)),
-        h('button', { class: `card${custom ? ' on' : ''}`, onclick: () => { a.kind = 'custom'; a.name = ''; this.go('create', this.back) } },
-          h('div', { class: 'portrait has-img', style: { '--body': '#222', '--accent': a.accent ?? ACCENTS[0] } }, custom ? h('img', { src: playerPortrait(a), alt: '' }) : h('span', null, '؟')),
-          h('b', null, 'شخصية خاصة'), h('small', null, 'اسم ومظهر ومكان سكن من اختيارك'), h('p', null, 'محقّق جديد في أبيس… الماضي بتاعه بيتكتب مع كل خطوة.'))),
+        h('article', { class: 'character-option' },
+          h('button', { class: `card${!custom ? ' on' : ''}`, type: 'button', 'aria-pressed': String(!custom), onclick: () => { a.kind = 'yassin'; a.name = 'ياسين'; a.gender = 'male'; this.go('create', this.back) } },
+            h('div', { class: 'portrait has-img', style: { '--body': yassin.figure.body, '--accent': yassin.figure.accent } },
+              h('img', { class: 'character-portrait-image', src: CHARACTER_ART.yassin?.src ?? portraitUrl('yassin'), alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' })),
+            h('b', null, 'ياسين'), h('small', null, `${yassin.role} • ${yassin.home}`),
+            h('p', null, 'اختفاء خاله محمود هو بداية التحقيق.')),
+          h('details', { class: 'character-details' },
+            h('summary', null, 'تفاصيل ياسين'),
+            h('p', null, yassin.appearance),
+            h('blockquote', null, yassin.quote))),
+        h('article', { class: 'character-option' },
+          h('button', { class: `card${custom ? ' on' : ''}`, type: 'button', 'aria-pressed': String(custom), onclick: () => { a.kind = 'custom'; a.name = ''; this.go('create', this.back) } },
+            h('div', { class: 'portrait has-img', style: { '--body': '#222', '--accent': a.accent ?? ACCENTS[0] } }, custom ? h('img', { src: playerPortrait(a), alt: '' }) : h('span', null, '؟')),
+            h('b', null, 'شخصية خاصة'), h('small', null, 'اسم ومظهر ومكان سكن من اختيارك'), h('p', null, 'محقّق جديد في أبيس… الماضي بتاعه بيتكتب مع كل خطوة.')))),
       custom && h('div', { class: 'form' },
         h('label', null, 'الاسم', name),
         h('div', { class: 'row' }, h('span', null, 'النوع'),
@@ -257,23 +264,29 @@ export class Shell {
     this.el.dataset.screen = 'intro'
     const file = session.caseFile
     const lines = file.intro.map(l => session.fill(l))
-    const body = h('div', { class: 'intro-lines' })
+    const body = h('div', { class: 'intro-lines', id: 'intro-story-text', role: 'region', 'aria-label': 'مقدمة القضية' })
     const introImageId = (index: number) => file.id === 'case01'
       ? ['case01-phone-call', 'case01-red-thread-door', 'case01-microbus-dawn'][Math.min(index, 2)]
       : `${file.id}-intro`
     const visual = h('div', { class: 'intro-visual', 'aria-hidden': true }, h('img', { src: cinematicUrl(introImageId(0)) ?? '', alt: '', decoding: 'async' }))
-    const start = h('button', { class: 'btn primary', hidden: true, onclick: () => this.act.startWorld() }, 'ابدأ التحقيق ◂')
-    const reveal = h('button', { class: 'btn ghost', onclick: () => {
+    const start = h('button', { class: 'btn primary', type: 'button', onclick: () => {
+      window.clearTimeout(this.introTimer)
+      this.typer = undefined
+      this.revealIntro = undefined
+      this.act.startWorld()
+    } }, 'تخطّي المقدمة وابدأ التحقيق')
+    const reveal = h('button', { class: 'btn ghost', type: 'button', 'aria-controls': 'intro-story-text', onclick: () => {
       this.revealIntro?.()
       start.focus()
     } }, 'اعرض النص كله')
     const finish = () => {
       this.revealIntro = undefined
       reveal.hidden = true
-      start.hidden = false
+      start.textContent = 'ابدأ التحقيق'
     }
     setChildren(this.el, h('section', { class: 'page intro' },
-      visual, h('div', { class: 'intro-copy' }, h('div', { class: 'stamp' }, `ملف رقم ${file.number}`), h('h2', null, file.title), body, reveal, start)))
+      visual, h('div', { class: 'intro-copy' }, h('div', { class: 'stamp' }, `ملف رقم ${file.number}`), h('h2', null, file.title), body,
+        h('div', { class: 'intro-actions' }, start, reveal))))
     const updateArt = (index: number) => {
       const art = cinematicUrl(introImageId(index))
       if (art) visual.querySelector('img')!.src = art
