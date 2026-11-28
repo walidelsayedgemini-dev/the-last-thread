@@ -13,7 +13,7 @@ import type { CaseSnapshot } from '../core/caseState'
 import type { StorageAdapter } from './storage'
 
 export const MAX_PROFILES = 3
-export const PROGRESS_VERSION = 4
+export const PROGRESS_VERSION = 5
 const INDEX_KEY = 'ltt.profiles.index'
 const profileKey = (id: string) => `ltt.profile.${id}`
 
@@ -36,6 +36,10 @@ export type ProgressStats = {
   hintTiers?: Partial<Record<1 | 2 | 3, number>>
 }
 
+export function newProgressStats(): ProgressStats {
+  return { photos: 0, hints: 0, wrongAccusations: 0, hintTiers: {} }
+}
+
 export type Progress = {
   v: number
   caseId: string
@@ -43,6 +47,8 @@ export type Progress = {
   case: CaseSnapshot
   /** Snapshots for completed/current cases; `case` remains the current-case compatibility alias. */
   cases?: Record<string, CaseSnapshot>
+  /** Case-scoped report counters; `stats` remains the current-case compatibility alias. */
+  caseStats?: Record<string, ProgressStats>
   /** Where the player stands: zone + world position + yaw. */
   position: { zone: 'abis' | 'city'; x: number; z: number; yaw: number }
   storyMinutes: number
@@ -78,11 +84,13 @@ export const HOMES = ['عزبة ١٥ – أبيس', 'العجمي', 'المنت�
 
 export function newProgress(mode: GameMode, caseId = 'case01'): Progress {
   const initial: CaseSnapshot = { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [] }
+  const stats = newProgressStats()
   return {
     v: PROGRESS_VERSION, caseId, mode,
     case: initial, cases: { [caseId]: initial },
+    caseStats: { [caseId]: stats },
     position: { zone: 'abis', x: 30, z: 232, yaw: 0 },
-    storyMinutes: 0, penaltyMs: 0, playMs: 0, stats: { photos: 0, hints: 0, wrongAccusations: 0, hintTiers: {} },
+    storyMinutes: 0, penaltyMs: 0, playMs: 0, stats,
     achievements: [], tutorial: { completed: false },
   }
 }
@@ -124,19 +132,39 @@ export function migrate(raw: unknown, mode: GameMode = 'story'): Progress {
       evidence: Array.isArray(x.evidence) ? x.evidence.filter(e => e && typeof e.id === 'string').map(e => ({ id: e.id, at: Number(e.at) || 0 })) : [], offended: [],
     }
   }
+  const legacyStats = normalizeStats(out.stats)
+  const rawCaseStats = out.caseStats && typeof out.caseStats === 'object' ? out.caseStats as Record<string, unknown> : {}
+  const caseStats: Record<string, ProgressStats> = Object.fromEntries(
+    Object.entries(rawCaseStats).map(([id, value]) => [id, normalizeStats(value)]),
+  )
+  for (const id of Object.keys(cases)) caseStats[id] ??= id === caseId ? legacyStats : newProgressStats()
+  caseStats[caseId] ??= legacyStats
   const penalty = Number(out.penaltyMs)
   return {
     ...base, ...(out as Partial<Progress>), v: PROGRESS_VERSION,
     penaltyMs: Number.isFinite(penalty) ? Math.min(7 * 86_400_000, Math.max(0, penalty)) : 0,
     case: migratedCase, cases,
     position: { ...base.position, ...((out.position as object) ?? {}) },
-    stats: { ...base.stats, ...((out.stats as object) ?? {}) },
+    stats: caseStats[caseId], caseStats,
     achievements: strings(out.achievements),
     tutorial: { completed: Boolean((out.tutorial as { completed?: unknown } | undefined)?.completed) },
   }
 }
 
 const strings = (x: unknown): string[] => (Array.isArray(x) ? x.filter((s): s is string => typeof s === 'string') : [])
+
+function normalizeStats(raw: unknown): ProgressStats {
+  const stats = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {}
+  const count = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0
+  const result: ProgressStats = {
+    photos: count(stats.photos), hints: count(stats.hints), wrongAccusations: count(stats.wrongAccusations),
+  }
+  if (stats.hintTiers && typeof stats.hintTiers === 'object' && !Array.isArray(stats.hintTiers)) {
+    const tiers = stats.hintTiers as Record<string, unknown>
+    result.hintTiers = { 1: count(tiers[1]), 2: count(tiers[2]), 3: count(tiers[3]) }
+  }
+  return result
+}
 
 function cleanAvatar(a: Partial<Avatar>): Avatar {
   const name = (a.name ?? '').replace(/[<>]/g, '').trim().slice(0, 18) || 'ياسين'

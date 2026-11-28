@@ -18,13 +18,18 @@ export type GradeStats = {
   /** Number of hints used at each progressive tier. Added without breaking old saves. */
   hintTiers?: Partial<Record<1 | 2 | 3, number>>
 }
+export type GradeStatsByCase = Readonly<Record<string, GradeStats>>
 
 /**
  * Deterministic case report. Evidence and deductions earn points; photos and careful questioning
  * add bonuses, while hints and false accusations subtract points. The returned missed list is useful
  * to the ending UI and intentionally includes only evidence not found in this case.
  */
-export function computeGrade(stats: GradeStats, file: CaseFile, state: Pick<CaseState, 'evidence' | 'deductions'>): GradeResult {
+export function computeGrade(statsInput: GradeStats | GradeStatsByCase, file: CaseFile, state: Pick<CaseState, 'evidence' | 'deductions'>): GradeResult {
+  // Keep the old single-case call shape while allowing sessions to pass their complete case map.
+  const stats = typeof (statsInput as GradeStats).photos === 'number'
+    ? statsInput as GradeStats
+    : (statsInput as GradeStatsByCase)[file.id] ?? { photos: 0, hints: 0, wrongAccusations: 0 }
   const required = file.evidence.filter(e => !e.bonus)
   const found = required.filter(e => state.evidence.has(e.id)).length
   const evidencePoints = required.length ? Math.round((found / required.length) * 55) : 0
@@ -44,8 +49,8 @@ export function computeGrade(stats: GradeStats, file: CaseFile, state: Pick<Case
       { label: `الأدلة المطلوبة (${arabicDigits(found)} من ${arabicDigits(required.length)})`, delta: evidencePoints },
       { label: `الاستنتاجات (${arabicDigits(state.deductions.size)} من ${arabicDigits(file.deductions.length)})`, delta: deductionPoints },
       { label: 'الصور', delta: photoPoints },
-      { label: 'خصم التلميحات', delta: -(hintPenalty + legacyHintPenalty) },
-      { label: 'خصم الاتهامات الغلط', delta: -wrongPenalty },
+      { label: 'خصم التلميحات', delta: hintPenalty + legacyHintPenalty === 0 ? 0 : -(hintPenalty + legacyHintPenalty) },
+      { label: 'خصم الاتهامات الغلط', delta: wrongPenalty === 0 ? 0 : -wrongPenalty },
     ],
   }
 }
