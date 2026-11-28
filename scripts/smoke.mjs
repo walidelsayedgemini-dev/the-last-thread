@@ -91,6 +91,22 @@ try {
   assert(await page.locator('.casefile').isHidden(), 'Tab must not open the case file')
   await page.keyboard.press('Shift+Tab')
   assert(await sceneButton.evaluate(el => el === document.activeElement), 'Shift+Tab should move focus to the previous control')
+  const recapKeyboard = await page.evaluate(() => {
+    const recap = window.__ltt.recap
+    recap.show({ caseTitle: 'اختبار', next: 'اختبار' }, () => {})
+    const tabPrevented = [false, true].map(shiftKey => {
+      const event = new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', shiftKey, bubbles: true, cancelable: true })
+      document.dispatchEvent(event)
+      return event.defaultPrevented
+    })
+    const fEvent = new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', bubbles: true, cancelable: true })
+    document.dispatchEvent(fEvent)
+    const fileStayedClosed = Boolean(document.querySelector('.casefile')?.hidden)
+    recap.hide()
+    return { tabPrevented, fPrevented: fEvent.defaultPrevented, fileStayedClosed }
+  })
+  assert(recapKeyboard.tabPrevented.every(prevented => !prevented), 'Tab and Shift+Tab must not be consumed by the recap dialog')
+  assert(recapKeyboard.fPrevented && recapKeyboard.fileStayedClosed, 'the recap dialog must consume gameplay shortcuts without opening the case file')
   await page.keyboard.press('F')
   await page.waitForSelector('.casefile:not([hidden])')
   await page.keyboard.press('Escape')
