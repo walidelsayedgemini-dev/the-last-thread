@@ -132,7 +132,7 @@ body.simple .inv-action-btn, body.simple .cf-tab { font-size: 1rem; }
 .letter-paper h3 { line-height: 1.5; }
 .arrival-inner p { text-wrap: balance; }
 @media (max-width: 820px) {
-  .inv-mobile-nav { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .inv-mobile-nav { grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
   .inv-mobile-nav button { font-size: .72rem; }
   .inv-mail-action { display: none; }
 }
