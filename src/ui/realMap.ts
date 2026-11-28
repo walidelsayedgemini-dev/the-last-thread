@@ -74,11 +74,12 @@ export class RealMap {
     map.setView([PLACES[this.current].mapPos.lat, PLACES[this.current].mapPos.lng], 14)
     this.setTiles()
     for (const p of PLACE_LIST) {
-      const m = L.marker([p.mapPos.lat, p.mapPos.lng], { icon: this.icon(p, false), keyboard: true, title: p.name, riseOnHover: true }).addTo(map)
+      const m = L.marker([p.mapPos.lat, p.mapPos.lng], { icon: this.icon(p, false), keyboard: true, title: p.name, riseOnHover: true })
       m.bindTooltip(p.short, { permanent: true, direction: 'top', offset: [0, -22], className: `rm-tip${p.realSite ? ' real' : ''}` })
       m.on('click', () => this.open(p))
       this.markers.set(p.id, m)
     }
+    map.on('zoomend moveend', () => this.declutter())
     const a = PLACES.abis_stop.mapPos
     const b = PLACES.raml_stop.mapPos
     this.route = L.polyline([[a.lat, a.lng], [b.lat, b.lng]], { color: '#e5c34b', weight: 3, dashArray: '8 8', opacity: .9 }).addTo(map)
@@ -144,7 +145,39 @@ export class RealMap {
     if (!map) return
     const here = PLACES[this.current]
     const pts = PLACE_LIST.filter(p => this.scope === 'all' || p.district === here.district).map(p => [p.mapPos.lat, p.mapPos.lng] as [number, number])
+    // Only markers in the current scope live on the map; the other district would sit far off-screen.
+    for (const p of PLACE_LIST) {
+      const m = this.markers.get(p.id)
+      if (!m) continue
+      const inScope = this.scope === 'all' || p.district === here.district
+      if (inScope && !map.hasLayer(m)) m.addTo(map)
+      else if (!inScope && map.hasLayer(m)) m.remove()
+    }
     map.fitBounds(L.latLngBounds(pts), { padding: [48, 48], maxZoom: this.scope === 'all' ? 12 : 16, animate: false })
+    this.declutter()
+  }
+
+  /** Hide permanent labels that would pile on top of a label already shown (current place first). */
+  private declutter(): void {
+    const map = this.map
+    if (!map) return
+    const size = map.getSize()
+    const order = [...PLACE_LIST].sort((a, b) => Number(b.id === this.current) - Number(a.id === this.current))
+    const taken: { x1: number, y1: number, x2: number, y2: number }[] = []
+    for (const p of order) {
+      const m = this.markers.get(p.id)
+      const tip = m?.getTooltip()
+      if (!m || !tip || !map.hasLayer(m)) continue
+      const pt = map.latLngToContainerPoint(m.getLatLng())
+      const w = p.short.length * 7.5 + 20
+      const box = { x1: pt.x - w / 2, x2: pt.x + w / 2, y1: pt.y - 50, y2: pt.y - 26 }
+      const pin = { x1: pt.x - 20, x2: pt.x + 20, y1: pt.y - 20, y2: pt.y + 20 }
+      const clash = (b: typeof box) => taken.some(t => b.x1 < t.x2 && b.x2 > t.x1 && b.y1 < t.y2 && b.y2 > t.y1)
+      const visible = pt.x > 0 && pt.x < size.x && !clash(box)
+      const tipEl = tip.getElement(); if (tipEl) tipEl.style.display = visible ? '' : 'none'
+      if (visible) taken.push(box)
+      taken.push(pin)
+    }
   }
 
   /** Update the player's place and (re)size the map after the element has been attached. */
@@ -158,7 +191,7 @@ export class RealMap {
     if (link) link.href = googleMapsUrl(PLACES[current])
     requestAnimationFrame(() => {
       map.invalidateSize()
-      if (PLACES[current].district !== prevDistrict || !this.fitted) { this.fit(); this.fitted = true }
+      if (PLACES[current].district !== prevDistrict || !this.fitted) { this.fit(); this.fitted = true } else this.declutter()
     })
     return this.el
   }
