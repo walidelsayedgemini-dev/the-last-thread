@@ -9,6 +9,8 @@ import { CHARACTERS } from '../data/characters'
 import { voicePath } from '../data/voice'
 import type { CharacterProfile, DialogueLine, EvidenceId, EvidenceKind } from '../data/types'
 import type { Audio } from '../engine/audio'
+import { arabicDigits } from '../core/clock'
+import { dialogueSpeedRate, type DialogueSpeed } from '../engine/save'
 import type { Avatar } from '../services/profiles'
 import { evidenceUrl, playerPortrait, portraitUrl } from './art'
 import { h, setChildren } from './dom'
@@ -21,6 +23,7 @@ export type DialogueContext = {
   /** Scene photograph shown blurred behind the conversation. */
   backdrop?: string
   avatar?: Partial<Avatar>
+  dialogueSpeed?: () => DialogueSpeed
   /** Resolves evidence presented in a choice. */
   evidence?: (id: EvidenceId) => { title: string; kind: EvidenceKind } | undefined
   /** Feedback hook (haptics) for confrontations. */
@@ -42,8 +45,14 @@ export class DialogueView {
   private readonly choicesEl: HTMLElement
   private readonly moreEl: HTMLButtonElement
   private readonly speakWrap: HTMLElement
+  private readonly historyButton: HTMLButtonElement
+  private readonly historyCount: HTMLElement
+  private readonly historyPanel: HTMLElement
   private session?: DialogueSession
   private lines: DialogueLine[] = []
+  private readonly history: { speaker: string; text: string }[] = []
+  private historyOpen = false
+  private currentLineRemembered = false
   private lineIndex = 0
   private typing = 0
   private full = ''
@@ -67,13 +76,17 @@ export class DialogueView {
     this.choicesEl = h('div', { class: 'dlg-choices', role: 'group', 'aria-label': 'ردودك' })
     this.moreEl = h('button', { class: 'dlg-more', onclick: () => this.next() }, 'كمّل')
     this.speakWrap = h('div', { class: 'dlg-speak-wrap' }, speakButton(() => this.full, 'speak-btn dlg-speak'))
+    this.historyCount = h('small', null, '٠')
+    this.historyButton = h('button', { class: 'dlg-history-toggle', type: 'button', 'aria-controls': 'dlg-history-panel', 'aria-expanded': 'false', onclick: () => this.toggleHistory() }, 'السجل', this.historyCount)
+    this.historyPanel = h('section', { id: 'dlg-history-panel', class: 'dlg-history-panel', hidden: true, role: 'region', 'aria-label': 'سجل الحوار', tabindex: '-1' })
     this.el = h('section', { class: 'dialogue', hidden: true, role: 'dialog', 'aria-modal': 'true', 'aria-label': 'حوار' },
       this.backdrop,
       this.npcArt,
       this.playerArt,
       h('button', { class: 'dlg-leave', 'aria-label': 'إنهاء الحوار', onclick: () => this.close() }, '✕', h('span', null, 'سيب الحوار')),
       h('div', { class: 'dlg-box' },
-        h('header', { class: 'dlg-speaker' }, this.nameEl, this.roleEl, this.speakWrap),
+        h('header', { class: 'dlg-speaker' }, this.nameEl, this.roleEl, this.historyButton, this.speakWrap),
+        this.historyPanel,
         h('div', { class: 'dlg-text-wrap', 'aria-live': 'polite' }, this.textEl, this.hintEl),
         this.choicesEl,
         this.moreEl),
@@ -96,6 +109,12 @@ export class DialogueView {
     this.onClose = onClose
     this.ctx = ctx
     this.tense = false
+    this.history.length = 0
+    this.historyOpen = false
+    this.historyPanel.hidden = true
+    this.el.classList.remove('history-open')
+    this.historyButton.setAttribute('aria-expanded', 'false')
+    this.updateHistoryCount()
     this.backdrop.style.backgroundImage = ctx.backdrop ? `url("${ctx.backdrop}")` : ''
     this.el.style.setProperty('--accent', who.figure.accent)
     this.el.hidden = false
@@ -144,6 +163,7 @@ export class DialogueView {
     this.nameEl.textContent = label
     this.roleEl.textContent = line.who === 'player' ? 'المحقّق' : line.who === 'narrator' ? '' : (speaker ?? npc).role
     this.full = this.fill(line.text)
+    this.currentLineRemembered = false
     this.typing = 0
     this.textEl.textContent = ''
     this.hintEl.hidden = false
@@ -153,10 +173,39 @@ export class DialogueView {
     this.audio.playVoice(voicePath(this.ctx.caseId ?? 'case01', nodeId, this.lineIndex) ?? null)
   }
 
+  private remember(speaker: string, text: string): void {
+    this.history.push({ speaker, text })
+    if (this.history.length > 100) this.history.shift()
+    this.updateHistoryCount()
+    if (this.historyOpen) this.renderHistory()
+  }
+
+  private updateHistoryCount(): void {
+    this.historyCount.textContent = arabicDigits(this.history.length)
+    this.historyButton.setAttribute('aria-label', `سجل الحوار: ${arabicDigits(this.history.length)} سطر`)
+  }
+
+  private renderHistory(): void {
+    setChildren(this.historyPanel, this.history.length
+      ? this.history.map(item => h('article', { class: 'dlg-history-entry' }, h('b', null, item.speaker), h('p', null, item.text)))
+      : h('p', { class: 'dlg-history-empty' }, 'لسه مفيش سطور في الحوار.'))
+    this.historyPanel.scrollTop = this.historyPanel.scrollHeight
+  }
+
+  private toggleHistory(): void {
+    this.historyOpen = !this.historyOpen
+    this.historyPanel.hidden = !this.historyOpen
+    this.historyButton.setAttribute('aria-expanded', String(this.historyOpen))
+    this.el.classList.toggle('history-open', this.historyOpen)
+    if (this.historyOpen) this.renderHistory()
+  }
+
   /** Advance the typewriter by real time; called every frame while open. */
   frame(dt: number): void {
     if (!this.open || this.typing >= this.full.length) return
-    const speed = document.body.classList.contains('reduced-motion') ? 400 : 48
+    const setting = this.ctx.dialogueSpeed?.() ?? 'normal'
+    const speed = dialogueSpeedRate(setting)
+    if (speed === 'instant') return this.finishLine()
     this.typing = Math.min(this.full.length, this.typing + dt * speed)
     this.textEl.textContent = this.full.slice(0, Math.floor(this.typing))
     const now = performance.now()
@@ -170,6 +219,10 @@ export class DialogueView {
   private finishLine(): void {
     this.typing = this.full.length
     this.textEl.textContent = this.full
+    if (!this.currentLineRemembered) {
+      this.remember(this.nameEl.textContent ?? '', this.full)
+      this.currentLineRemembered = true
+    }
     this.hintEl.hidden = true
     const lastLine = this.lineIndex >= this.lines.length - 1
     const v = this.session?.view()
@@ -209,8 +262,9 @@ export class DialogueView {
     else this.close()
   }
 
-  choose(index: number, meta?: { confront?: boolean; lie?: boolean }): void {
+  choose(index: number, meta?: View['choices'][number]): void {
     this.audio.stopVoice()
+    if (meta?.text) this.remember(this.playerName, this.fill(meta.text))
     if (meta?.confront || meta?.lie) {
       this.tense = true
       this.audio.play(meta.lie ? 'lie' : 'confront')

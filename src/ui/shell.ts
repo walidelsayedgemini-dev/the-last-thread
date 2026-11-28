@@ -391,6 +391,11 @@ export class Shell {
       h('div', { class: 'size-options' }, sizes.map(([id, label]) =>
         h('button', { class: `size-opt${d.textSize === id ? ' on' : ''}`, role: 'radio', 'aria-checked': String(d.textSize === id), 'data-size': id,
           onclick: () => { this.act.settings({ textSize: id }); this.go('settings', this.back) } }, h('b', null, 'أ'), label))))
+    const dialogueSpeeds: [Settings['dialogueSpeed'], string][] = [['slow', 'هادية'], ['normal', 'عادية'], ['fast', 'سريعة'], ['instant', 'فورية']]
+    const speedSelect = h('select', { 'aria-label': 'سرعة ظهور الحوار', onchange: (e: Event) => this.act.settings({ dialogueSpeed: (e.target as HTMLSelectElement).value as Settings['dialogueSpeed'] }) },
+      dialogueSpeeds.map(([id, label]) => h('option', { value: id }, label)))
+    speedSelect.value = d.dialogueSpeed
+    const dialogueSpeed = h('label', { class: 'set dialogue-speed-set' }, 'سرعة ظهور النص', speedSelect, h('small', null, 'مستقلة عن خيار تقليل الحركة.'))
     const check = (label: string, key: 'muted' | 'voiceEnabled' | 'reducedMotion' | 'clearFont' | 'simpleMode' | 'highContrast' | 'crashReportsEnabled') =>
       h('label', { class: 'set row' }, h('input', { type: 'checkbox', checked: d[key], onchange: (e: Event) => this.act.settings({ [key]: (e.target as HTMLInputElement).checked }) }), label)
     const url = (label: string, key: 'hintEndpoint' | 'eventsUrl', ph: string) =>
@@ -403,7 +408,7 @@ export class Shell {
         check('الصوت المنطوق', 'voiceEnabled'), check('كتم الصوت', 'muted'), check('تقليل الحركة', 'reducedMotion'),
         check('خط واضح للعناوين (أسهل في القراءة)', 'clearFont'), check('وضع مبسّط لكل الأعمار (تبويبات أقل وأزرار أكبر)', 'simpleMode'),
         check('تباين عالي (أوضح في الشمس)', 'highContrast'), check('مشاركة تقارير الأعطال (اختياري)', 'crashReportsEnabled'),
-        textSize),
+        textSize, dialogueSpeed),
       h('div', { class: 'settings-tutorial' },
         h('b', null, 'شرح البداية'), h('p', { class: 'note' }, 'عايز تفتكر خطوات التحقيق؟ شغّل العلامات الإرشادية تاني.'),
         h('button', { class: 'btn ghost', onclick: this.act.replayTutorial }, 'اعرض الشرح تاني')),

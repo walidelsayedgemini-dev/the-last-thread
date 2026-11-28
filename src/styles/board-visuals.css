@@ -11,6 +11,7 @@
 #ui > .casefile .board-wrap { grid-area: wall; }
 #ui > .casefile .board-side { grid-area: side; }
 #ui > .casefile .pin-card-summary { display: none; }
+#ui > .casefile .pin-card-links { display: none; }
 #ui > .casefile .board-link-result {
   display: grid; grid-area: result; gap: 3px; padding: 9px 12px;
   border-inline-start: 3px solid #e67781; background: #20151b; color: #f7edef;
@@ -300,9 +301,13 @@
   }
   #ui > .casefile .pin-card .pin { display: none; }
   #ui > .casefile .pin-card-art { grid-row: 1 / span 3; width: 64px; height: 54px; align-self: center; border-width: 3px; }
-  #ui > .casefile .pin-card > small, #ui > .casefile .pin-card > b, #ui > .casefile .pin-card-summary { grid-column: 2; }
+  #ui > .casefile .pin-card > small, #ui > .casefile .pin-card > b, #ui > .casefile .pin-card-summary, #ui > .casefile .pin-card-links { grid-column: 2; }
   #ui > .casefile .pin-card-summary {
-    display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .79rem; color: #392c24;
+    display: none;
+  }
+  #ui > .casefile .pin-card-links {
+    display: -webkit-box; overflow: hidden; color: #73511c; font-size: .68rem; line-height: 1.35;
+    -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -6,6 +6,10 @@ import type { StorageAdapter } from '../services/storage'
 
 
 export type TextSize = 'normal' | 'large' | 'xlarge'
+export type DialogueSpeed = 'slow' | 'normal' | 'fast' | 'instant'
+export function dialogueSpeedRate(speed: DialogueSpeed): number | 'instant' {
+  return speed === 'slow' ? 24 : speed === 'fast' ? 96 : speed === 'instant' ? 'instant' : 48
+}
 export type Settings = {
   version: 1
   musicVolume: number
@@ -22,6 +26,8 @@ export type Settings = {
   simpleMode: boolean
   /** Reading size multiplier for dialogue, narration and hints (accessibility). */
   textScale: number
+  /** Typewriter rate is configurable independently from motion-reduction preferences. */
+  dialogueSpeed: DialogueSpeed
   /** Stronger borders/brighter text for low-vision players and bright sunlight. */
   highContrast: boolean
   /** Opt-in local crash capture and transmission when a build endpoint is configured. */
@@ -56,6 +62,7 @@ function defaultSettings(): Settings {
     hintEndpoint: '',
     eventsUrl: '',
     textScale: 1,
+    dialogueSpeed: 'normal',
     crashReportsEnabled: false,
   }
 }
@@ -93,6 +100,7 @@ export function parseSettings(raw: string | null): Settings {
     hintEndpoint: url(d.hintEndpoint),
     eventsUrl: url(d.eventsUrl),
     textScale: num(d.textScale, base.textScale, 0.85, 1.4),
+    dialogueSpeed: d.dialogueSpeed === 'slow' || d.dialogueSpeed === 'fast' || d.dialogueSpeed === 'instant' ? d.dialogueSpeed : 'normal',
     crashReportsEnabled: d.crashReportsEnabled === true,
   }
 }

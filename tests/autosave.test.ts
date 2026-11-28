@@ -25,6 +25,63 @@ function setup(mode: 'story' | 'realistic') {
 }
 
 describe('autosave and restore', () => {
+  it('persists the exact evidence pairs linked under an existing deduction', () => {
+    const { open } = setup('story')
+    const session = open()
+    for (const id of ['e_library_envelope', 'e_survey_book', 'e_forged_contract'] as const) session.state.evidence.set(id, 0)
+    session.save()
+
+    expect(session.tie('e_library_envelope', 'e_forged_contract')).toMatchObject({ ok: true, fresh: true, pairFresh: true })
+    expect(session.tie('e_survey_book', 'e_forged_contract')).toMatchObject({ ok: true, fresh: false, pairFresh: true })
+
+    const reopened = open()
+    expect(reopened.state.threads.get('d_forgery')).toEqual([
+      ['e_library_envelope', 'e_forged_contract'], ['e_survey_book', 'e_forged_contract'],
+    ])
+  })
+
+  it('loads legacy deductions without inventing ambiguous evidence links', () => {
+    const { profiles, open } = setup('story')
+    const id = profiles.list()[0].id
+    const legacy = profiles.get(id)!
+    legacy.progress.case = {
+      flags: [],
+      evidence: [
+        { id: 'e_boundary_stone', at: 0 }, { id: 'e_survey_book', at: 0 },
+        { id: 'e_library_envelope', at: 0 }, { id: 'e_forged_contract', at: 0 },
+      ],
+      deductions: ['d_markers', 'd_forgery'], hotspots: [], seenChoices: [],
+    }
+    legacy.progress.cases = { case01: legacy.progress.case }
+    legacy.progress.caseId = 'case01'
+    profiles.save(legacy.progress)
+
+    const restored = open()
+    expect(restored.state.threads.get('d_markers')).toEqual([['e_boundary_stone', 'e_survey_book']])
+    expect(restored.state.threads.has('d_forgery')).toBe(false)
+  })
+
+  it('persists reviewed evidence per case and restores it after reload', () => {
+    const { open } = setup('story')
+    const session = open()
+    session.state.reviewedEvidence.add('e_thread_door')
+    session.save()
+
+    const reopened = open()
+    expect(reopened.state.reviewedEvidence.has('e_thread_door')).toBe(true)
+    expect(reopened.startCase('case02')).toBe(true)
+    expect(reopened.state.reviewedEvidence.size).toBe(0)
+    reopened.state.reviewedEvidence.add('e02_black_envelope')
+    reopened.save()
+
+    expect(reopened.startCase('case01')).toBe(true)
+    expect(reopened.state.reviewedEvidence.has('e_thread_door')).toBe(true)
+    expect(reopened.startCase('case02')).toBe(true)
+    expect(reopened.state.reviewedEvidence.has('e02_black_envelope')).toBe(true)
+    const restored = open()
+    expect(restored.state.reviewedEvidence.has('e02_black_envelope')).toBe(true)
+  })
+
   it('keeps the hour lost to a wrong accusation after reopening', () => {
     const { open } = setup('realistic')
     const session = open()

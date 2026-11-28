@@ -44,6 +44,13 @@ function sessionFor(file: CaseFile): Session {
   return session
 }
 
+function sessionAt(mode: 'story' | 'realistic', time: string): Session {
+  const storage = new MemoryStorage()
+  const profiles = new ProfileService(storage, () => 1000)
+  const profile = profiles.create({ name: 'ياسين' }, mode)
+  return new Session(profile, { events: new EventsDb(storage), profiles, hints: new HintService(undefined, undefined, 0, () => 0), now: () => parseCairoLocal(time) })
+}
+
 function walk(file: CaseFile): { state: CaseState } {
   const state = new CaseState()
   const engine = new CaseEngine(file, state, () => ctx)
@@ -128,6 +135,20 @@ describe('case-scoped report statistics', () => {
     expect(session.progress.stats).toMatchObject({ photos: 3, hints: 2, wrongAccusations: 1, hintTiers: { 1: 1, 2: 1 } })
     expect(session.gradeReport().breakdown).toContainEqual({ label: 'الصور', delta: 6 })
     expect(session.gradeReport().breakdown).toContainEqual({ label: 'خصم الاتهامات الغلط', delta: -8 })
+  })
+})
+
+describe('schedule-aware scene cast', () => {
+  it('moves a scheduled witness between places in realistic mode but keeps story-mode placement', () => {
+    const realistic = sessionAt('realistic', '2026-11-25T15:00')
+    expect(realistic.startCase('case02')).toBe(true)
+    expect(realistic.charactersAt('abis_market').some(c => c.id === 'umm_saeed')).toBe(true)
+    expect(realistic.charactersAt('bakery').some(c => c.id === 'umm_saeed')).toBe(false)
+
+    const story = sessionAt('story', '2026-11-25T15:00')
+    expect(story.startCase('case02')).toBe(true)
+    expect(story.charactersAt('bakery').some(c => c.id === 'umm_saeed')).toBe(true)
+    expect(story.charactersAt('abis_market').some(c => c.id === 'umm_saeed')).toBe(false)
   })
 })
 

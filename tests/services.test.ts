@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { HintService, type HintProvider } from '../src/services/hints'
 import { MAX_PROFILES, PROGRESS_VERSION, ProfileService, migrate, newProgress } from '../src/services/profiles'
 import { MemoryStorage } from '../src/services/storage'
-import { parseSettings, rootFontSize, SettingsStore } from '../src/engine/save'
+import { dialogueSpeedRate, parseSettings, rootFontSize, SettingsStore } from '../src/engine/save'
 import { CrashReporter } from '../src/services/crash'
 
 describe('ProfileService', () => {
@@ -32,9 +32,32 @@ describe('ProfileService', () => {
     const m = migrate(v1)
     expect(m.v).toBe(PROGRESS_VERSION)
     expect(m.case.evidence).toEqual([{ id: 'e_thread_door', at: 0 }])
+    expect(m.case.reviewedEvidence).toEqual([])
+    expect(m.case.threads).toBeUndefined()
     expect(m.stats.photos).toBe(0)
     expect(migrate('nonsense').v).toBe(PROGRESS_VERSION)
     expect(migrate({ case: { flags: [1, 'x'] } }).case.flags).toEqual(['x'])
+  })
+  it('migrates reviewed-evidence markers independently for every case', () => {
+    const migrated = migrate({
+      v: 5, caseId: 'case01', mode: 'story',
+      case: { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [], reviewedEvidence: ['e_thread_door'] },
+      cases: { case02: { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [], reviewedEvidence: ['e02_black_envelope'] } },
+    })
+    expect(migrated.case.reviewedEvidence).toEqual(['e_thread_door'])
+    expect(migrated.cases?.case02.reviewedEvidence).toEqual(['e02_black_envelope'])
+  })
+  it('migrates exact thread pairs while leaving legacy pair data absent for safe reconstruction', () => {
+    const legacy = migrate({ v: 6, case: { flags: [], deductions: ['d_trail'], evidence: [], hotspots: [], seenChoices: [] } })
+    expect(legacy.case.threads).toBeUndefined()
+    const migrated = migrate({
+      v: 6,
+      case: {
+        flags: [], deductions: ['d_trail'], evidence: [], hotspots: [], seenChoices: [],
+        threads: [{ deduction: 'd_trail', pair: ['e_thread_door', 'e_qaitbay_photo'] }],
+      },
+    })
+    expect(migrated.case.threads).toEqual([{ deduction: 'd_trail', pair: ['e_thread_door', 'e_qaitbay_photo'] }])
   })
   it('exports and imports a profile, rejecting foreign files', () => {
     const a = new ProfileService(new MemoryStorage())
@@ -74,6 +97,13 @@ describe('HintService', () => {
 })
 
 describe('settings', () => {
+  it('maps each dialogue-speed setting to a distinct readable pacing value', () => {
+    expect(dialogueSpeedRate('slow')).toBe(24)
+    expect(dialogueSpeedRate('normal')).toBe(48)
+    expect(dialogueSpeedRate('fast')).toBe(96)
+    expect(dialogueSpeedRate('instant')).toBe('instant')
+  })
+
   it('maps the selected text size to a larger rendered root font size', () => {
     expect(rootFontSize({ textSize: 'normal', textScale: 1 })).toBe(16)
     expect(rootFontSize({ textSize: 'large', textScale: 1 })).toBe(20)
@@ -87,13 +117,17 @@ describe('settings', () => {
     expect(s.hintEndpoint).toBe('')
     expect(s.eventsUrl).toBe('https://x.test/e')
     expect(s.textScale).toBe(1.4)
+    expect(s.dialogueSpeed).toBe('normal')
+    expect(parseSettings(JSON.stringify({ dialogueSpeed: 'fast' })).dialogueSpeed).toBe('fast')
+    expect(parseSettings(JSON.stringify({ dialogueSpeed: 'warp' })).dialogueSpeed).toBe('normal')
     expect(parseSettings('{{')).toEqual(parseSettings(null))
   })
   it('stores updates', () => {
     const st = new MemoryStorage()
     const store = new SettingsStore(st)
-    store.update({ muted: true })
+    store.update({ muted: true, dialogueSpeed: 'slow' })
     expect(new SettingsStore(st).data.muted).toBe(true)
+    expect(new SettingsStore(st).data.dialogueSpeed).toBe('slow')
   })
 })
 

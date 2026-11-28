@@ -1,5 +1,4 @@
 import { arabicDigits, formatClock, partsOf } from '../core/clock'
-import { CHARACTER_LIST } from '../data/characters'
 import { PLACES, PLACE_LIST } from '../data/places'
 import type { CharacterId, CharacterProfile, Hotspot, Place, PlaceId } from '../data/types'
 import type { Audio } from '../engine/audio'
@@ -53,6 +52,7 @@ export class InvestigationView {
   private readonly clockEl = h('span', { class: 'inv-clock', 'aria-label': 'الساعة' })
   private lastClock = ''
   private lastDay: boolean | undefined
+  private lastScheduleHour: number | undefined
   private mapKind: 'real' | 'drawn' = 'real'
   private destination?: HTMLDialogElement
   private readonly realMap = new RealMap({
@@ -90,11 +90,15 @@ export class InvestigationView {
       this.clockEl.textContent = `◷ ${text}`
     }
     const day = isDaytime(hour)
-    if (this.lastDay !== undefined && day !== this.lastDay) {
+    const scheduleHour = Math.floor(hour)
+    const scheduleHourChanged = this.lastScheduleHour !== undefined && scheduleHour !== this.lastScheduleHour
+    if ((this.lastDay !== undefined && day !== this.lastDay) || scheduleHourChanged) {
       this.lastDay = day
+      this.lastScheduleHour = scheduleHour
       this.render()
     }
     this.lastDay = day
+    this.lastScheduleHour = scheduleHour
   }
 
   show(session: Session, placeId: PlaceId): void {
@@ -102,6 +106,7 @@ export class InvestigationView {
     this.placeId = placeId
     this.visit++
     this.tab = 'scene'
+    this.lastScheduleHour = Math.floor(session.clock.hour)
     document.body.classList.add('investigation-active')
     this.el.hidden = false
     this.d.audio.setClock(session.clock.hour)
@@ -301,7 +306,7 @@ export class InvestigationView {
   // ---- Scene -----------------------------------------------------------------------------------------------------
   private scene(s: Session, place: Place): (HTMLElement | false)[] {
     const active = s.engine.activeHotspots().filter(hotspot => hotspot.place === place.id)
-    const people = CHARACTER_LIST.filter(c => c.id !== 'yassin' && c.place === place.id && s.present(c))
+    const people = s.charactersAt(place.id)
     const hour = s.clock.hour
     const opening = s.caseId === 'case01' && place.id === 'mahmoud_house' && !s.state.flags.has('zeinab_talked')
     const voicemail = opening ? active.find(hotspot => hotspot.id === 'hs_mahmoud_voicemail') : undefined
@@ -583,9 +588,9 @@ export class InvestigationView {
   private mobileNav(s: Session): HTMLElement {
     const found = s.state.evidence.size
     const mail = this.d.mailCount ? this.d.mailCount() : 0
-    return h('nav', { class: 'inv-mobile-nav', 'aria-label': 'اختصارات التحقيق' },
-      h('button', { class: this.tab === 'scene' ? 'on' : '', onclick: () => this.setTab('scene') }, h('span', { class: 'ico', 'aria-hidden': true }, '◉'), h('span', null, 'المشهد')),
-      h('button', { class: this.tab === 'map' ? 'on' : '', onclick: () => this.setTab('map') }, h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة')),
+    return h('nav', { class: `inv-mobile-nav${mail > 0 ? ' has-mail' : ''}`, 'aria-label': 'اختصارات التحقيق' },
+      h('button', { class: this.tab === 'scene' ? 'on' : '', 'aria-pressed': String(this.tab === 'scene'), onclick: () => this.setTab('scene') }, h('span', { class: 'ico', 'aria-hidden': true }, '◉'), h('span', null, 'المشهد')),
+      h('button', { class: this.tab === 'map' ? 'on' : '', 'aria-pressed': String(this.tab === 'map'), onclick: () => this.setTab('map') }, h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة')),
       h('button', { class: 'inv-file-btn', 'data-case-file': '', onclick: this.d.onCaseFile }, h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'الملف'), found > 0 && h('em', { class: 'inv-badge' }, arabicDigits(found))),
       mail > 0 && h('button', { class: 'inv-file-btn', onclick: this.d.onMail }, h('span', { class: 'ico', 'aria-hidden': true }, '✉'), h('span', null, 'الجوابات'), h('em', { class: 'inv-badge' }, arabicDigits(mail))),
       h('button', { 'data-action': 'hint', onclick: this.d.onHint }, h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح')),

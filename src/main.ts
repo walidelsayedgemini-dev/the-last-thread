@@ -548,6 +548,7 @@ async function boot(): Promise<void> {
         caseId: s.caseId,
         backdrop: investigation.sceneImage,
         avatar: s.profile.avatar,
+        dialogueSpeed: () => settings.data.dialogueSpeed,
         evidence: eid => { const e = s.caseFile.evidence.find(x => x.id === eid); return e && { title: e.title, kind: e.kind } },
         onConfront: lie => haptic(lie ? 'warning' : 'medium'),
       },

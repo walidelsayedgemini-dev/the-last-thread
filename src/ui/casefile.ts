@@ -52,6 +52,8 @@ export class CaseFileView {
   readonly el: HTMLElement
   private readonly pageEl: HTMLElement
   private readonly tabsEl: HTMLElement
+  private readonly tabsWrap: HTMLElement
+  private readonly tabsHint: HTMLElement
   private session?: Session
   private shownCase?: string
   private tab: Tab = 'board'
@@ -75,10 +77,11 @@ export class CaseFileView {
   private evidenceFilter: EvidenceFilter = 'all'
   private evidenceLayout: 'list' | 'gallery' = 'list'
   private expandedEvidence?: EvidenceId
-  private readonly reviewedEvidence = new Set<EvidenceId>()
 
   constructor(private readonly d: CaseFileDeps) {
     this.tabsEl = h('nav', { class: 'cf-tabs', role: 'tablist' })
+    this.tabsHint = h('small', { class: 'cf-tab-scroll-hint', 'aria-hidden': true })
+    this.tabsWrap = h('div', { class: 'cf-tabs-wrap' }, this.tabsEl, this.tabsHint)
     this.pageEl = h('div', { class: 'cf-page' })
     this.el = h('section', { class: 'casefile', hidden: true, role: 'dialog', 'aria-label': 'ملف القضية' },
       h('div', { class: 'cf-folder' },
@@ -86,8 +89,10 @@ export class CaseFileView {
           h('div', { class: 'cf-stamp' }, 'سرّي'),
           h('div', { class: 'cf-title' }, h('small', { id: 'cf-chapter' }, 'ملف القضية'), h('b', { id: 'cf-case-title' }, '')),
           h('button', { class: 'cf-close', 'aria-label': 'إغلاق', onclick: () => this.close() }, '✕')),
-        this.tabsEl, this.pageEl),
+        this.tabsWrap, this.pageEl),
     )
+    window.addEventListener('resize', () => this.updateTabsOverflow(), { passive: true })
+    this.tabsEl.addEventListener('scroll', () => this.updateTabsOverflow(), { passive: true })
     onSwipe(this.pageEl, { left: () => this.swipeTab(1), right: () => this.swipeTab(-1), ignore: t => t instanceof Element && !!t.closest('.board, .board-wall, input, textarea, select') })
   }
 
@@ -95,9 +100,31 @@ export class CaseFileView {
     return !this.el.hidden
   }
 
+  private updateTabsOverflow(): void {
+    const overflow = this.tabsEl.scrollWidth > this.tabsEl.clientWidth + 2
+    this.tabsWrap.classList.toggle('has-overflow', overflow)
+    if (!overflow) { this.tabsHint.textContent = ''; return }
+    const rect = this.tabsEl.getBoundingClientRect()
+    const children = [...this.tabsEl.children] as HTMLElement[]
+    const visible = (item?: HTMLElement) => {
+      if (!item) return false
+      const itemRect = item.getBoundingClientRect()
+      return itemRect.right > rect.left + 1 && itemRect.left < rect.right - 1
+    }
+    const startHidden = !visible(children[0])
+    const endHidden = !visible(children.at(-1))
+    const rtl = getComputedStyle(this.tabsEl).direction === 'rtl'
+    const towardEnd = rtl ? 'لليسار' : 'لليمين'
+    const towardStart = rtl ? 'لليمين' : 'لليسار'
+    this.tabsHint.textContent = startHidden && endHidden
+      ? `اسحب يمينًا ويسارًا لعرض باقي الأقسام ↔`
+      : startHidden ? `اسحب ${towardStart} للعودة للأقسام الأولى →`
+        : endHidden ? `اسحب ${towardEnd} لعرض باقي الأقسام ←`
+          : 'اسحب لعرض باقي الأقسام ↔'
+  }
+
   show(session: Session, tab: Tab = this.tab): void {
     if (this.session !== session || this.shownCase !== session.caseId) {
-      this.reviewedEvidence.clear()
       this.evidenceFilter = 'all'
       this.expandedEvidence = undefined
       this.tried.clear()
@@ -177,6 +204,7 @@ export class CaseFileView {
         label, id === 'journal' && unread > 0 && h('span', { class: 'cf-tab-badge', 'aria-label': `${arabicDigits(unread)} صفحة جديدة` }, arabicDigits(unread)),
         id === 'letters' && mail > 0 && h('span', { class: 'cf-tab-badge mail', 'aria-label': `${arabicDigits(mail)} جواب جديد` }, arabicDigits(mail)))))
     this.tabsEl.querySelector<HTMLElement>('.cf-tab.on')?.scrollIntoView?.({ inline: 'center', block: 'nearest' })
+    this.updateTabsOverflow()
     const page = { letters: () => this.d.letters.list(s), evidence: () => this.evidence(s), people: () => this.people(s), objectives: () => this.objectives(s), board: () => this.board(s), journal: () => this.journal(s), organizer: () => this.organizer(s), life: () => this.life(s), map: () => this.map(s), calendar: () => this.calendar(s) }[this.tab]()
     this.pageEl.classList.remove('entering')
     void this.pageEl.offsetWidth
@@ -189,7 +217,8 @@ export class CaseFileView {
   private evidence(s: Session): HTMLElement {
     const all = s.engine.file.evidence
     const found = Array.from(s.state.evidence.keys()).reverse().map(id => s.engine.evidenceInfo(id))
-    const fresh = found.filter(e => !this.reviewedEvidence.has(e.id))
+    const reviewed = found.filter(e => s.state.reviewedEvidence.has(e.id)).length
+    const fresh = found.filter(e => !s.state.reviewedEvidence.has(e.id))
     const categories: Evidence['kind'][] = ['object', 'testimony', 'document', 'photo', 'trace']
     const filters: { id: EvidenceFilter; label: string; count: number }[] = [
       { id: 'all', label: 'الكل', count: found.length },
@@ -197,12 +226,12 @@ export class CaseFileView {
       ...categories.map(kind => ({ id: kind, label: KIND_LABEL[kind], count: found.filter(e => e.kind === kind).length })),
     ]
     const visible = found.filter(e => this.evidenceFilter === 'all'
-      || (this.evidenceFilter === 'new' ? !this.reviewedEvidence.has(e.id) || this.expandedEvidence === e.id : e.kind === this.evidenceFilter))
+      || (this.evidenceFilter === 'new' ? !s.state.reviewedEvidence.has(e.id) || this.expandedEvidence === e.id : e.kind === this.evidenceFilter))
     return h('div', { class: 'cf-evidence-page' },
       h('div', { class: 'cf-evidence-toolbar' },
         h('div', { class: 'cf-evidence-summary' },
           h('b', null, `${arabicDigits(found.length)} من ${arabicDigits(all.length)} دليل`),
-          h('small', null, `${arabicDigits(this.reviewedEvidence.size)} تمت مراجعته`)),
+          h('small', null, `${arabicDigits(reviewed)} تمت مراجعته`)),
         found.length > 0 && h('div', { class: 'cf-evidence-layout', role: 'group', 'aria-label': 'طريقة عرض الأدلة' },
           (['list', 'gallery'] as const).map(layout => h('button', {
             type: 'button', 'aria-pressed': String(this.evidenceLayout === layout),
@@ -237,7 +266,7 @@ export class CaseFileView {
 
   private evidenceCard(s: Session, e: Evidence): HTMLElement {
     const at = s.state.evidence.get(e.id)
-    const reviewed = this.reviewedEvidence.has(e.id)
+    const reviewed = s.state.reviewedEvidence.has(e.id)
     const expanded = this.expandedEvidence === e.id
     const artSrc = EVIDENCE_ART[e.id]?.src ?? evidenceUrl(e.id)
     const artAlt = EVIDENCE_ART[e.id]?.alt ?? e.title
@@ -248,7 +277,8 @@ export class CaseFileView {
         'aria-expanded': String(expanded),
         'aria-controls': `ev-record-${e.id}`,
         onclick: () => {
-          this.reviewedEvidence.add(e.id)
+          s.state.reviewedEvidence.add(e.id)
+          s.save()
           this.expandedEvidence = expanded ? undefined : e.id
           this.d.audio.play('ui')
             this.render()
@@ -342,7 +372,7 @@ export class CaseFileView {
 
   /** Evidence ids the player has actually found that take part in a tied deduction. */
   private threadsOf(s: Session, dd: Deduction): [EvidenceId, EvidenceId][] {
-    return dd.pairs.filter(([a, b]) => s.engine.has(a) && s.engine.has(b))
+    return s.state.threads.get(dd.id) ?? []
   }
 
   private board(s: Session): HTMLElement {
@@ -361,6 +391,15 @@ export class CaseFileView {
     const focusIds = new Set<EvidenceId>(focus ? this.threadsOf(s, focus).flat() : [])
     const threadCount = new Map<EvidenceId, number>()
     for (const dd of tied) for (const id of new Set(this.threadsOf(s, dd).flat())) threadCount.set(id, (threadCount.get(id) ?? 0) + 1)
+    const linkedEvidence = new Map<EvidenceId, Set<EvidenceId>>()
+    for (const dd of tied) for (const [a, b] of this.threadsOf(s, dd)) {
+      const aLinks = linkedEvidence.get(a) ?? new Set<EvidenceId>()
+      const bLinks = linkedEvidence.get(b) ?? new Set<EvidenceId>()
+      aLinks.add(b)
+      bLinks.add(a)
+      linkedEvidence.set(a, aLinks)
+      linkedEvidence.set(b, bLinks)
+    }
 
     const lines = svg('svg', { class: 'board-lines', width: W, height: H, viewBox: `0 0 ${W} ${H}` })
     const labelLayer = svg('svg', { class: 'board-lines board-labels', width: W, height: H, viewBox: `0 0 ${W} ${H}` })
@@ -406,15 +445,17 @@ export class CaseFileView {
       const p = this.pos.get(e.id)!
       const art = EVIDENCE_ART[e.id]?.src ?? evidenceUrl(e.id)
       const count = threadCount.get(e.id) ?? 0
+      const relatedTitles = [...(linkedEvidence.get(e.id) ?? [])].map(id => s.engine.evidenceInfo(id).title)
       const freshPulse = this.fresh && (this.fresh.a === e.id || this.fresh.b === e.id)
       const state = `${this.selected === e.id ? ' selected' : ''}${focus ? (focusIds.has(e.id) ? ' in-focus' : ' dim') : ''}${freshPulse ? ' linked-pulse' : ''}`
-      const card = h('div', { class: `pin-card kind-${e.kind}${state}`, style: { left: `${p.x}px`, top: `${p.y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }, tabindex: 0, role: 'button', 'aria-pressed': String(this.selected === e.id), 'aria-label': `${e.title}${count ? `، مربوط بـ ${arabicDigits(count)} خيط` : ''}` },
+      const card = h('div', { class: `pin-card kind-${e.kind}${state}`, style: { left: `${p.x}px`, top: `${p.y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }, tabindex: 0, role: 'button', 'aria-pressed': String(this.selected === e.id), 'aria-label': `${e.title}${relatedTitles.length ? `، مرتبط بـ ${relatedTitles.join('، ')}` : count ? `، مربوط بـ ${arabicDigits(count)} خيط` : ''}` },
         h('i', { class: `pin kind-${e.kind}` }),
         count > 0 && h('span', { class: 'pin-count', 'aria-hidden': true, title: 'خيوط مربوطة' }, arabicDigits(count)),
         art ? h('img', { class: 'pin-card-art', src: art, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' })
           : h('span', { class: 'pin-card-art pin-card-placeholder', 'aria-hidden': true }, '▣'),
         h('small', null, KIND_LABEL[e.kind]), h('b', null, e.title),
-        h('span', { class: 'pin-card-summary' }, e.summary))
+        h('span', { class: 'pin-card-summary' }, e.summary),
+        relatedTitles.length > 0 && h('span', { class: 'pin-card-links' }, `مرتبط بـ ${relatedTitles.join('، ')}`))
       this.dragCard(card, e.id, lines, W, H)
       return card
     })
@@ -612,13 +653,14 @@ export class CaseFileView {
     if (r.ok) {
       const dd = s.engine.file.deductions.find(x => x.id === r.deduction)!
       pair.deduction = dd
-      if (r.fresh) {
+      if (r.pairFresh) {
         this.d.audio.play('thread')
         this.fresh = { a, b: id, id: dd.id }
-        this.focusDeduction = undefined
+        if (r.fresh) this.focusDeduction = undefined
         window.clearTimeout(this.freshTimer)
         this.freshTimer = window.setTimeout(() => { this.fresh = undefined; this.refresh() }, 2200)
-      } else this.setNote('الخيط ده مربوط قبل كده.', 'info')
+        if (!r.fresh) this.setNote('اتسجل ربط إضافي للاستنتاج ده.', 'success')
+      } else this.setNote('الدليلان دول مربوطين قبل كده.', 'info')
     } else {
       this.flash = { a, b: id }
       this.d.audio.play('error')

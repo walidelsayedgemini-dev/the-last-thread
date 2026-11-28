@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CaseEngine, CaseState } from '../src/core/caseState'
+import { CaseEngine, CaseState, restoreLegacyThreads, type CaseSnapshot } from '../src/core/caseState'
 import { DialogueSession, fillText } from '../src/core/dialogue'
 import { parseCairoLocal } from '../src/core/clock'
 import type { GateContext } from '../src/core/gates'
@@ -20,6 +20,34 @@ function make(env: Partial<Env> = {}) {
   const engine = new CaseEngine(CASE_01, state, (): GateContext => ({ mode: e.mode, stamp: parseCairoLocal(e.when), eventNear: () => e.near }))
   return { e, state, engine }
 }
+
+describe('recorded evidence threads', () => {
+  it('stores only the exact evidence pair selected by the player', () => {
+    const { state, engine } = make()
+    for (const id of ['e_thread_door', 'e_qaitbay_photo', 'e_bahr_testimony'] as const) engine.apply([{ type: 'evidence', id }])
+    expect(engine.tie('e_thread_door', 'e_qaitbay_photo').result).toMatchObject({ ok: true, deduction: 'd_trail', fresh: true, pairFresh: true })
+    expect(state.threads.get('d_trail')).toEqual([['e_thread_door', 'e_qaitbay_photo']])
+    expect(engine.tie('e_thread_door', 'e_bahr_testimony').result).toMatchObject({ ok: true, deduction: 'd_trail', fresh: false, pairFresh: true })
+    expect(CaseState.from(state.snapshot()).threads.get('d_trail')).toEqual([
+      ['e_thread_door', 'e_qaitbay_photo'], ['e_thread_door', 'e_bahr_testimony'],
+    ])
+  })
+
+  it('restores only unambiguous thread pairs from legacy saves', () => {
+    const legacy: CaseSnapshot = {
+      flags: [],
+      evidence: [
+        { id: 'e_boundary_stone', at: 0 }, { id: 'e_survey_book', at: 0 },
+        { id: 'e_library_envelope', at: 0 }, { id: 'e_forged_contract', at: 0 },
+      ],
+      deductions: ['d_markers', 'd_forgery'],
+      hotspots: [], seenChoices: [],
+    }
+    restoreLegacyThreads(legacy, CASE_01)
+    expect(legacy.threads).toEqual([{ deduction: 'd_markers', pair: ['e_boundary_stone', 'e_survey_book'] }])
+  })
+})
+
 const talk = (engine: CaseEngine, who: keyof typeof DIALOGUES) => {
   const s = new DialogueSession(DIALOGUES[who]!, engine)
   expect(s.start()).toBe(true)
@@ -148,9 +176,9 @@ describe('case engine', () => {
     const { engine } = make()
     engine.apply([{ type: 'evidence', id: 'e_boundary_stone' }, { type: 'evidence', id: 'e_survey_book' }])
     const r1 = engine.tie('e_survey_book', 'e_boundary_stone')
-    expect(r1.result).toEqual({ ok: true, deduction: 'd_markers', fresh: true })
+    expect(r1.result).toEqual({ ok: true, deduction: 'd_markers', fresh: true, pairFresh: true })
     expect(engine.state.flags.has('markers_tied')).toBe(true)
-    expect(engine.tie('e_boundary_stone', 'e_survey_book').result).toMatchObject({ ok: true, fresh: false })
+    expect(engine.tie('e_boundary_stone', 'e_survey_book').result).toMatchObject({ ok: true, fresh: false, pairFresh: false })
     expect(engine.tie('e_boundary_stone', 'e_boundary_stone').result).toEqual({ ok: false, reason: 'same' })
     expect(engine.tie('e_boundary_stone', 'e_old_photo').result).toEqual({ ok: false, reason: 'missing' })
   })

@@ -9,11 +9,12 @@
  * the schema keeps evolving with continuous updates without invalidating players' saves.
  */
 import type { GameMode } from '../data/types'
+import type { DeductionId, EvidenceId } from '../data/types'
 import type { CaseSnapshot } from '../core/caseState'
 import type { StorageAdapter } from './storage'
 
 export const MAX_PROFILES = 3
-export const PROGRESS_VERSION = 5
+export const PROGRESS_VERSION = 7
 const INDEX_KEY = 'ltt.profiles.index'
 const profileKey = (id: string) => `ltt.profile.${id}`
 
@@ -83,7 +84,7 @@ export type ProfileSummary = {
 export const HOMES = ['عزبة ١٥ – أبيس', 'العجمي', 'المنتزه', 'سيدي بشر', 'محرم بك'] as const
 
 export function newProgress(mode: GameMode, caseId = 'case01'): Progress {
-  const initial: CaseSnapshot = { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [] }
+  const initial: CaseSnapshot = { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [], reviewedEvidence: [], threads: [] }
   const stats = newProgressStats()
   return {
     v: PROGRESS_VERSION, caseId, mode,
@@ -118,7 +119,8 @@ export function migrate(raw: unknown, mode: GameMode = 'story'): Progress {
   const c = (out.case ?? {}) as Partial<CaseSnapshot>
   const migratedCase = {
     flags: strings(c.flags), deductions: strings(c.deductions) as CaseSnapshot['deductions'],
-    hotspots: strings(c.hotspots), seenChoices: strings(c.seenChoices),
+    hotspots: strings(c.hotspots), seenChoices: strings(c.seenChoices), reviewedEvidence: strings(c.reviewedEvidence) as NonNullable<CaseSnapshot['reviewedEvidence']>,
+    ...(Array.isArray(c.threads) ? { threads: cleanThreads(c.threads) } : {}),
     evidence: Array.isArray(c.evidence) ? c.evidence.filter(e => e && typeof e.id === 'string').map(e => ({ id: e.id, at: Number(e.at) || 0 })) : [],
     offended: Array.isArray(c.offended) ? c.offended.filter(x => x && typeof x.character === 'string').map(x => ({ character: x.character as never, untilEvidence: Number(x.untilEvidence) || 0, untilMinute: Number(x.untilMinute) || 0 })) : [],
   } satisfies CaseSnapshot
@@ -128,7 +130,8 @@ export function migrate(raw: unknown, mode: GameMode = 'story'): Progress {
     if (id === caseId || !value || typeof value !== 'object') continue
     const x = value as Partial<CaseSnapshot>
     cases[id] = {
-      flags: strings(x.flags), deductions: strings(x.deductions) as CaseSnapshot['deductions'], hotspots: strings(x.hotspots), seenChoices: strings(x.seenChoices),
+      flags: strings(x.flags), deductions: strings(x.deductions) as CaseSnapshot['deductions'], hotspots: strings(x.hotspots), seenChoices: strings(x.seenChoices), reviewedEvidence: strings(x.reviewedEvidence) as NonNullable<CaseSnapshot['reviewedEvidence']>,
+      ...(Array.isArray(x.threads) ? { threads: cleanThreads(x.threads) } : {}),
       evidence: Array.isArray(x.evidence) ? x.evidence.filter(e => e && typeof e.id === 'string').map(e => ({ id: e.id, at: Number(e.at) || 0 })) : [], offended: [],
     }
   }
@@ -152,6 +155,16 @@ export function migrate(raw: unknown, mode: GameMode = 'story'): Progress {
 }
 
 const strings = (x: unknown): string[] => (Array.isArray(x) ? x.filter((s): s is string => typeof s === 'string') : [])
+
+function cleanThreads(value: unknown): NonNullable<CaseSnapshot['threads']> {
+  if (!Array.isArray(value)) return []
+  return value.flatMap(item => {
+    if (!item || typeof item !== 'object') return []
+    const thread = item as { deduction?: unknown; pair?: unknown }
+    if (typeof thread.deduction !== 'string' || !Array.isArray(thread.pair) || thread.pair.length !== 2 || thread.pair.some(id => typeof id !== 'string')) return []
+    return [{ deduction: thread.deduction as DeductionId, pair: [thread.pair[0] as EvidenceId, thread.pair[1] as EvidenceId] }]
+  })
+}
 
 function normalizeStats(raw: unknown): ProgressStats {
   const stats = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {}

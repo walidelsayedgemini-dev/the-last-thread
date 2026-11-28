@@ -18,8 +18,25 @@ export type CaseSnapshot = {
   hotspots: string[]
   /** `once` dialogue choices already taken (`character:node:index`). */
   seenChoices: string[]
+  /** Evidence records opened by the player; optional so pre-migration saves remain valid. */
+  reviewedEvidence?: EvidenceId[]
+  /** Exact evidence pairs the player tied; optional for saves created before pair tracking. */
+  threads?: { deduction: DeductionId; pair: [EvidenceId, EvidenceId] }[]
   /** Characters temporarily offended by a wrong accusation. Optional for old saves. */
   offended?: { character: CharacterId; untilEvidence: number; untilMinute: number }[]
+}
+
+/** Recover only legacy links that are mathematically unambiguous from the old snapshot. */
+export function restoreLegacyThreads(snapshot: CaseSnapshot, file: CaseFile): void {
+  if (snapshot.threads !== undefined) return
+  const found = new Set(snapshot.evidence.map(item => item.id))
+  const tied = new Set(snapshot.deductions)
+  snapshot.threads = []
+  for (const deduction of file.deductions) {
+    if (!tied.has(deduction.id)) continue
+    const candidates = deduction.pairs.filter(([a, b]) => found.has(a) && found.has(b))
+    if (candidates.length === 1) snapshot.threads.push({ deduction: deduction.id, pair: candidates[0] })
+  }
 }
 
 export class CaseState {
@@ -28,6 +45,8 @@ export class CaseState {
   readonly deductions = new Set<DeductionId>()
   readonly hotspots = new Set<string>()
   readonly seenChoices = new Set<string>()
+  readonly reviewedEvidence = new Set<EvidenceId>()
+  readonly threads = new Map<DeductionId, [EvidenceId, EvidenceId][]>()
   readonly offended = new Map<CharacterId, { untilEvidence: number; untilMinute: number }>()
 
   snapshot(): CaseSnapshot {
@@ -37,6 +56,8 @@ export class CaseState {
       deductions: [...this.deductions],
       hotspots: [...this.hotspots],
       seenChoices: [...this.seenChoices],
+      reviewedEvidence: [...this.reviewedEvidence],
+      threads: [...this.threads].flatMap(([deduction, pairs]) => pairs.map(pair => ({ deduction, pair }))),
       offended: [...this.offended].map(([character, value]) => ({ character, ...value })),
     }
   }
@@ -48,6 +69,12 @@ export class CaseState {
     snapshot.deductions.forEach(d => s.deductions.add(d))
     snapshot.hotspots.forEach(h => s.hotspots.add(h))
     snapshot.seenChoices.forEach(c => s.seenChoices.add(c))
+    snapshot.reviewedEvidence?.forEach(id => s.reviewedEvidence.add(id))
+    for (const { deduction, pair } of snapshot.threads ?? []) {
+      const pairs = s.threads.get(deduction) ?? []
+      if (pair[0] !== pair[1] && !pairs.some(([a, b]) => (a === pair[0] && b === pair[1]) || (a === pair[1] && b === pair[0]))) pairs.push(pair)
+      s.threads.set(deduction, pairs)
+    }
     for (const item of snapshot.offended ?? []) s.offended.set(item.character, { untilEvidence: item.untilEvidence, untilMinute: item.untilMinute })
     return s
   }
@@ -61,7 +88,7 @@ export type CaseEvent =
   | { type: 'deduction'; id: DeductionId }
 
 export type TieResult =
-  | { ok: true; deduction: DeductionId; fresh: boolean }
+  | { ok: true; deduction: DeductionId; fresh: boolean; pairFresh: boolean }
   | { ok: false; reason: 'same' | 'missing' | 'no-link' }
 
 export class CaseEngine {
@@ -138,6 +165,12 @@ export class CaseEngine {
     if (!this.has(a) || !this.has(b)) return { result: { ok: false, reason: 'missing' }, events: [] }
     const hit = this.file.deductions.find(d => d.pairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a)))
     if (!hit) return { result: { ok: false, reason: 'no-link' }, events: [] }
+    const pairs = this.state.threads.get(hit.id) ?? []
+    const pairFresh = !pairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a))
+    if (pairFresh) {
+      pairs.push([a, b])
+      this.state.threads.set(hit.id, pairs)
+    }
     const fresh = !this.state.deductions.has(hit.id)
     const events: CaseEvent[] = []
     if (fresh) {
@@ -145,7 +178,7 @@ export class CaseEngine {
       events.push({ type: 'deduction', id: hit.id })
       events.push(...this.apply((hit.sets ?? []).map(id => ({ type: 'flag', id }) as Effect)))
     }
-    return { result: { ok: true, deduction: hit.id, fresh }, events }
+    return { result: { ok: true, deduction: hit.id, fresh, pairFresh }, events }
   }
 
   /** Objectives currently visible (their `when` holds) with completion status. */

@@ -1,10 +1,10 @@
-import { CaseEngine, CaseState, type CaseEvent, type TieResult } from '../core/caseState'
+import { CaseEngine, CaseState, restoreLegacyThreads, type CaseEvent, type TieResult } from '../core/caseState'
 import { GameClock, hourInWindow } from '../core/clock'
 import { DialogueSession, fillText } from '../core/dialogue'
 import type { GateContext } from '../core/gates'
 import { computeGrade, type GradeResult } from '../core/grade'
 import { getCase, nextCaseId as registryNextCaseId } from '../data/cases'
-import { CHARACTERS } from '../data/characters'
+import { CHARACTERS, CHARACTER_LIST } from '../data/characters'
 import { DIALOGUES, DIALOGUES_BY_CASE } from '../data/dialogues'
 import { PLACES } from '../data/places'
 import type { CharacterId, CharacterProfile, EvidenceId, Hotspot, PlaceId } from '../data/types'
@@ -32,11 +32,13 @@ export class Session {
     const snapshot = this.progress.cases[this.progress.caseId] ?? this.progress.case
     this.progress.case = snapshot
     this.progress.cases[this.progress.caseId] = snapshot
+    const file = getCase(this.progress.caseId)
+    restoreLegacyThreads(snapshot, file)
     this.clock = new GameClock({ mode: this.progress.mode, now: deps.now })
     this.clock.restore(this.progress.storyMinutes)
     this.clock.restorePenalty(this.progress.penaltyMs ?? 0)
     this.state = CaseState.from(snapshot)
-    this.engine = new CaseEngine(getCase(this.progress.caseId), this.state, () => this.gateContext())
+    this.engine = new CaseEngine(file, this.state, () => this.gateContext())
     this.clock.setEvidenceCount(this.state.evidence.size)
   }
 
@@ -79,6 +81,7 @@ export class Session {
     if (!target || (target.id !== id && id !== 'case01')) return false
     this.save()
     const snapshot = this.progress.cases?.[id] ?? { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [] }
+    restoreLegacyThreads(snapshot, target)
     this.progress.caseId = id
     this.progress.case = snapshot
     this.progress.cases ??= {}
@@ -115,6 +118,15 @@ export class Session {
     return { available: false, place: c.place, text: `${c.name} مش موجود دلوقتي… جرّب في وقت تاني.` }
   }
 
+  /** People the scene should draw here now, respecting presence flags and realistic schedules. */
+  charactersAt(place: PlaceId): CharacterProfile[] {
+    return CHARACTER_LIST.filter(c => {
+      if (c.id === 'yassin') return false
+      const current = this.whereIs(c.id)
+      return current.available && current.place === place
+    })
+  }
+
 
   private offended(id: CharacterId): boolean {
     const item = this.state.offended.get(id)
@@ -142,7 +154,12 @@ export class Session {
   flushDialogue(s: DialogueSession): void { this.emit(s.drainEvents()) }
   useHotspot(h: Hotspot, code?: string): CaseEvent[] { const events = this.engine.useHotspot(h, code); this.emit(events); return events }
 
-  tie(a: EvidenceId, b: EvidenceId): TieResult { const { result, events } = this.engine.tie(a, b); this.emit(events); return result }
+  tie(a: EvidenceId, b: EvidenceId): TieResult {
+    const { result, events } = this.engine.tie(a, b)
+    this.emit(events)
+    if (result.ok && events.length === 0) this.save()
+    return result
+  }
 
   accuse(culprit: string, motive: string): ReturnType<CaseEngine['accuse']> {
     const result = this.engine.accuse(culprit, motive)
