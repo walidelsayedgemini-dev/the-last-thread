@@ -100,3 +100,15 @@ body.high-contrast .btn { border-color: #fff; }
 
 /* ---- Visible keyboard focus ---- */
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* UX pass: nav never wraps (4, 5 or 6 buttons), map keeps room above the bottom bar, tutorial hides behind panels, tab scroll cue. */
+.tutorial-layer.behind { visibility: hidden; }
+@media (max-width: 1099px) {
+  .inv-mobile-nav { grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .inv-mobile-nav button { font-size: .68rem; }
+  .inv-map { padding-bottom: calc(120px + var(--safe-b, 0px)); scroll-padding-bottom: 120px; }
+}
+@media (max-width: 760px) {
+  .cf-tabs { padding-inline: 14px 34px; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30px); mask-image: linear-gradient(to right, transparent 0, #000 30px); }
+  .cf-tab { scroll-snap-align: center; }
+}
