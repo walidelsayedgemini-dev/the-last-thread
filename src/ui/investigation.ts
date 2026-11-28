@@ -292,7 +292,7 @@ export class InvestigationView {
         mail > 0 && h('button', { class: 'inv-act inv-file-btn', onclick: this.d.onMail },
           h('span', { class: 'ico', 'aria-hidden': true }, '✉'), h('span', null, 'الجوابات'),
           h('em', { class: 'inv-badge' }, arabicDigits(mail))),
-        h('button', { class: 'inv-act', onclick: this.d.onHint },
+        h('button', { class: 'inv-act', 'data-action': 'hint', onclick: this.d.onHint },
           h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح'), h('kbd', null, 'H')),
         h('button', { class: 'inv-act inv-pause-action', 'aria-label': 'القائمة', onclick: this.d.onPause },
           h('span', { class: 'ico', 'aria-hidden': true }, '☰'), h('span', { class: 'lbl' }, 'القائمة'))))
@@ -588,7 +588,7 @@ export class InvestigationView {
       h('button', { class: this.tab === 'map' ? 'on' : '', onclick: () => this.setTab('map') }, h('span', { class: 'ico', 'aria-hidden': true }, '◫'), h('span', null, 'الخريطة')),
       h('button', { class: 'inv-file-btn', 'data-case-file': '', onclick: this.d.onCaseFile }, h('span', { class: 'ico', 'aria-hidden': true }, '▤'), h('span', null, 'الملف'), found > 0 && h('em', { class: 'inv-badge' }, arabicDigits(found))),
       mail > 0 && h('button', { class: 'inv-file-btn', onclick: this.d.onMail }, h('span', { class: 'ico', 'aria-hidden': true }, '✉'), h('span', null, 'الجوابات'), h('em', { class: 'inv-badge' }, arabicDigits(mail))),
-      h('button', { onclick: this.d.onHint }, h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح')),
+      h('button', { 'data-action': 'hint', onclick: this.d.onHint }, h('span', { class: 'ico', 'aria-hidden': true }, '✦'), h('span', null, 'تلميح')),
       h('button', { onclick: this.d.onPause }, h('span', { class: 'ico', 'aria-hidden': true }, '☰'), h('span', null, 'القائمة')))
   }
 }
