@@ -606,6 +606,7 @@ async function boot(): Promise<void> {
       return
     }
     if (!active || paused) return
+    if (event.code === 'Tab' && caseFile.open) return
     if (event.code === 'Escape') { event.preventDefault(); pause() }
     else if (event.code === 'Tab') { event.preventDefault(); openCaseFile() }
     else if (event.code === 'KeyH') { event.preventDefault(); void askHint() }
