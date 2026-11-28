@@ -879,7 +879,71 @@ const mahmoud: Dialogue = {
   },
 }
 
-export const DIALOGUES: Partial<Record<CharacterId, Dialogue>> = { ...VILLAGER_DIALOGUES, ...ARCHIVE_DIALOGUES, zeinab, hassan, ragab, bahr, fathy, shawky, mahmoud }
+const mohamed_fakhr: Dialogue = {
+  character: 'mohamed_fakhr',
+  entries: [
+    { node: 'mf_done', when: { flags: ['case_solved'] } },
+    { node: 'mf_first', when: { notFlags: ['mohamed_met'] } },
+    { node: 'mf_hub' },
+  ],
+  nodes: {
+    mf_first: {
+      id: 'mf_first',
+      lines: [
+        { who: 'mohamed_fakhr', text: 'يا ياسو! صاحبك القديم بقى بيتدرّب في مكتب محاماة هنا في المنشية. أنا لسه ساكن في شقة ٢١ في البرج، بس بقضي نص يومي وسط الورق ده.' },
+        { who: 'player', text: 'بدور على خالي محمود، ومحتاج عين قانونية على الورق اللي هلاقيه.' },
+        { who: 'mohamed_fakhr', text: 'أقرأهولك، إنما الحكم ليك. الورقة تفتح سؤال… والدليل اللي يرد عليه.' },
+      ],
+      effects: [{ type: 'flag', id: 'mohamed_met' }],
+      next: 'mf_hub',
+    },
+    mf_hub: {
+      id: 'mf_hub',
+      lines: [{ who: 'mohamed_fakhr', text: 'قول يا ياسو… إيه اللي محتاج تبص عليه؟' }],
+      choices: [
+        { text: 'راجعلي العقد اللي طلع من مكتب شوقي.', next: 'mf_contract', when: { evidence: ['e_forged_contract'], notFlags: ['mohamed_contract_reviewed'] }, present: 'e_forged_contract' },
+        { text: 'احكيلي عن أيام المدرسة.', next: 'mf_friendship', when: { notFlags: ['mohamed_friendship'] } },
+        { text: 'لسه ساكن في البرج؟', next: 'mf_address', when: { notFlags: ['mohamed_address_seen'] } },
+        { text: 'سلام يا فخر.', next: 'mf_bye' },
+      ],
+    },
+    mf_contract: {
+      id: 'mf_contract',
+      lines: [
+        { who: 'player', text: 'ده العقد اللي شفته في ملف شوقي… تقدر تقولّي إيه اللي أركز عليه؟' },
+        { who: 'mohamed_fakhr', text: 'بص على التاريخ ورقم القيد، وقارن الختم بنسخة شهادة المساحة الأصلية اللي لقيتها في المكتبة. الختم لوحده ما يثبتش مين لعب في الورق.' },
+        { who: 'narrator', text: 'محمد علّم على خانة التاريخ في نسخة ملاحظاتك، وساب الاستنتاج النهائي لملف القضية.' },
+      ],
+      effects: [{ type: 'flag', id: 'mohamed_contract_reviewed' }],
+      next: 'mf_hub',
+    },
+    mf_friendship: {
+      id: 'mf_friendship',
+      lines: [
+        { who: 'mohamed_fakhr', text: 'اتعرفنا في مدرسة أبيس. إنت كنت بتلقط الغلط في رسمة المدرس، وأنا كنت بسأله: الغلط ده يتصلّح بالقانون ولا بالممحاة؟' },
+        { who: 'mohamed_fakhr', text: 'من يومها وإحنا متفقين: ما نحكمش على حد من حكاية ناقصة.' },
+      ],
+      effects: [{ type: 'flag', id: 'mohamed_friendship' }],
+      next: 'mf_hub',
+    },
+    mf_address: {
+      id: 'mf_address',
+      lines: [{ who: 'mohamed_fakhr', text: 'أيوه، شقة ٢١ في البرج، الإسكندرية. لو اتأخرت عليك، سيبلي خبر عند المكتب هنا في المنشية.' }],
+      effects: [{ type: 'flag', id: 'mohamed_address_seen' }],
+      next: 'mf_hub',
+    },
+    mf_bye: {
+      id: 'mf_bye',
+      lines: [{ who: 'mohamed_fakhr', text: 'خلي بالك من نفسك يا ياسو. وأنا جنبك… بس هفضل أسألك عن أصل كل ورقة.' }],
+    },
+    mf_done: {
+      id: 'mf_done',
+      lines: [{ who: 'mohamed_fakhr', text: 'محمود رجع، والخيط وصل لصاحبه. خلّصت القضية من غير ما تظلم حد يا ياسو.' }],
+    },
+  },
+}
+
+export const DIALOGUES: Partial<Record<CharacterId, Dialogue>> = { ...VILLAGER_DIALOGUES, ...ARCHIVE_DIALOGUES, zeinab, hassan, ragab, bahr, fathy, shawky, mahmoud, mohamed_fakhr }
 
 
 const salma: Dialogue = {

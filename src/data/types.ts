@@ -83,7 +83,7 @@ export type CharacterId =
   | 'salma' | 'nabil' | 'adham' | 'nadia' | 'farid' | 'omar' | 'hoda' | 'khaled'
   | 'nabil_survey' | 'mona_archive'
   | 'umm_saeed' | 'omda' | 'mounir' | 'abdo' | 'hamada' | 'hagga_fatma' | 'metwally' | 'dr_amal' | 'barakat' | 'saber'
-  | 'am_mahdi' | 'am_arafa' | 'ahmed_basheer' | 'alaa_emad'
+  | 'am_mahdi' | 'am_arafa' | 'ahmed_basheer' | 'alaa_emad' | 'mohamed_fakhr'
 
 /** Deep character profile ("ملف تعريف"): drives the notebook, dialogue tone and the figure. */
 export type CharacterProfile = {

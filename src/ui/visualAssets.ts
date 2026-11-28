@@ -18,6 +18,7 @@ export const CHARACTER_ART: Partial<Record<CharacterId, { src: string; alt: stri
   am_arafa: { src: new URL('../assets/portraits/am_arafa.webp', import.meta.url).href, alt: 'عم عرفة، صاحب قهوة ناصية قرية ١٥' },
   ahmed_basheer: { src: new URL('../assets/portraits/ahmed_basheer.webp', import.meta.url).href, alt: 'أحمد بشير، صاحب ياسين من عزبة ٥ الثورة الرئيسية' },
   alaa_emad: { src: new URL('../assets/portraits/alaa_emad.webp', import.meta.url).href, alt: 'علاء عماد، مساعد قياس وزمل ياسين من قرية ٥/٨ التمنيات' },
+  mohamed_fakhr: { src: new URL('../assets/portraits/mohamed_fakhr.webp', import.meta.url).href, alt: 'محمد فخر، محامي متدرّب وصديق ياسين' },
 }
 
 /** Original fictional environments; existing landmark imagery stays unchanged. */

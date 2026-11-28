@@ -11,7 +11,7 @@ import { CHARACTERS } from '../src/data/characters'
 import { DIALOGUES, DIALOGUES_BY_CASE } from '../src/data/dialogues'
 import { LOCAL_HINTS } from '../src/data/hints'
 import { PLACES } from '../src/data/places'
-import { PIN_POS } from '../src/ui/art'
+import { PIN_POS, portraitUrl } from '../src/ui/art'
 
 type Env = { mode: 'realistic' | 'story'; when: string; near: boolean }
 function make(env: Partial<Env> = {}) {
@@ -290,8 +290,8 @@ describe('expanded cases', () => {
 
   it('registers case03 after case02 and keeps dialogue casts case-scoped', () => {
     expect(nextCaseId('case02')).toBe('case03')
-    expect(Object.keys(DIALOGUES_BY_CASE.case02).sort()).toEqual(['abdo', 'adham', 'barakat', 'dr_amal', 'farid', 'hagga_fatma', 'hamada', 'metwally', 'mounir', 'nabil', 'nadia', 'omda', 'saber', 'salma', 'umm_saeed'])
-    expect(Object.keys(DIALOGUES_BY_CASE.case03).sort()).toEqual(['abdo', 'barakat', 'dr_amal', 'hagga_fatma', 'hamada', 'hoda', 'khaled', 'metwally', 'mounir', 'omar', 'omda', 'saber', 'umm_saeed'])
+    expect(Object.keys(DIALOGUES_BY_CASE.case02).sort()).toEqual(['abdo', 'adham', 'barakat', 'dr_amal', 'farid', 'hagga_fatma', 'hamada', 'metwally', 'mohamed_fakhr', 'mounir', 'nabil', 'nadia', 'omda', 'saber', 'salma', 'umm_saeed'])
+    expect(Object.keys(DIALOGUES_BY_CASE.case03).sort()).toEqual(['abdo', 'barakat', 'dr_amal', 'hagga_fatma', 'hamada', 'hoda', 'khaled', 'metwally', 'mohamed_fakhr', 'mounir', 'omar', 'omda', 'saber', 'umm_saeed'])
     expect(DIALOGUES_BY_CASE.case02.hoda).toBeUndefined()
     expect(DIALOGUES_BY_CASE.case03.adham).toBeUndefined()
     for (const id of ['umm_saeed', 'omda', 'mounir', 'abdo', 'hamada', 'hagga_fatma', 'metwally', 'dr_amal', 'barakat', 'saber'] as const) {
@@ -299,6 +299,39 @@ describe('expanded cases', () => {
       expect(DIALOGUES_BY_CASE.case03[id]).toBeDefined()
       expect(CHARACTERS[id]).toBeDefined()
     }
+  })
+
+  it('adds Mohamed Fakhr as Yassin’s legal-trainee friend in all three cases', () => {
+    expect(CHARACTERS.mohamed_fakhr).toMatchObject({
+      name: 'محمد فخر',
+      role: 'محامي متدرّب – صديق ياسين',
+      home: 'شقة ٢١ في البرج – الإسكندرية',
+      place: 'mansheya',
+    })
+    expect(DIALOGUES_BY_CASE.case01.mohamed_fakhr?.character).toBe('mohamed_fakhr')
+    for (const caseId of ['case02', 'case03'] as const) {
+      const dialogue = DIALOGUES_BY_CASE[caseId].mohamed_fakhr
+      expect(dialogue?.character).toBe('mohamed_fakhr')
+      expect(dialogue?.nodes[dialogue.entries[0].node]?.lines[0].who).toBe('mohamed_fakhr')
+    }
+    expect(portraitUrl('mohamed_fakhr')).toBeDefined()
+  })
+
+  it('keeps Mohamed’s contract reading optional and gated by the existing contract clue', () => {
+    const { engine, state } = make()
+    const mohamed = talk(engine, 'mohamed_fakhr')
+    expect(mohamed.view()?.nodeId).toBe('mf_first')
+    mohamed.advance()
+    expect(mohamed.view()?.nodeId).toBe('mf_hub')
+    expect(mohamed.view()?.choices.some(choice => choice.text.includes('العقد'))).toBe(false)
+
+    engine.apply([{ type: 'evidence', id: 'e_forged_contract' }])
+    const contractChoice = mohamed.view()?.choices.find(choice => choice.text.includes('العقد'))
+    expect(contractChoice).toBeDefined()
+    mohamed.choose(contractChoice!.index)
+    expect(mohamed.view()?.nodeId).toBe('mf_contract')
+    expect(state.flags.has('mohamed_contract_reviewed')).toBe(true)
+    expect(engine.has('e_forged_contract')).toBe(true)
   })
 
   it('gives every new place two object-key hotspots and a hand-placed pin in both cases', () => {
