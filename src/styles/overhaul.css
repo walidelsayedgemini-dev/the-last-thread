@@ -112,3 +112,12 @@ body.high-contrast .btn { border-color: #fff; }
   .cf-tabs { padding-inline: 14px 34px; scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30px); mask-image: linear-gradient(to right, transparent 0, #000 30px); }
   .cf-tab { scroll-snap-align: center; }
 }
+
+/* UX pass 2 (phone): toasts sit above the bottom bar and hug their text instead of stretching over the scene; bigger, glowing hotspots. */
+@media (max-width: 760px) {
+  #ui > .hud .toasts { top: auto; bottom: calc(232px + var(--safe-b, 0px)); height: auto; align-content: end; }
+  #ui > .hud .toast { align-self: end; }
+  .investigation .inv-pin:not(.opening-thread) .inv-pin-dot { width: 54px; height: 54px; box-shadow: 0 0 0 5px #ffffff2e, 0 0 22px #ffd98aaa, 0 6px 18px #000a !important; }
+  .inv-pin { min-height: 54px; }
+  .investigation .inv-pin.opening-thread .inv-pin-dot { width: 38px; height: 38px; font-size: 1.1rem; box-shadow: 0 0 0 5px #ff8a9255, 0 0 24px #ff5c6acc; }
+}

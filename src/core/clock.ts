@@ -84,7 +84,7 @@ export function formatClock(hourFloat: number): string {
   const h = Math.floor(total / 60)
   const m = total % 60
   const h12 = h % 12 === 0 ? 12 : h % 12
-  return `${arabicDigits(String(h12).padStart(2, '0'))}:${arabicDigits(String(m).padStart(2, '0'))} ${h >= 12 ? 'م' : 'ص'}`
+  return `${arabicDigits(String(h12))}:${arabicDigits(String(m).padStart(2, '0'))} ${h >= 12 ? 'م' : 'ص'}`
 }
 
 const AR_WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
