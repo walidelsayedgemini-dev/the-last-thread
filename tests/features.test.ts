@@ -39,4 +39,17 @@ describe('onboarding, endings, achievements', () => {
     expect(migrated.tutorial).toEqual({ completed: false })
     expect(migrate({ ...migrated, achievements: ['first_thread'], tutorial: { completed: true } }).tutorial.completed).toBe(true)
   })
+
+  it('moves legacy aggregate stats to the active case without copying them to other cases', () => {
+    const migrated = migrate({
+      v: 4, mode: 'story', caseId: 'case02',
+      case: { flags: [], evidence: [], deductions: [], hotspots: [], seenChoices: [] },
+      cases: { case01: { flags: ['case_solved'], evidence: [], deductions: [], hotspots: [], seenChoices: [] } },
+      stats: { photos: 2, hints: 3, wrongAccusations: 1 },
+    })
+    expect(migrated.caseStats?.case02).toMatchObject({ photos: 2, hints: 3, wrongAccusations: 1 })
+    expect(migrated.stats).toEqual(migrated.caseStats?.case02)
+    expect(migrated.caseStats?.case01).toMatchObject({ photos: 0, hints: 0, wrongAccusations: 0 })
+    expect(migrated.v).toBe(PROGRESS_VERSION)
+  })
 })

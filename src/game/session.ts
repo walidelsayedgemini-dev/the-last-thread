@@ -10,7 +10,7 @@ import { PLACES } from '../data/places'
 import type { CharacterId, CharacterProfile, EvidenceId, Hotspot, PlaceId } from '../data/types'
 import type { EventsDb } from '../services/eventsDb'
 import type { Hint, HintService } from '../services/hints'
-import type { Profile, ProfileService, Progress } from '../services/profiles'
+import { newProgressStats, type Profile, type ProfileService, type Progress } from '../services/profiles'
 
 export type SessionDeps = { events: EventsDb; profiles: ProfileService; hints: HintService; now: () => number }
 type Listener = (events: CaseEvent[]) => void
@@ -24,8 +24,11 @@ export class Session {
 
   constructor(readonly profile: Profile, private readonly deps: SessionDeps) {
     this.progress = structuredClone(profile.progress)
-    this.progress.cases ??= { [this.progress.caseId || 'case01']: this.progress.case }
     this.progress.caseId ||= 'case01'
+    this.progress.cases ??= { [this.progress.caseId || 'case01']: this.progress.case }
+    this.progress.caseStats ??= { [this.progress.caseId]: this.progress.stats }
+    this.progress.caseStats[this.progress.caseId] ??= this.progress.stats ?? newProgressStats()
+    this.progress.stats = this.progress.caseStats[this.progress.caseId]
     const snapshot = this.progress.cases[this.progress.caseId] ?? this.progress.case
     this.progress.case = snapshot
     this.progress.cases[this.progress.caseId] = snapshot
@@ -80,6 +83,9 @@ export class Session {
     this.progress.case = snapshot
     this.progress.cases ??= {}
     this.progress.cases[id] = snapshot
+    this.progress.caseStats ??= {}
+    this.progress.stats = this.progress.caseStats[id] ?? newProgressStats()
+    this.progress.caseStats[id] = this.progress.stats
     this.state = CaseState.from(snapshot)
     this.engine = new CaseEngine(target, this.state, () => this.gateContext())
     this.deps.hints.reset()
@@ -172,13 +178,17 @@ export class Session {
     return r
   }
 
-  gradeReport(): GradeResult { return computeGrade(this.progress.stats, this.caseFile, this.state) }
+  gradeReport(): GradeResult {
+    return computeGrade(this.progress.caseStats ?? { [this.caseId]: this.progress.stats }, this.caseFile, this.state)
+  }
   tick(seconds: number): void { this.clock.tick(seconds); this.progress.playMs += seconds * 1000 }
   setPosition(zone: 'abis' | 'city', x: number, z: number, yaw: number): void { this.progress.position = { zone, x, z, yaw } }
   save(): void {
     this.progress.case = this.state.snapshot()
     this.progress.cases ??= {}
     this.progress.cases[this.caseId] = this.progress.case
+    this.progress.caseStats ??= {}
+    this.progress.caseStats[this.caseId] = this.progress.stats
     this.progress.storyMinutes = this.clock.elapsedStoryMinutes
     this.progress.penaltyMs = this.clock.penaltyMs
     this.deps.profiles.save(this.progress)
