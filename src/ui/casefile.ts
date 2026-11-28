@@ -140,7 +140,7 @@ export class CaseFileView {
       this.render()
       return true
     }
-    if (e.code === 'Escape' || e.code === 'Tab' || e.code === 'KeyJ') {
+    if (e.code === 'Escape' || e.code === 'KeyJ') {
       this.close()
       return true
     }
@@ -176,6 +176,7 @@ export class CaseFileView {
       h('button', { class: `cf-tab${id === this.tab ? ' on' : ''}`, role: 'tab', 'aria-selected': String(id === this.tab), onclick: () => { this.d.audio.play('ui'); this.setTab(id) } },
         label, id === 'journal' && unread > 0 && h('span', { class: 'cf-tab-badge', 'aria-label': `${arabicDigits(unread)} صفحة جديدة` }, arabicDigits(unread)),
         id === 'letters' && mail > 0 && h('span', { class: 'cf-tab-badge mail', 'aria-label': `${arabicDigits(mail)} جواب جديد` }, arabicDigits(mail)))))
+    this.tabsEl.querySelector<HTMLElement>('.cf-tab.on')?.scrollIntoView?.({ inline: 'center', block: 'nearest' })
     const page = { letters: () => this.d.letters.list(s), evidence: () => this.evidence(s), people: () => this.people(s), objectives: () => this.objectives(s), board: () => this.board(s), journal: () => this.journal(s), organizer: () => this.organizer(s), life: () => this.life(s), map: () => this.map(s), calendar: () => this.calendar(s) }[this.tab]()
     this.pageEl.classList.remove('entering')
     void this.pageEl.offsetWidth
